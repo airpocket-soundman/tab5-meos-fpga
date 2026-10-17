@@ -35,12 +35,18 @@ typedef struct {
 } gain_entry_t;
 
 static const gain_entry_t s_gains[] = {
-    { 0x00, 0x00, 0x80 }, /* 0:  1x */
-    { 0x01, 0x00, 0x80 }, /* 1:  2x */
-    { 0x03, 0x00, 0x80 }, /* 2:  4x */
-    { 0x07, 0x00, 0x80 }, /* 3:  8x */
-    { 0x0F, 0x00, 0x80 }, /* 4: 16x */
-    { 0x0F, 0x01, 0x80 }, /* 5: 32x */
+    { 0x00, 0x00, 0x80 }, /*  0:  1.0x */
+    { 0x00, 0x00, 0xB4 }, /*  1:  1.4x */
+    { 0x01, 0x00, 0x80 }, /*  2:  2.0x */
+    { 0x01, 0x00, 0xB4 }, /*  3:  2.8x */
+    { 0x03, 0x00, 0x80 }, /*  4:  4.0x */
+    { 0x03, 0x00, 0xB4 }, /*  5:  5.6x */
+    { 0x07, 0x00, 0x80 }, /*  6:  8.0x */
+    { 0x07, 0x00, 0xB4 }, /*  7: 11.3x */
+    { 0x0F, 0x00, 0x80 }, /*  8: 16.0x */
+    { 0x0F, 0x00, 0xB4 }, /*  9: 22.5x */
+    { 0x0F, 0x01, 0x80 }, /* 10: 32.0x */
+    { 0x0F, 0x01, 0xB4 }, /* 11: 45.0x */
 };
 #define GAIN_COUNT (sizeof s_gains / sizeof s_gains[0])
 
@@ -55,10 +61,24 @@ static esp_cam_ctlr_handle_t   s_cam;
 static isp_proc_handle_t       s_isp;
 
 static uint32_t s_exposure = SC202CS_EXP_DEFAULT;
-static uint32_t s_gain_idx = 1;
+static uint32_t s_gain_idx = 8; /* start at 16x so indoor scenes settle immediately */
 static bool     s_mirror   = false;
 static bool     s_vflip    = false;
 static bool     s_auto_exp = true;
+static float    s_wb_r     = 1.42f;
+static float    s_wb_b     = 1.48f;
+
+/*
+ * Base color correction matrix (row sums = 1.0).
+ * ESP32-P4 ISP has no separate WBG block; white balance is applied by scaling
+ * column 0 by red_balance_gain (G/R) and column 2 by blue_balance_gain (G/B),
+ * matching Espressif's esp_video_isp_device implementation.
+ */
+static const float s_base_ccm[3][3] = {
+    {  1.22f, -0.14f, -0.08f },
+    { -0.08f,  1.16f, -0.08f },
+    { -0.06f, -0.16f,  1.22f },
+};
 
 static void delay_ms(uint32_t ms) { while (ms--) hal_delay_us(1000); }
 
@@ -138,6 +158,24 @@ static bool IRAM_ATTR on_trans_finished(esp_cam_ctlr_handle_t handle, esp_cam_ct
     return false;
 }
 
+static void apply_wb_ccm(isp_proc_handle_t isp, float r_gain, float b_gain)
+{
+    if (r_gain < 0.90f) r_gain = 0.90f;
+    if (r_gain > 2.50f) r_gain = 2.50f;
+    if (b_gain < 0.90f) b_gain = 0.90f;
+    if (b_gain > 2.50f) b_gain = 2.50f;
+
+    esp_isp_ccm_config_t ccm_cfg = {
+        .saturation = true,
+    };
+    for (int i = 0; i < 3; i++) {
+        ccm_cfg.matrix[i][0] = s_base_ccm[i][0] * r_gain;
+        ccm_cfg.matrix[i][1] = s_base_ccm[i][1];
+        ccm_cfg.matrix[i][2] = s_base_ccm[i][2] * b_gain;
+    }
+    esp_isp_ccm_configure(isp, &ccm_cfg);
+}
+
 static void configure_isp_pipeline(isp_proc_handle_t isp)
 {
     /* 1. Demosaic */
@@ -149,38 +187,37 @@ static void configure_isp_pipeline(isp_proc_handle_t isp)
         esp_isp_demosaic_enable(isp);
     }
 
-    /* 2. Color Correction Matrix (SC202CS daylight matrix from sc202cs_default.json, slightly white-balanced) */
-    esp_isp_ccm_config_t ccm_cfg = {
-        .matrix = {
-            {  1.85f, -0.55f, -0.30f },
-            { -0.30f,  1.55f, -0.25f },
-            { -0.15f, -0.65f,  1.80f },
-        },
-        .saturation = true,
-    };
-    if (esp_isp_ccm_configure(isp, &ccm_cfg) == ESP_OK) {
-        esp_isp_ccm_enable(isp);
-    }
+    /* 2. Color Correction Matrix + White Balance gains */
+    apply_wb_ccm(isp, s_wb_r, s_wb_b);
+    esp_isp_ccm_enable(isp);
 
-    /* 3. Gamma curve (from sc202cs_default.json) */
-    isp_gamma_curve_points_t gamma_pts = {
+    /* 3. Per-channel Gamma curves (R/B shadow toe compensates for sensor BLC pedestal after WB gain) */
+    isp_gamma_curve_points_t gamma_g = {
         .pt = {
-            {   4,  17 }, {   8,  30 }, {  12,  41 }, {  16,  50 },
-            {  20,  58 }, {  24,  66 }, {  32,  79 }, {  40,  91 },
-            {  48, 102 }, {  64, 122 }, {  80, 140 }, {  96, 157 },
+            {   4,  14 }, {   8,  26 }, {  12,  37 }, {  16,  47 },
+            {  20,  56 }, {  24,  64 }, {  32,  78 }, {  40,  90 },
+            {  48, 101 }, {  64, 122 }, {  80, 140 }, {  96, 157 },
             { 128, 186 }, { 160, 212 }, { 192, 236 }, { 255, 255 },
         },
     };
-    if (esp_isp_gamma_configure(isp, COLOR_COMPONENT_R, &gamma_pts) == ESP_OK &&
-        esp_isp_gamma_configure(isp, COLOR_COMPONENT_G, &gamma_pts) == ESP_OK &&
-        esp_isp_gamma_configure(isp, COLOR_COMPONENT_B, &gamma_pts) == ESP_OK) {
+    isp_gamma_curve_points_t gamma_rb = {
+        .pt = {
+            {   4,   6 }, {   8,  14 }, {  12,  24 }, {  16,  34 },
+            {  20,  44 }, {  24,  54 }, {  32,  71 }, {  40,  85 },
+            {  48,  98 }, {  64, 120 }, {  80, 139 }, {  96, 156 },
+            { 128, 186 }, { 160, 212 }, { 192, 236 }, { 255, 255 },
+        },
+    };
+    if (esp_isp_gamma_configure(isp, COLOR_COMPONENT_R, &gamma_rb) == ESP_OK &&
+        esp_isp_gamma_configure(isp, COLOR_COMPONENT_G, &gamma_g) == ESP_OK &&
+        esp_isp_gamma_configure(isp, COLOR_COMPONENT_B, &gamma_rb) == ESP_OK) {
         esp_isp_gamma_enable(isp);
     }
 
     /* 4. Color (contrast / saturation / brightness) */
     esp_isp_color_config_t color_cfg = {
-        .color_contrast   = { .integer = 1, .decimal = 12 },
-        .color_saturation = { .integer = 1, .decimal = 24 },
+        .color_contrast   = { .integer = 1, .decimal = 8 },
+        .color_saturation = { .integer = 1, .decimal = 16 },
         .color_hue        = 0,
         .color_brightness = 0,
     };
@@ -298,8 +335,15 @@ void camera_stop(void)
 
 const uint16_t *camera_frame(uint32_t *seq_out)
 {
-    if (seq_out) *seq_out = s_frames;
-    return (const uint16_t *)s_ready_fb;
+    static uint32_t s_last_synced_seq;
+    uint32_t seq = s_frames;
+    const uint16_t *fb = (const uint16_t *)s_ready_fb;
+    if (fb && seq != s_last_synced_seq) {
+        esp_cache_msync((void *)fb, FB_BYTES, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
+        s_last_synced_seq = seq;
+    }
+    if (seq_out) *seq_out = seq;
+    return fb;
 }
 
 bool camera_set_mirror(bool mirror, bool vflip)
@@ -336,41 +380,84 @@ void camera_set_auto_exposure(bool enable)
     s_auto_exp = enable;
 }
 
-/* Lightweight software AE: samples a grid of pixels from the RGB565 frame and nudges exposure/gain. */
+/* Lightweight AE + AWB: updates exposure/gain and ISP CCM white-balance gains. */
 void camera_auto_exposure_step(const uint16_t *frame)
 {
     if (!s_auto_exp || !frame) return;
+    esp_cache_msync((void *)frame, FB_BYTES, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
     uint32_t sum_y = 0, samples = 0;
-    for (int y = 120; y < CAMERA_HEIGHT - 120; y += 32) {
+    uint32_t sum_r = 0, sum_g = 0, sum_b = 0, wb_samples = 0;
+
+    for (int y = 96; y < CAMERA_HEIGHT - 96; y += 32) {
         const uint16_t *row = &frame[(size_t)y * CAMERA_WIDTH];
-        for (int x = 160; x < CAMERA_WIDTH - 160; x += 32) {
+        for (int x = 128; x < CAMERA_WIDTH - 128; x += 32) {
             uint16_t p = row[x];
-            uint32_t r = (p >> 8) & 0xF8u;
-            uint32_t g = (p >> 3) & 0xFCu;
-            uint32_t b = (p << 3) & 0xF8u;
-            sum_y += (r * 2u + g * 5u + b) >> 3;
+            uint32_t r = ((p >> 11) & 0x1Fu) * 255u / 31u;
+            uint32_t g = ((p >> 5)  & 0x3Fu) * 255u / 63u;
+            uint32_t b = (p         & 0x1Fu) * 255u / 31u;
+            uint32_t luma = (r * 2u + g * 5u + b) >> 3;
+            sum_y += luma;
             samples++;
+            uint32_t max_c = r > g ? (r > b ? r : b) : (g > b ? g : b);
+            uint32_t min_c = r < g ? (r < b ? r : b) : (g < b ? g : b);
+            if (luma >= 110u && luma <= 200u && max_c < 215u && (max_c - min_c) <= 80u) {
+                sum_r += r;
+                sum_g += g;
+                sum_b += b;
+                wb_samples++;
+            }
         }
     }
     if (!samples) return;
     uint32_t avg = sum_y / samples;
 
-    /* Target average luma in [95 .. 135] */
+    /* 1. Closed-loop Auto White Balance on well-exposed midtone/white pixels */
+    if (s_isp && avg >= 85u && wb_samples >= 16u && sum_r > 0u && sum_b > 0u) {
+        float post_r = (float)sum_g / (float)sum_r;
+        float post_b = (float)sum_g / (float)sum_b;
+        if (post_r < 0.85f) post_r = 0.85f;
+        if (post_r > 1.18f) post_r = 1.18f;
+        if (post_b < 0.85f) post_b = 0.85f;
+        if (post_b > 1.18f) post_b = 1.18f;
+        float diff_r = post_r - 1.0f;
+        float diff_b = post_b - 1.0f;
+        if (diff_r > 0.015f || diff_r < -0.015f || diff_b > 0.015f || diff_b < -0.015f) {
+            s_wb_r *= (1.0f + 0.30f * diff_r);
+            s_wb_b *= (1.0f + 0.30f * diff_b);
+            if (s_wb_r < 1.25f) s_wb_r = 1.25f;
+            if (s_wb_r > 2.35f) s_wb_r = 2.35f;
+            if (s_wb_b < 1.25f) s_wb_b = 1.25f;
+            if (s_wb_b > 2.35f) s_wb_b = 2.35f;
+            apply_wb_ccm(s_isp, s_wb_r, s_wb_b);
+        }
+    }
+
+    /* 2. Auto Exposure: target average luma in [90 .. 145], wait 1 step after changes */
+    static uint8_t s_ae_cooldown;
+    if (s_ae_cooldown > 0) {
+        s_ae_cooldown--;
+        return;
+    }
     if (avg < 90) {
         if (s_exposure < SC202CS_EXP_MAX) {
             uint32_t step = (avg < 55) ? 160u : 64u;
             camera_set_exposure(s_exposure + step);
+            s_ae_cooldown = 1;
         } else if (s_gain_idx + 1 < GAIN_COUNT) {
             camera_set_gain_index(s_gain_idx + 1);
+            s_ae_cooldown = 1;
         }
     } else if (avg > 145) {
         if (s_gain_idx > 0 && s_exposure > SC202CS_EXP_MAX / 2u) {
             camera_set_gain_index(s_gain_idx - 1);
+            s_ae_cooldown = 1;
         } else if (s_exposure > SC202CS_EXP_MIN + 32u) {
             uint32_t step = (avg > 190) ? 160u : 64u;
             camera_set_exposure(s_exposure > step + SC202CS_EXP_MIN ? s_exposure - step : SC202CS_EXP_MIN);
+            s_ae_cooldown = 1;
         } else if (s_gain_idx > 0) {
             camera_set_gain_index(s_gain_idx - 1);
+            s_ae_cooldown = 1;
         }
     }
 }
