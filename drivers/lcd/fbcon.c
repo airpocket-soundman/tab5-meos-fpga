@@ -17,6 +17,7 @@
 static char s_scr[ROWS][COLS + 1];
 static bool s_dirty[ROWS];
 static int  s_row, s_col;
+static volatile bool s_paused;
 static bool s_cursor_on;
 static int  s_cursor_row = -1, s_cursor_col;
 
@@ -78,6 +79,7 @@ static void fbcon_task(void *arg)
         size_t n;
         bool moved = false;
         while ((n = kconsole_log_read(&pos, buf, sizeof buf)) > 0) { for (size_t i = 0; i < n; i++) feed(buf[i]); moved = true; }
+        if (s_paused) { task_sleep(POLL_MS); continue; }
         flush_rows();
 
         uint32_t now = (uint32_t)(hal_time_now_us() / 1000u);
@@ -91,6 +93,16 @@ static void fbcon_task(void *arg)
         }
         task_sleep(POLL_MS);
     }
+}
+
+void fbcon_pause(bool pause)
+{
+    if (!pause) {
+        display_clear(COL_BG);
+        for (int r = 0; r < ROWS; r++) s_dirty[r] = true;      /* repaint everything on the next pass */
+        s_cursor_row = -1;
+    }
+    s_paused = pause;
 }
 
 void fbcon_start(void)

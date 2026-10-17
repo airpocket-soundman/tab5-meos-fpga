@@ -7,6 +7,10 @@
  * Line editing: Backspace, Ctrl-U (kill line), Ctrl-C (cancel); arrow keys and
  * other ESC sequences are swallowed.  No history yet.
  */
+#include "../filer/filer.h"
+#include "../tui/dqwin.h"
+#include "../../drivers/lcd/fbcon.h"
+#define FILER_PAUSE_SETTLE_MS 100u
 #include "shell.h"
 #include <m5os/vfs.h>
 #include <m5os/task.h>
@@ -454,6 +458,20 @@ static int cmd_stop(int argc, char **argv)
     return 0;
 }
 
+#if M5OS_HAS_KEYBOARD
+static int cmd_files(int argc, char **argv)
+{
+    char path[VFS_PATH_MAX];
+    if (!resolve(argc > 1 ? argv[1] : s_cwd, path)) return fail("files", "bad path", ERR_INVAL);
+    fbcon_pause(true);                                  /* the filer owns the screen while it runs */
+    task_sleep(FILER_PAUSE_SETTLE_MS);                  /* let a drawing fbcon pass finish */
+    dq_clear();
+    filer_run(path);
+    fbcon_pause(false);
+    return 0;
+}
+#endif
+
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
 
 static int cmd_cd(int argc, char **argv)
@@ -510,6 +528,7 @@ static const command_t s_commands[] = {
     { "tap",    cmd_tap,    "tap X Y         simulate a touch on the screen" },
     { "gui",    cmd_gui,    "list windows (front first)" },
 #if M5OS_HAS_KEYBOARD
+    { "files",  cmd_files,  "files [DIR]     full-screen file manager (filer)" },
     { "keys",   cmd_keys,   "keyboard statistics (bring-up diagnostics)" },
 #endif
     { "apps",   cmd_apps,   "list running and finished applications" },
