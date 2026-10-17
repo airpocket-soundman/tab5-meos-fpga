@@ -59,49 +59,75 @@ static void scroll_to_cursor(void)
 
 /* ---- drawing --------------------------------------------------------------------- */
 
+/* Flicker: the panel is scanned out continuously from the framebuffer, so a frame that is black for a
+ * moment (clear, then draw) is seen as a flash.  Therefore the frame is drawn once (`full`), and after
+ * that every text row is written in ONE pass with its background, and only if it changed. */
+#define MAX_SCREEN_ROWS 64
+#define ROW_CHARS       200
+static struct { char text[ROW_CHARS]; int cursor; } s_shown[MAX_SCREEN_ROWS];
+static bool s_full = true;
+
+static void row_out(int y, const char *s, int cursor_col)          /* pad to the window width, write if changed */
+{
+    if (y < 0 || y >= MAX_SCREEN_ROWS) return;
+    int vw = vis_cols();
+    char line[ROW_CHARS];
+    int n = 0;
+    while (s[n] && n < vw && n < ROW_CHARS - 1) { line[n] = s[n]; n++; }
+    while (n < vw && n < ROW_CHARS - 1) line[n++] = ' ';
+    line[n] = 0;
+    if (!s_full && s_shown[y].cursor == cursor_col) {
+        int i = 0;
+        while (line[i] && line[i] == s_shown[y].text[i]) i++;
+        if (!line[i]) return;                                       /* identical to what is on screen */
+    }
+    dq_text(2, y, line);
+    if (cursor_col >= 0 && cursor_col < n) {
+        char under[2] = { line[cursor_col], 0 };
+        dq_text_rev(2 + cursor_col, y, under);
+    }
+    for (int i = 0; i <= n; i++) s_shown[y].text[i] = line[i];
+    s_shown[y].cursor = cursor_col;
+}
+
 static void draw(void)
 {
-    dq_window(0, 0, dq_cols(), dq_rows());
+    if (s_full) {
+        dq_window(0, 0, dq_cols(), dq_rows());
+        for (int y = 0; y < MAX_SCREEN_ROWS; y++) s_shown[y].cursor = -2;
+    }
     char head[160];
     ksnprintf(head, sizeof head, "EDIT  %s%s", s_path, s_modified ? "  [modified]" : "");
-    dq_text(2, 1, head);
+    row_out(1, head, -1);
 
     int vw = vis_cols(), vr = vis_rows();
     int cur_ls = line_start(s_cur);
     int pos = s_top;
-    char line[200];
+    char line[ROW_CHARS];
     for (int r = 0; r < vr; r++) {
-        int n = 0;
+        int n = 0, cc = -1;
         if (pos <= s_len) {
             int le = line_end(pos);
-            for (int i = pos + s_hscroll; i < le && n < vw && n < (int)sizeof line - 1; i++) {
+            for (int i = pos + s_hscroll; i < le && n < vw && n < ROW_CHARS - 1; i++) {
                 unsigned char c = (unsigned char)s_buf[i];
                 line[n++] = (c >= 0x20 && c < 0x7F) ? (char)c : '.';
             }
-            if (pos == cur_ls) {                                   /* the cursor: one reversed cell */
-                int cc = s_cur - cur_ls - s_hscroll;
-                while (n <= cc && n < (int)sizeof line - 1) line[n++] = ' ';
-                line[n] = 0;
-                char under[2] = { line[cc], 0 };
-                while (n < vw && n < (int)sizeof line - 1) line[n++] = ' ';
-                line[n] = 0;
-                dq_text(2, HEADER_ROWS + r, line);
-                dq_text_rev(2 + cc, HEADER_ROWS + r, under);
-                pos = le + 1;
-                continue;
+            if (pos == cur_ls) {
+                cc = s_cur - cur_ls - s_hscroll;
+                while (n <= cc && n < ROW_CHARS - 1) line[n++] = ' ';            /* the cursor may sit past the end of the line */
             }
             pos = le + 1;
         }
-        while (n < vw && n < (int)sizeof line - 1) line[n++] = ' ';
         line[n] = 0;
-        dq_text(2, HEADER_ROWS + r, line);
+        row_out(HEADER_ROWS + r, line, cc);
     }
 
     int fy = dq_rows() - FOOTER_ROWS;
-    dq_text(2, fy, "^S:save  ^Q/ESC:quit  arrows/PgUp/PgDn/Home/End:move  Del/BS:delete  Tab:indent");
+    row_out(fy, "^S:save  ^Q/ESC:quit  arrows/PgUp/PgDn/Home/End:move  Del/BS:delete  Tab:indent", -1);
     char st[160];
     ksnprintf(st, sizeof st, "Ln %d Col %d   %d/%d bytes   %s", line_number(s_cur), s_cur - cur_ls + 1, s_len, EDIT_MAX, s_status);
-    dq_text(2, fy + 1, st);
+    row_out(fy + 1, st, -1);
+    s_full = false;
 }
 
 /* ---- editing --------------------------------------------------------------------- */
@@ -180,6 +206,7 @@ static bool save(void)
 bool edit_file(const char *path)
 {
     ksnprintf(s_path, sizeof s_path, "%s", path);
+    s_full = true;
     s_status[0] = 0; s_cur = s_top = s_hscroll = s_want = 0; s_modified = s_saved_any = false;
     int rc = load();
     if (rc == ERR_NOSPC) { dq_message("File is larger than the editor buffer", "(32 KB)."); return false; }
@@ -195,6 +222,7 @@ bool edit_file(const char *path)
         case K_SAVE: save(); break;
         case K_QUIT: case DQK_ESC:
             if (!s_modified || dq_confirm("Discard unsaved changes?")) return s_saved_any;
+            s_full = true;                                           /* the dialog covered the text */
             break;
         case DQK_UP:    move_up(); break;
         case DQK_DOWN:  move_down(); break;

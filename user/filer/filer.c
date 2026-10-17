@@ -111,38 +111,56 @@ static void draw_entry(int idx)
     if (idx == s_sel) dq_text_rev(cx, cy, line); else dq_text(cx, cy, line);
 }
 
+static bool s_full = true;                 /* frames are drawn only when needed: see the note on flicker in edit.c */
+
 static void draw_list(void)
 {
-    int w = dq_cols(), h = list_rows() + 2;
-    dq_window(0, HEADER_ROWS, w, h);
+    if (s_full) dq_window(0, HEADER_ROWS, dq_cols(), list_rows() + 2);
     int end = s_top + page_size();
-    for (int i = s_top; i < end && i < s_n; i++) draw_entry(i);
-    if (s_n == 0) dq_text(2, HEADER_ROWS + 1, "(empty)");
+    for (int i = s_top; i < end; i++) {
+        if (i < s_n) { draw_entry(i); continue; }
+        int cx, cy;
+        entry_cell(i, &cx, &cy);
+        char blank[COL_WIDTH + 1];
+        for (int k = 0; k < COL_WIDTH; k++) blank[k] = ' ';
+        blank[COL_WIDTH] = 0;
+        dq_text(cx, cy, blank);
+    }
+    if (s_n == 0) dq_text(2, HEADER_ROWS + 1, "(empty)  ");
 }
 
 static int marked_count(void) { int c = 0; for (int i = 0; i < s_n; i++) if (s_mark[i]) c++; return c; }
 
+static void padded(int cx, int cy, const char *s)         /* write s and blank the rest of the line inside the window */
+{
+    char line[200];
+    int n = 0, w = dq_cols() - cx - 2;
+    while (s[n] && n < w && n < (int)sizeof line - 1) { line[n] = s[n]; n++; }
+    while (n < w && n < (int)sizeof line - 1) line[n++] = ' ';
+    line[n] = 0;
+    dq_text(cx, cy, line);
+}
+
 static void draw_chrome(void)
 {
-    int w = dq_cols();
-    dq_window(0, 0, w, HEADER_ROWS);
-    dq_text(2, 1, "M5 FILER");
-    char line[100];
-    ksnprintf(line, sizeof line, "%s", s_path);
-    dq_text(12, 1, line);
-
-    int fy = dq_rows() - FOOTER_ROWS;
-    dq_window(0, fy, w, FOOTER_ROWS);
-    dq_text(2, fy + 1, "Enter:open BS:up Space:mark C:copy M:move D:delete K:mkdir N:rename V:view E:edit F:new Q:quit");
+    int w = dq_cols(), fy = dq_rows() - FOOTER_ROWS;
+    if (s_full) {
+        dq_window(0, 0, w, HEADER_ROWS);
+        dq_text(2, 1, "M5 FILER");
+        dq_window(0, fy, w, FOOTER_ROWS);
+        dq_text(2, fy + 1, "Enter:open BS:up Space:mark C:copy M:move D:delete K:mkdir N:rename V:view E:edit F:new Q:quit");
+    }
+    padded(12, 1, s_path);
     char st[120];
     ksnprintf(st, sizeof st, "%d entries, %d marked   %s", s_n, marked_count(), s_status);
-    dq_text(2, fy + 2, st);
+    padded(2, fy + 2, st);
 }
 
 static void redraw(void)
 {
     draw_chrome();
     draw_list();
+    s_full = false;
 }
 
 static void move_to(int sel)
@@ -358,6 +376,7 @@ void filer_run(const char *start_dir)
     ksnprintf(s_path, sizeof s_path, "%s", start_dir && start_dir[0] ? start_dir : "/");
     s_status[0] = 0;
     reload(NULL);
+    s_full = true;
     redraw();
     for (;;) {
         int k = dq_getkey();
@@ -376,7 +395,7 @@ void filer_run(const char *start_dir)
         case DQK_BACKSPACE: enter_dir(".."); break;
         case DQK_ENTER:
             if (s_n == 0) break;
-            if (s_ent[s_sel].dir) enter_dir(s_ent[s_sel].name); else view_file(&s_ent[s_sel]);
+            if (s_ent[s_sel].dir) enter_dir(s_ent[s_sel].name); else { view_file(&s_ent[s_sel]); s_full = true; }
             break;
         case 'e': case 'E':
             if (s_n && !s_ent[s_sel].dir) {
@@ -384,6 +403,7 @@ void filer_run(const char *start_dir)
                 path_join(p, s_path, s_ent[s_sel].name);
                 if (p[0] && edit_file(p)) say("saved");
                 dq_clear();
+                s_full = true;
                 reload(s_ent[s_sel].name);
             }
             break;
@@ -394,19 +414,20 @@ void filer_run(const char *start_dir)
                 path_join(p, s_path, name);
                 if (p[0]) edit_file(p);
                 dq_clear();
+                s_full = true;
                 reload(name);
             }
             break;
         }
-        case 'v': case 'V': if (s_n && !s_ent[s_sel].dir) view_file(&s_ent[s_sel]); break;
+        case 'v': case 'V': if (s_n && !s_ent[s_sel].dir) { view_file(&s_ent[s_sel]); s_full = true; } break;
         case ' ':
             if (s_n && s_ent[s_sel].name[0] != '.') { s_mark[s_sel] = !s_mark[s_sel]; move_to(s_sel + 1); }
             break;
-        case 'c': case 'C': do_copy_move(false); reload(NULL); break;
-        case 'm': case 'M': do_copy_move(true);  reload(NULL); break;
-        case 'd': case 'D': case DQK_DEL: do_delete(); reload(NULL); break;
-        case 'n': case 'N': do_rename(); reload(NULL); break;
-        case 'K': case 'B': do_mkdir(); reload(NULL); break;
+        case 'c': case 'C': do_copy_move(false); reload(NULL); s_full = true; break;
+        case 'm': case 'M': do_copy_move(true);  reload(NULL); s_full = true; break;
+        case 'd': case 'D': case DQK_DEL: do_delete(); reload(NULL); s_full = true; break;
+        case 'n': case 'N': do_rename(); reload(NULL); s_full = true; break;
+        case 'K': case 'B': do_mkdir(); reload(NULL); s_full = true; break;
         case 'r': case 'R': reload(NULL); say("reloaded"); break;
         default: continue;
         }
