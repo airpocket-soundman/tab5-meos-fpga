@@ -1,4 +1,4 @@
-# M5OS
+# MeOS
 
 An educational and experimental lightweight operating system built from scratch for M5Stack devices (**M5Stack CoreS3**, **M5Cardputer**, and **M5Stack Tab5**).
 M5OS implements its own **preemptive/cooperative scheduler, task management, timer, IPC message queues, memory allocator, VFS, custom filesystem (M5FS), dynamic binary loader (M5EX), GUI/TUI window system, camera driver, and SDIO Wi-Fi stack**—without ever starting FreeRTOS.
