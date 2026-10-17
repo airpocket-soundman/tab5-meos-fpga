@@ -2,6 +2,7 @@
 #include "../tui/dqwin.h"
 #include "../edit/edit.h"
 #include "../camera/camera_app.h"
+#include "../wifi/wifi_app.h"
 #include <m5os/display.h>
 #include <m5os/kmalloc.h>
 #include <m5os/vfs.h>
@@ -151,7 +152,7 @@ static void draw_chrome(void)
         dq_window(0, 0, w, HEADER_ROWS);
         dq_text(2, 1, "M5 FILER");
         dq_window(0, fy, w, FOOTER_ROWS);
-        dq_text(2, fy + 1, "Enter/V:view P:camera BS:up Spc:mark C:copy M:move D:del K:mkdir N:ren E:edit Q:quit");
+        dq_text(2, fy + 1, "Enter/V:view P:cam W:wifi BS:up Spc:mark C:copy M:move D:del K:mkdir N:ren E:edit Q:quit");
     }
     padded(12, 1, s_path);
     char st[120];
@@ -518,6 +519,13 @@ void filer_run(const char *start_dir)
             s_full = true;
             reload(saved[0] ? saved : (s_n ? s_ent[s_sel].name : NULL));
             if (saved[0]) ksnprintf(s_status, sizeof s_status, "captured %s", saved);
+            break;
+        }
+        case 'w': case 'W': {                                       /* launch Wi-Fi settings */
+            wifi_app_run();
+            dq_clear();
+            s_full = true;
+            reload(s_n ? s_ent[s_sel].name : NULL);
             break;
         }
         case 'v': case 'V': if (s_n && !s_ent[s_sel].dir) { view_file(&s_ent[s_sel]); s_full = true; } break;

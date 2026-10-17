@@ -18,6 +18,7 @@
 #include <m5os/m5ex.h>
 #include <m5os/msg.h>
 #include <m5os/gui.h>
+#include <m5os/wifi.h>
 #include <m5os/board_config.h>
 #if M5OS_HAS_SD
 #include "../../drivers/sd/sd_spi.h"
@@ -416,6 +417,7 @@ void kernel_main(void)
     task_create("logB", log_task, (void *)'B', TASK_PRIO_DEFAULT);
 #else
     rootfs_mount(sd);
+    wifi_boot_start();
 #if M5OS_HAS_TOUCH
     if (lcd_ok && gui_init() == ERR_OK) {            /* touch screen: windows and the launcher */
         uint32_t id;

@@ -15,6 +15,7 @@ void calculator_main(void *arg);
 void snake_main(void *arg);
 void intruder_main(void *arg);
 void camera_main(void *arg);
+void wifi_main(void *arg);
 
 #define APP_STACK_DEFAULT  4096u
 #define APP_STACK_GUI      6144u
@@ -37,6 +38,8 @@ static const app_def_t s_defs[] = {
     { "intruder",  intruder_main,   APP_PERM_DISPLAY, APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "tries to use another app's window" },
     { "camera",    camera_main,     APP_PERM_CONSOLE | APP_PERM_DISPLAY | APP_PERM_FS_READ | APP_PERM_FS_WRITE,
                                                APP_STACK_CAMERA, APP_PRIO_DEFAULT, "camera viewfinder & BMP capture (/home/cam_XXXX.bmp)" },
+    { "wifi",      wifi_main,       APP_PERM_CONSOLE | APP_PERM_DISPLAY | APP_PERM_FS_READ | APP_PERM_FS_WRITE,
+                                               APP_STACK_CAMERA, APP_PRIO_DEFAULT, "graphical Wi-Fi scanner & connection manager" },
     /* ---- GUI apps: D = windows, m = receive events; the launcher also starts apps (s) ---- */
     { "launcher",   launcher_main,   APP_PERM_DISPLAY | APP_PERM_IPC | APP_PERM_SPAWN,
                                                APP_STACK_GUI, APP_PRIO_DEFAULT, "home screen" },

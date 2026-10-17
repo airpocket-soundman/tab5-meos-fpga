@@ -11,6 +11,7 @@
 #include "../tui/dqwin.h"
 #include "../edit/edit.h"
 #include "../camera/camera_app.h"
+#include "../wifi/wifi_app.h"
 #include "../../drivers/lcd/fbcon.h"
 #define FILER_PAUSE_SETTLE_MS 100u
 #include "shell.h"
@@ -27,6 +28,7 @@
 #include <m5os/crc32.h>
 #include <m5os/msg.h>
 #include <m5os/gui.h>
+#include <m5os/wifi.h>
 #include <m5os/board_config.h>
 #if M5OS_HAS_KEYBOARD
 #include "../../drivers/keyboard/keyboard.h"
@@ -520,6 +522,149 @@ static int cmd_snap(int argc, char **argv)
 }
 #endif
 
+static bool sh_streq(const char *a, const char *b)
+{
+    if (!a || !b) return false;
+    while (*a && *a == *b) { a++; b++; }
+    return *a == *b;
+}
+
+static void print_wifi_status(void)
+{
+    wifi_status_t st;
+    wifi_get_status(&st);
+    SH_PRINTF("State       : %s (%s)\n", wifi_state_name(st.state), st.last_msg);
+    SH_PRINTF("MAC         : %02X:%02X:%02X:%02X:%02X:%02X\n",
+              st.mac[0], st.mac[1], st.mac[2], st.mac[3], st.mac[4], st.mac[5]);
+    if (st.state == WIFI_STATE_CONNECTED) {
+        SH_PRINTF("Connected AP: %s (ch %u, %d dBm, %s)\n",
+                  st.ssid, st.channel, (int)st.rssi, wifi_auth_name(st.authmode));
+        SH_PRINTF("IPv4        : %u.%u.%u.%u  netmask %u.%u.%u.%u  gw %u.%u.%u.%u\n",
+                  st.ip[0], st.ip[1], st.ip[2], st.ip[3],
+                  st.netmask[0], st.netmask[1], st.netmask[2], st.netmask[3],
+                  st.gateway[0], st.gateway[1], st.gateway[2], st.gateway[3]);
+    }
+    SH_PRINTF("Saved AP    : %s   (auto-connect: %s)\n",
+              st.has_saved ? st.saved_ssid : "(none)",
+              st.auto_connect ? "ON" : "OFF");
+    SH_PRINTF("Packets     : RX %u   TX %u\n", st.rx_packets, st.tx_packets);
+}
+
+static int cmd_wifi(int argc, char **argv)
+{
+#if M5OS_HAS_KEYBOARD
+    if (argc < 2 || sh_streq(argv[1], "gui")) {
+        fbcon_pause(true);
+        task_sleep(FILER_PAUSE_SETTLE_MS);
+        dq_clear();
+        wifi_app_run();
+        dq_clear();
+        fbcon_pause(false);
+        print_wifi_status();
+        return 0;
+    }
+#else
+    if (argc < 2) {
+        print_wifi_status();
+        return 0;
+    }
+#endif
+    if (sh_streq(argv[1], "status") || sh_streq(argv[1], "st")) {
+        wifi_init();
+        print_wifi_status();
+        return 0;
+    }
+    if (sh_streq(argv[1], "scan")) {
+        sh_puts("wifi: scanning 2.4 GHz networks...\n");
+        static wifi_ap_t aps[WIFI_MAX_SCAN_APS];
+        int n = wifi_scan(aps, WIFI_MAX_SCAN_APS);
+        if (n < 0) { sh_puts("wifi: scan failed\n"); return 1; }
+        SH_PRINTF("Found %d network(s):\n", n);
+        sh_puts("  #   RSSI     CH  SECURITY  SSID                              STATUS\n");
+        for (int i = 0; i < n; i++) {
+            const char *tag = aps[i].connected ? "[CONNECTED]" : (aps[i].saved ? "[SAVED]" : "");
+            SH_PRINTF("  %2d  %4d dBm %2u  %-8s  %-32s  %s\n",
+                      i + 1, (int)aps[i].rssi, aps[i].channel,
+                      wifi_auth_name(aps[i].authmode), aps[i].ssid, tag);
+        }
+        return 0;
+    }
+    if (sh_streq(argv[1], "connect") || sh_streq(argv[1], "conn")) {
+        char ssid[WIFI_SSID_MAX + 1] = "";
+        char pass[WIFI_PASS_MAX + 1] = "";
+        if (argc >= 3) {
+            int i = 0;
+            for (; argv[2][i] && i < WIFI_SSID_MAX; i++) ssid[i] = argv[2][i];
+            ssid[i] = 0;
+            if (argc >= 4) {
+                int j = 0;
+                for (; argv[3][j] && j < WIFI_PASS_MAX; j++) pass[j] = argv[3][j];
+                pass[j] = 0;
+            } else {
+                char saved_s[WIFI_SSID_MAX + 1] = "";
+                char saved_p[WIFI_PASS_MAX + 1] = "";
+                if (wifi_load_saved(saved_s, saved_p, NULL) && sh_streq(saved_s, ssid)) {
+                    for (int j = 0; saved_p[j] && j < WIFI_PASS_MAX; j++) { pass[j] = saved_p[j]; pass[j + 1] = 0; }
+                }
+            }
+        } else if (!wifi_load_saved(ssid, pass, NULL) || !ssid[0]) {
+            sh_puts("usage: wifi connect <SSID> [PASSWORD]\n");
+            return 1;
+        }
+        SH_PRINTF("wifi: connecting to \"%s\" ...\n", ssid);
+        if (wifi_connect(ssid, pass, true)) {
+            print_wifi_status();
+            return 0;
+        }
+        sh_puts("wifi: connection failed\n");
+        print_wifi_status();
+        return 1;
+    }
+    if (sh_streq(argv[1], "disconnect") || sh_streq(argv[1], "dc")) {
+#if M5OS_HAS_KEYBOARD
+        if (argc >= 3 && (sh_streq(argv[2], "gui") || sh_streq(argv[2], "-g") || sh_streq(argv[2], "--gui"))) {
+            fbcon_pause(true);
+            task_sleep(FILER_PAUSE_SETTLE_MS);
+            dq_clear();
+            wifi_app_disconnect_gui();
+            dq_clear();
+            fbcon_pause(false);
+            print_wifi_status();
+            return 0;
+        }
+#endif
+        wifi_disconnect();
+        sh_puts("wifi: disconnected\n");
+        return 0;
+    }
+    if (sh_streq(argv[1], "auto")) {
+        if (argc >= 3) {
+            bool en = sh_streq(argv[2], "on") || sh_streq(argv[2], "1") || sh_streq(argv[2], "true");
+            wifi_set_auto_connect(en);
+        }
+        wifi_status_t st;
+        wifi_get_status(&st);
+        SH_PRINTF("wifi: auto-connect is %s (saved AP: %s)\n",
+                  st.auto_connect ? "ON" : "OFF", st.has_saved ? st.saved_ssid : "(none)");
+        return 0;
+    }
+    if (sh_streq(argv[1], "forget")) {
+        wifi_forget();
+        sh_puts("wifi: cleared saved credentials\n");
+        return 0;
+    }
+    sh_puts("usage:\n"
+            "  wifi                       launch graphical Wi-Fi configuration app\n"
+            "  wifi gui                   launch graphical Wi-Fi configuration app\n"
+            "  wifi status                show Wi-Fi connection & IPv4 status\n"
+            "  wifi scan                  scan nearby Wi-Fi networks\n"
+            "  wifi connect <SSID> [PASS] connect & save credentials for auto-connect\n"
+            "  wifi disconnect [gui]      disconnect Wi-Fi (or open GUI disconnect modal)\n"
+            "  wifi auto [on|off]         enable/disable auto-connect\n"
+            "  wifi forget                clear saved Wi-Fi credentials\n");
+    return 1;
+}
+
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
 
 static int cmd_cd(int argc, char **argv)
@@ -583,6 +728,7 @@ static const command_t s_commands[] = {
     { "snap",   cmd_snap,   "snap [FILE.bmp] capture one 640x360 BMP photo from camera" },
     { "keys",   cmd_keys,   "keyboard statistics (bring-up diagnostics)" },
 #endif
+    { "wifi",   cmd_wifi,   "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
     { "apps",   cmd_apps,   "list running and finished applications" },
     { "stop",   cmd_stop,   "stop APP_ID     stop an application and reclaim its resources" },
     { "pwd",    cmd_pwd,    "print working directory" },

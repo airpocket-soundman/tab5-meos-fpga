@@ -61,9 +61,14 @@ static void vformat(out_fn out, void *ctx, const char *fmt, va_list ap)
             break;
         }
         case 'u':
-        case 'x': {
+        case 'x':
+        case 'X': {
             n = utoa_radix(va_arg(ap, uint32_t), *fmt == 'u' ? RADIX_DEC : RADIX_HEX, rev);
-            while (n) tmp[k++] = rev[--n];
+            while (n) {
+                char ch = rev[--n];
+                if (*fmt == 'X' && ch >= 'a' && ch <= 'f') ch = (char)(ch - 32);
+                tmp[k++] = ch;
+            }
             pad_out(out, ctx, tmp, k, width, left ? ' ' : pad, left);
             break;
         }
