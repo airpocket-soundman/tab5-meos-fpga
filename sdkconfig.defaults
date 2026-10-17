@@ -1,0 +1,17 @@
+# --- Target / console ---------------------------------------------------
+# CoreS3 has no UART bridge: the host talks to the chip through the
+# ESP32-S3 built-in USB-Serial-JTAG. The bootloader/ROM logs use it too.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# --- Single core: CPU1 is never started (see README, "CPU1") -------------
+CONFIG_FREERTOS_UNICORE=y
+
+# --- Watchdogs that are armed by FreeRTOS-side startup code -------------
+CONFIG_ESP_INT_WDT=n
+CONFIG_ESP_TASK_WDT=n
+
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_PARTITION_TABLE_SINGLE_APP=y
+# Keep the boot log short; M5OS prints its own banner.
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y

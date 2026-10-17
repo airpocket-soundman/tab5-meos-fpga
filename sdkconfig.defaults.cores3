@@ -1,0 +1,15 @@
+CONFIG_IDF_TARGET="esp32s3"
+# CoreS3: 16 MB flash, 8 MB quad PSRAM
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# --- PSRAM (CoreS3: 8MB quad) ---------------------------------------------
+# MEMMAP: IDF initializes the chip and maps it into the address space but does
+# NOT hand it to its own heap; M5OS's kmalloc_psram() manages it.
+CONFIG_ESP32S3_SPIRAM_SUPPORT=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_TYPE_AUTO=y
+CONFIG_SPIRAM_SPEED_40M=y
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+CONFIG_SPIRAM_USE_MEMMAP=y
+CONFIG_SPIRAM_MEMTEST=n

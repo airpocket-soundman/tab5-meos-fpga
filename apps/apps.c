@@ -1,0 +1,50 @@
+#include "apps.h"
+
+void hello_main(void *arg);
+void ticker_main(void *arg);
+void hog_main(void *arg);
+void rogue_main(void *arg);
+void leaker_main(void *arg);
+void family_main(void *arg);
+void notes_main(void *arg);
+void echod_main(void *arg);
+void launcher_main(void *arg);
+void terminal_main(void *arg);
+void clock_main(void *arg);
+void calculator_main(void *arg);
+void snake_main(void *arg);
+void intruder_main(void *arg);
+
+#define APP_STACK_DEFAULT  4096u
+#define APP_STACK_GUI      6144u
+#define APP_PRIO_DEFAULT   TASK_PRIO_DEFAULT
+
+/* name, entry, permissions, stack, priority, description */
+static const app_def_t s_defs[] = {
+    { "hello",  hello_main,  APP_PERM_CONSOLE, APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "print a greeting and exit" },
+    { "ticker", ticker_main, APP_PERM_CONSOLE, APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "one line per second, five times" },
+    { "hog",    hog_main,    0,                APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "burn CPU forever (stop it with: stop ID)" },
+    { "notes",  notes_main,  APP_PERM_CONSOLE | APP_PERM_FS_READ | APP_PERM_FS_WRITE,
+                                               APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "append a line to /home/notes.txt and show the file" },
+    { "echod",  echod_main,  APP_PERM_CONSOLE | APP_PERM_IPC,
+                                               APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "echo server: send it messages (shell: send PID TEXT, recv)" },
+    { "rogue",  rogue_main,  APP_PERM_CONSOLE, APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "tries display/file-write/spawn/messages without permission" },
+    { "leaker", leaker_main, APP_PERM_CONSOLE, APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "leaks memory and handles; the kernel takes them back" },
+    { "family", family_main, APP_PERM_CONSOLE | APP_PERM_SPAWN,
+                                               APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "spawns a child task; stopping the app stops both" },
+    { "intruder",  intruder_main,   APP_PERM_DISPLAY, APP_STACK_DEFAULT, APP_PRIO_DEFAULT, "tries to use another app's window" },
+    /* ---- GUI apps: D = windows, m = receive events; the launcher also starts apps (s) ---- */
+    { "launcher",   launcher_main,   APP_PERM_DISPLAY | APP_PERM_IPC | APP_PERM_SPAWN,
+                                               APP_STACK_GUI, APP_PRIO_DEFAULT, "home screen" },
+    { "terminal",   terminal_main,   APP_PERM_CONSOLE | APP_PERM_DISPLAY | APP_PERM_IPC,
+                                               APP_STACK_GUI, APP_PRIO_DEFAULT, "console view with command buttons" },
+    { "clock",      clock_main,      APP_PERM_DISPLAY | APP_PERM_IPC, APP_STACK_GUI, APP_PRIO_DEFAULT, "digital + analog clock (since boot)" },
+    { "calculator", calculator_main, APP_PERM_DISPLAY | APP_PERM_IPC, APP_STACK_GUI, APP_PRIO_DEFAULT, "integer calculator" },
+    { "snake",      snake_main,      APP_PERM_DISPLAY | APP_PERM_IPC, APP_STACK_GUI, APP_PRIO_DEFAULT, "snake game (touch to steer)" },
+};
+
+const app_def_t *apps_def_table(int *count)
+{
+    *count = (int)(sizeof s_defs / sizeof s_defs[0]);
+    return s_defs;
+}

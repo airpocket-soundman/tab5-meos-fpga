@@ -1,0 +1,11 @@
+# M5Stack Tab5: ESP32-P4 (RISC-V, dual core 400 MHz; M5OS uses core 0 only), 32 MB PSRAM, 16 MB flash.
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# IDF 5.x names of the watchdog switches (the common file uses the 4.4 names)
+CONFIG_ESP_TASK_WDT_INIT=n
+
+# PSRAM: initialised and mapped by the IDF start-up code (no FreeRTOS involved); M5OS's kmalloc_psram() owns it.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_USE_MEMMAP=y
+CONFIG_SPIRAM_MEMTEST=n
