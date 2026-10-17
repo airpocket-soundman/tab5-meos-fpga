@@ -106,3 +106,19 @@ void display_draw_bitmap(int x, int y, int w, int h, const uint16_t *px)
     hal_lcd_end();
     spi_bus_unlock();
 }
+
+void display_draw_bitmap_scaled(int x, int y, int w, int h, const uint16_t *px, int scale)
+{
+    if (scale <= 1) { display_draw_bitmap(x, y, w, h, px); return; }
+    int dw = w * scale, dh = h * scale;
+    if (x < 0 || y < 0 || w <= 0 || h <= 0 || x + dw > DISPLAY_WIDTH || y + dh > DISPLAY_HEIGHT) return;
+    spi_bus_lock();
+    hal_lcd_begin();
+    panel_set_window(x, y, x + dw - 1, y + dh - 1);
+    for (int j = 0; j < dh; j++) {
+        const uint16_t *row = &px[(j / scale) * w];
+        for (int i = 0; i < dw; i++) hal_lcd_write_pixel(row[i / scale]);
+    }
+    hal_lcd_end();
+    spi_bus_unlock();
+}

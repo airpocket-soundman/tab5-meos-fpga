@@ -73,9 +73,9 @@ static int raw_getc(uint32_t wait_ms)
     }
 }
 
-int dq_getkey(void)
+static int decode_key(int c)
 {
-    int c = raw_getc(0);
+    if (c < 0) return DQK_NONE;
     if (c == '\n') return DQK_ENTER;
     if (c == 0x08) return DQK_BACKSPACE;
     if (c != 0x1B) return c;
@@ -96,6 +96,16 @@ int dq_getkey(void)
     }
     default: return DQK_NONE;
     }
+}
+
+int dq_getkey(void)
+{
+    return decode_key(raw_getc(0));
+}
+
+int dq_pollkey(void)
+{
+    return decode_key(kconsole_getc());
 }
 
 /* ---- dialogs -------------------------------------------------------------------- */

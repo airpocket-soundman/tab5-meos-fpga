@@ -177,6 +177,9 @@ bool display_init(void)
     uintptr_t rb;
     size_t rs;
     hal_psram_reserve_region(&rb, &rs);
+#ifndef MALLOC_CAP_SIMD
+#define MALLOC_CAP_SIMD 0
+#endif
     uint32_t caps[] = { MALLOC_CAP_SPIRAM | MALLOC_CAP_DEFAULT, 0, MALLOC_CAP_8BIT | MALLOC_CAP_32BIT | MALLOC_CAP_SIMD };
     if (!rs || heap_caps_add_region_with_caps(caps, (intptr_t)rb, (intptr_t)(rb + rs)) != ESP_OK) {
         kprintf("display: no PSRAM reserve for the framebuffer\n");
@@ -270,8 +273,46 @@ void display_draw_text(int x, int y, const char *s, uint16_t fg, uint16_t bg, in
 
 void display_draw_bitmap(int x, int y, int w, int h, const uint16_t *px)
 {
-    if (!s_fb || x < 0 || y < 0 || w <= 0 || h <= 0 || x + w > DISPLAY_WIDTH || y + h > DISPLAY_HEIGHT) return;
-    for (int j = 0; j < h; j++)
-        for (int i = 0; i < w; i++) put(x + i, y + j, px[j * w + i]);
-    fb_flush_rows(DISPLAY_WIDTH - x - w, DISPLAY_WIDTH - 1 - x);
+    if (!s_fb || !px || w <= 0 || h <= 0) return;
+    int x0 = x < 0 ? -x : 0, y0 = y < 0 ? -y : 0;
+    int x1 = x + w > DISPLAY_WIDTH  ? DISPLAY_WIDTH  - x : w;
+    int y1 = y + h > DISPLAY_HEIGHT ? DISPLAY_HEIGHT - y : h;
+    if (x0 >= x1 || y0 >= y1) return;
+
+    const int TILE = 32;
+    for (int jj = y0; jj < y1; jj += TILE) {
+        int jmax = jj + TILE < y1 ? jj + TILE : y1;
+        for (int ii = x0; ii < x1; ii += TILE) {
+            int imax = ii + TILE < x1 ? ii + TILE : x1;
+            for (int i = ii; i < imax; i++) {
+                uint16_t *dst_col = &s_fb[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
+                const uint16_t *src_col = &px[i];
+                for (int j = jj; j < jmax; j++) {
+                    dst_col[j] = src_col[(size_t)j * w];
+                }
+            }
+        }
+    }
+    fb_flush_rows(DISPLAY_WIDTH - (x + x1), DISPLAY_WIDTH - 1 - (x + x0));
+}
+
+void display_draw_bitmap_scaled(int x, int y, int w, int h, const uint16_t *px, int scale)
+{
+    if (scale <= 1) { display_draw_bitmap(x, y, w, h, px); return; }
+    if (!s_fb || !px || w <= 0 || h <= 0) return;
+    int dw = w * scale, dh = h * scale;
+    int x0 = x < 0 ? -x : 0, y0 = y < 0 ? -y : 0;
+    int x1 = x + dw > DISPLAY_WIDTH  ? DISPLAY_WIDTH  - x : dw;
+    int y1 = y + dh > DISPLAY_HEIGHT ? DISPLAY_HEIGHT - y : dh;
+    if (x0 >= x1 || y0 >= y1) return;
+
+    for (int i = x0; i < x1; i++) {
+        uint16_t *dst_col = &s_fb[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
+        int sx = i / scale;
+        const uint16_t *src_col = &px[sx];
+        for (int j = y0; j < y1; j++) {
+            dst_col[j] = src_col[(size_t)(j / scale) * w];
+        }
+    }
+    fb_flush_rows(DISPLAY_WIDTH - (x + x1), DISPLAY_WIDTH - 1 - (x + x0));
 }

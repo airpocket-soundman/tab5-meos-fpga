@@ -10,6 +10,7 @@
 #include "../filer/filer.h"
 #include "../tui/dqwin.h"
 #include "../edit/edit.h"
+#include "../camera/camera_app.h"
 #include "../../drivers/lcd/fbcon.h"
 #define FILER_PAUSE_SETTLE_MS 100u
 #include "shell.h"
@@ -484,6 +485,39 @@ static int cmd_edit(int argc, char **argv)
     fbcon_pause(false);
     return 0;
 }
+
+static int cmd_camera(int argc, char **argv)
+{
+    char path[VFS_PATH_MAX];
+    const char *dir = (argc > 1) ? argv[1] : ((s_cwd[0] == '/' && s_cwd[1] == 0) ? "/home" : s_cwd);
+    if (!resolve(dir, path)) return fail("camera", "bad path", ERR_INVAL);
+    fbcon_pause(true);
+    task_sleep(FILER_PAUSE_SETTLE_MS);
+    dq_clear();
+    char saved[32] = "";
+    camera_app_run(path, saved);
+    dq_clear();
+    fbcon_pause(false);
+    if (saved[0]) SH_PRINTF("camera: last photo saved as %s/%s\n", path, saved);
+    return 0;
+}
+
+static int cmd_snap(int argc, char **argv)
+{
+    char path[VFS_PATH_MAX];
+    const char *target = (argc > 1) ? argv[1] : "/home/snap.bmp";
+    if (!resolve(target, path)) return fail("snap", "bad path", ERR_INVAL);
+    SH_PRINTF("snap: capturing %dx%d BMP to %s ...\n", CAM_PHOTO_W, CAM_PHOTO_H, path);
+    if (!camera_capture_bmp_file(path)) {
+        sh_puts("snap: capture failed\n");
+        return 1;
+    }
+    vfs_info_t st;
+    if (vfs_stat(path, &st) == ERR_OK) {
+        SH_PRINTF("snap: saved %s (%u bytes)\n", path, st.size);
+    }
+    return 0;
+}
 #endif
 
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
@@ -544,6 +578,9 @@ static const command_t s_commands[] = {
 #if M5OS_HAS_KEYBOARD
     { "files",  cmd_files,  "files [DIR]     full-screen file manager (filer)" },
     { "edit",   cmd_edit,   "edit FILE       full-screen text editor (^S save, ^Q quit)" },
+    { "camera", cmd_camera, "camera [DIR]    full-screen camera viewfinder (Space:capture, Q:quit)" },
+    { "cam",    cmd_camera, "cam [DIR]       alias for camera" },
+    { "snap",   cmd_snap,   "snap [FILE.bmp] capture one 640x360 BMP photo from camera" },
     { "keys",   cmd_keys,   "keyboard statistics (bring-up diagnostics)" },
 #endif
     { "apps",   cmd_apps,   "list running and finished applications" },

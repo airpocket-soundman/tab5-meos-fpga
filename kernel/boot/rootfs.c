@@ -13,8 +13,9 @@
 #include <m5os/kmalloc.h>
 #include "../../drivers/ramdisk/ramdisk.h"
 
-#define RAMDISK_BLOCKS_PSRAM  4096u          /* 2 MiB, lives in PSRAM */
-#define RAMDISK_BLOCKS_SRAM   128u           /* 64 KiB: boards without PSRAM keep it in internal RAM */
+#define RAMDISK_BLOCKS_PSRAM_LARGE 16384u     /* 8 MiB on boards with >= 16 MiB PSRAM (Tab5) */
+#define RAMDISK_BLOCKS_PSRAM       4096u      /* 2 MiB on 8 MiB PSRAM boards */
+#define RAMDISK_BLOCKS_SRAM        128u       /* 64 KiB: boards without PSRAM keep it in internal RAM */
 
 static void seed(const char *path, const char *text)
 {
@@ -40,7 +41,8 @@ bool rootfs_mount(blockdev_t *sd)
     if (!persistent) {
         kmem_stats_t mp;
         kmem_psram_stats(&mp);
-        uint32_t blocks = mp.total ? RAMDISK_BLOCKS_PSRAM : RAMDISK_BLOCKS_SRAM;
+        uint32_t blocks = mp.total >= (16u * 1024u * 1024u) ? RAMDISK_BLOCKS_PSRAM_LARGE
+                        : (mp.total ? RAMDISK_BLOCKS_PSRAM : RAMDISK_BLOCKS_SRAM);
         blockdev_t *rd = ramdisk_create(blocks);
         if (!rd || fs_format(rd, 0, blocks) != ERR_OK || fs_mount(rd, 0) != ERR_OK) {
             kprintf("rootfs: cannot create RAM disk root\n");

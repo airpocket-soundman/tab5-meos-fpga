@@ -1,6 +1,9 @@
 #include "filer.h"
 #include "../tui/dqwin.h"
 #include "../edit/edit.h"
+#include "../camera/camera_app.h"
+#include <m5os/display.h>
+#include <m5os/kmalloc.h>
 #include <m5os/vfs.h>
 #include <m5os/fs.h>
 #include <m5os/errno.h>
@@ -148,7 +151,7 @@ static void draw_chrome(void)
         dq_window(0, 0, w, HEADER_ROWS);
         dq_text(2, 1, "M5 FILER");
         dq_window(0, fy, w, FOOTER_ROWS);
-        dq_text(2, fy + 1, "Enter:open BS:up Space:mark C:copy M:move D:delete K:mkdir N:rename V:view E:edit F:new Q:quit");
+        dq_text(2, fy + 1, "Enter/V:view P:camera BS:up Spc:mark C:copy M:move D:del K:mkdir N:ren E:edit Q:quit");
     }
     padded(12, 1, s_path);
     char st[120];
@@ -297,14 +300,103 @@ static void do_rename(void)
 
 /* ---------------------------------------------------------------- viewer */
 
+static void view_image_file(int idx)
+{
+    bool large_zoom = false;
+    for (;;) {
+        const entry_t *e = &s_ent[idx];
+        char p[PATH_MAX_];
+        path_join(p, s_path, e->name);
+
+        uint16_t *pixels = NULL;
+        int img_w = 0, img_h = 0;
+        if (!p[0] || !camera_load_bmp(p, &pixels, &img_w, &img_h)) {
+            ksnprintf(s_status, sizeof s_status, "cannot decode BMP image: %s", e->name);
+            return;
+        }
+
+        int cols = dq_cols(), rows = dq_rows();
+        int fy = rows - FOOTER_ROWS;
+        int mid_rows = rows - HEADER_ROWS - FOOTER_ROWS;
+
+        for (;;) {
+            dq_window(0, 0, cols, HEADER_ROWS);
+            dq_text(2, 1, "IMAGE VIEWER");
+            char info[120];
+            ksnprintf(info, sizeof info, "%s  (%dx%d RGB565 BMP, %u KB)  [%s]",
+                      e->name, img_w, img_h, (unsigned)(e->size / 1024u),
+                      large_zoom ? "Fit 960x540" : "1:1 Original");
+            padded(16, 1, info);
+
+            dq_window(0, HEADER_ROWS, cols, mid_rows);
+            dq_window(0, fy, cols, FOOTER_ROWS);
+            dq_text(2, fy + 1, "Z/Space:Zoom  Left/Right(h/l):Prev/Next BMP  P:Camera  Q/ESC/Enter:Close");
+            padded(2, fy + 2, p);
+
+            int max_w = DISPLAY_WIDTH - 48;
+            int max_h = mid_rows * 16 - 24;
+            int dw = large_zoom ? 960 : img_w;
+            int dh = large_zoom ? 540 : img_h;
+            if (dw > max_w) { dh = (dh * max_w) / dw; dw = max_w; }
+            if (dh > max_h) { dw = (dw * max_h) / dh; dh = max_h; }
+            int dx = (DISPLAY_WIDTH - dw) / 2;
+            int dy = HEADER_ROWS * 16 + (mid_rows * 16 - dh) / 2;
+
+            display_draw_rect(dx - 2, dy - 2, dw + 4, dh + 4, COLOR_WHITE);
+            camera_draw_rgb565_fit(dx, dy, dw, dh, pixels, img_w, img_h);
+
+            int k = dq_getkey();
+            if (k == 'q' || k == 'Q' || k == DQK_ESC || k == DQK_ENTER) {
+                kfree(pixels);
+                move_to(idx);
+                return;
+            }
+            if (k == 'z' || k == 'Z' || k == ' ') {
+                large_zoom = !large_zoom;
+                continue;
+            }
+            if (k == 'p' || k == 'P') {
+                kfree(pixels);
+                char saved[32] = "";
+                camera_app_run(s_path, saved);
+                reload(saved[0] ? saved : e->name);
+                return;
+            }
+            if (k == DQK_RIGHT || k == DQK_DOWN || k == 'l' || k == 'j' || k == 'n') {
+                int next = idx;
+                for (int step = 1; step < s_n; step++) {
+                    int cand = (idx + step) % s_n;
+                    if (!s_ent[cand].dir && camera_is_bmp_name(s_ent[cand].name)) { next = cand; break; }
+                }
+                if (next != idx) { kfree(pixels); idx = next; break; }
+            } else if (k == DQK_LEFT || k == DQK_UP || k == 'h' || k == 'k') {
+                int prev = idx;
+                for (int step = 1; step < s_n; step++) {
+                    int cand = (idx + s_n - step) % s_n;
+                    if (!s_ent[cand].dir && camera_is_bmp_name(s_ent[cand].name)) { prev = cand; break; }
+                }
+                if (prev != idx) { kfree(pixels); idx = prev; break; }
+            }
+        }
+    }
+}
+
 static void view_file(const entry_t *e)
 {
+    if (camera_is_bmp_name(e->name)) {
+        view_image_file(s_sel);
+        return;
+    }
     char p[PATH_MAX_];
     path_join(p, s_path, e->name);
     int fd = p[0] ? vfs_open(p, VFS_O_READ) : ERR_INVAL;
     if (fd < 0) { ksnprintf(s_status, sizeof s_status, "cannot open (error %d)", fd); return; }
     int len = vfs_read(fd, s_view, VIEW_BYTES);
     vfs_close(fd);
+    if (len >= 54 && (uint8_t)s_view[0] == 'B' && (uint8_t)s_view[1] == 'M') {
+        view_image_file(s_sel);
+        return;
+    }
     if (len < 0) len = 0;
     s_view[len] = 0;
     for (int i = 0; i < len; i++) {                               /* show only what the 8x8 font has */
@@ -417,6 +509,15 @@ void filer_run(const char *start_dir)
                 s_full = true;
                 reload(name);
             }
+            break;
+        }
+        case 'p': case 'P': {                                       /* launch camera */
+            char saved[32] = "";
+            camera_app_run(s_path, saved);
+            dq_clear();
+            s_full = true;
+            reload(saved[0] ? saved : (s_n ? s_ent[s_sel].name : NULL));
+            if (saved[0]) ksnprintf(s_status, sizeof s_status, "captured %s", saved);
             break;
         }
         case 'v': case 'V': if (s_n && !s_ent[s_sel].dir) { view_file(&s_ent[s_sel]); s_full = true; } break;
