@@ -9,6 +9,7 @@
  */
 #include "../filer/filer.h"
 #include "../tui/dqwin.h"
+#include "../edit/edit.h"
 #include "../../drivers/lcd/fbcon.h"
 #define FILER_PAUSE_SETTLE_MS 100u
 #include "shell.h"
@@ -470,6 +471,19 @@ static int cmd_files(int argc, char **argv)
     fbcon_pause(false);
     return 0;
 }
+
+static int cmd_edit(int argc, char **argv)
+{
+    char path[VFS_PATH_MAX];
+    if (argc < 2) { SH_PRINTF("usage: edit FILE\n"); return 1; }
+    if (!resolve(argv[1], path)) return fail("edit", "bad path", ERR_INVAL);
+    fbcon_pause(true);
+    task_sleep(FILER_PAUSE_SETTLE_MS);
+    dq_clear();
+    edit_file(path);
+    fbcon_pause(false);
+    return 0;
+}
 #endif
 
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
@@ -529,6 +543,7 @@ static const command_t s_commands[] = {
     { "gui",    cmd_gui,    "list windows (front first)" },
 #if M5OS_HAS_KEYBOARD
     { "files",  cmd_files,  "files [DIR]     full-screen file manager (filer)" },
+    { "edit",   cmd_edit,   "edit FILE       full-screen text editor (^S save, ^Q quit)" },
     { "keys",   cmd_keys,   "keyboard statistics (bring-up diagnostics)" },
 #endif
     { "apps",   cmd_apps,   "list running and finished applications" },

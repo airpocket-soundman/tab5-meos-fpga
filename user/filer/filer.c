@@ -1,5 +1,6 @@
 #include "filer.h"
 #include "../tui/dqwin.h"
+#include "../edit/edit.h"
 #include <m5os/vfs.h>
 #include <m5os/fs.h>
 #include <m5os/errno.h>
@@ -132,7 +133,7 @@ static void draw_chrome(void)
 
     int fy = dq_rows() - FOOTER_ROWS;
     dq_window(0, fy, w, FOOTER_ROWS);
-    dq_text(2, fy + 1, "Enter:open BS:up Space:mark C:copy M:move D:delete K:mkdir N:rename V:view Q:quit");
+    dq_text(2, fy + 1, "Enter:open BS:up Space:mark C:copy M:move D:delete K:mkdir N:rename V:view E:edit F:new Q:quit");
     char st[120];
     ksnprintf(st, sizeof st, "%d entries, %d marked   %s", s_n, marked_count(), s_status);
     dq_text(2, fy + 2, st);
@@ -377,6 +378,26 @@ void filer_run(const char *start_dir)
             if (s_n == 0) break;
             if (s_ent[s_sel].dir) enter_dir(s_ent[s_sel].name); else view_file(&s_ent[s_sel]);
             break;
+        case 'e': case 'E':
+            if (s_n && !s_ent[s_sel].dir) {
+                char p[PATH_MAX_];
+                path_join(p, s_path, s_ent[s_sel].name);
+                if (p[0] && edit_file(p)) say("saved");
+                dq_clear();
+                reload(s_ent[s_sel].name);
+            }
+            break;
+        case 'f': case 'F': {                                       /* new file */
+            char name[FS_NAME_MAX + 1] = "";
+            if (dq_input("New file name:", name, sizeof name) && name[0]) {
+                char p[PATH_MAX_];
+                path_join(p, s_path, name);
+                if (p[0]) edit_file(p);
+                dq_clear();
+                reload(name);
+            }
+            break;
+        }
         case 'v': case 'V': if (s_n && !s_ent[s_sel].dir) view_file(&s_ent[s_sel]); break;
         case ' ':
             if (s_n && s_ent[s_sel].name[0] != '.') { s_mark[s_sel] = !s_mark[s_sel]; move_to(s_sel + 1); }
