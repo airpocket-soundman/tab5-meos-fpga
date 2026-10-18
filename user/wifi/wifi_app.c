@@ -287,33 +287,52 @@ static void connect_to_selected(bool force_password_prompt)
     if (s_ap_count <= 0 || s_sel < 0 || s_sel >= s_ap_count) return;
     wifi_ap_t ap = s_aps[s_sel];
 
+    wifi_status_t cur_st;
+    wifi_get_status(&cur_st);
+    bool prev_auth_failed = (cur_st.state != WIFI_STATE_CONNECTED &&
+                             (cur_st.disconnect_reason == 2u ||
+                              cur_st.disconnect_reason == 15u ||
+                              cur_st.disconnect_reason == 202u ||
+                              cur_st.disconnect_reason == 204u));
+
     char saved_ssid[WIFI_SSID_MAX + 1] = "";
     char pass[WIFI_PASS_MAX + 1] = "";
     bool auto_c = true;
     bool have_saved_for_ap = false;
 
-    if (wifi_load_saved(saved_ssid, pass, &auto_c) && str_eq(saved_ssid, ap.ssid)) {
+    if (wifi_load_saved(saved_ssid, pass, &auto_c) && str_eq(saved_ssid, ap.ssid) && pass[0] != 0) {
         have_saved_for_ap = true;
     } else {
         pass[0] = 0;
     }
 
+    bool prompted = false;
     if (ap.authmode == WIFI_AUTH_OPEN && !force_password_prompt) {
         pass[0] = 0;
-    } else if (!have_saved_for_ap || force_password_prompt) {
+    } else if (!have_saved_for_ap || force_password_prompt || prev_auth_failed) {
         char title[80];
+        pass[0] = 0;
         ksnprintf(title, sizeof title, "Password for %s (%s):", ap.ssid, wifi_auth_name(ap.authmode));
         if (!dq_input(title, pass, sizeof pass)) {
             s_full_redraw = true;
             return;
         }
+        prompted = true;
     }
 
     char msg[80];
     ksnprintf(msg, sizeof msg, "Connecting to %s ...", ap.ssid);
     show_busy_box(msg, "Saving credentials & requesting DHCP IPv4 address");
 
-    wifi_connect(ap.ssid, pass, true);
+    if (!wifi_connect(ap.ssid, pass, true) && !prompted && ap.authmode != WIFI_AUTH_OPEN) {
+        char title[80];
+        pass[0] = 0;
+        ksnprintf(title, sizeof title, "Saved password failed. Enter password for %s:", ap.ssid);
+        if (dq_input(title, pass, sizeof pass)) {
+            show_busy_box(msg, "Retrying with new password...");
+            wifi_connect(ap.ssid, pass, true);
+        }
+    }
     s_full_redraw = true;
 }
 

@@ -89,6 +89,10 @@ static int decode_key(int c)
     case 'D': return DQK_LEFT;
     case 'H': return DQK_HOME;
     case 'F': return DQK_END;
+    case 'P': return DQK_F1;
+    case 'Q': return DQK_F2;
+    case 'R': return DQK_F3;
+    case 'S': return DQK_F4;
     case '1': case '3': case '4': case '5': case '6': case '7': case '8': {
         int c4 = raw_getc(ESC_WAIT_MS);                       /* ESC [ n ~ */
         if (c4 != '~') return DQK_NONE;
@@ -149,7 +153,8 @@ bool dq_input(const char *title, char *buf, int max)
         int k = dq_getkey();
         if (k == DQK_ENTER) return true;
         if (k == DQK_ESC) return false;
-        if (k == DQK_BACKSPACE) { if (len) buf[--len] = 0; }
+        if (k == DQK_BACKSPACE || k == DQK_DEL) { if (len) buf[--len] = 0; }
+        else if (k == 0x15) { len = 0; buf[0] = 0; }                     /* Ctrl-U clears field */
         else if (k >= 0x20 && k < 0x7F && len < max - 1) { buf[len++] = (char)k; buf[len] = 0; }
     }
 }

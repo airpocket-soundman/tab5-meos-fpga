@@ -23,6 +23,7 @@
 #include <m5os/kprintf.h>
 #include <m5os/tab5.h>
 #include "font8x8.h"
+#include "font_ja16.h"
 #include "ili9881c_tab5_init.h"
 #include "st7121_tab5_init.h"
 
@@ -250,6 +251,41 @@ static void glyph_at(int x, int y, char c, uint16_t fg, uint16_t bg, int scale)
     }
 }
 
+static void glyph_cp_at(int x, int y, uint16_t cp, uint16_t fg, uint16_t bg, int scale)
+{
+    if (cp < 0x80u) {
+        char c = (cp >= FONT8X8_FIRST && cp <= FONT8X8_LAST) ? (char)cp : ' ';
+        glyph_at(x, y, c, fg, bg, scale);
+        return;
+    }
+
+    uint16_t rows16[16];
+    if (!font_ja16_get_glyph(cp, rows16, NULL)) {
+        for (int r = 0; r < 16; r++) rows16[r] = 0;
+        rows16[2] = 0x3FFCu;
+        rows16[13] = 0x3FFCu;
+        for (int r = 3; r < 13; r++) rows16[r] = 0x2004u;
+    }
+
+    int size = GLYPH_SIZE * scale;
+    if (size == 16) {
+        for (int row = 0; row < 16; row++) {
+            uint16_t bits = rows16[row];
+            for (int col = 0; col < 16; col++) {
+                put(x + col, y + row, ((bits & (0x8000u >> col)) != 0) ? fg : bg);
+            }
+        }
+    } else {
+        for (int row = 0; row < size; row++) {
+            uint16_t bits = rows16[(row * 16) / size];
+            for (int col = 0; col < size; col++) {
+                int src_col = (col * 16) / size;
+                put(x + col, y + row, ((bits & (0x8000u >> src_col)) != 0) ? fg : bg);
+            }
+        }
+    }
+}
+
 void display_draw_char(int x, int y, char c, uint16_t fg, uint16_t bg, int scale)
 {
     if (scale < 1) scale = 1;
@@ -259,16 +295,46 @@ void display_draw_char(int x, int y, char c, uint16_t fg, uint16_t bg, int scale
     fb_flush_rows(DISPLAY_WIDTH - x - size, DISPLAY_WIDTH - 1 - x);
 }
 
+void display_draw_codepoints(int x, int y, const uint16_t *cps, int count, uint16_t fg, uint16_t bg, int scale)
+{
+    if (scale < 1) scale = 1;
+    int cell = GLYPH_SIZE * scale;
+    if (!s_fb || !cps || count <= 0 || x < 0 || y < 0 || y + cell > DISPLAY_HEIGHT) return;
+    int len = 0;
+    while (len < count && x + (len + 1) * cell <= DISPLAY_WIDTH) len++;
+    if (len == 0) return;
+    for (int i = 0; i < len; i++) {
+        glyph_cp_at(x + i * cell, y, cps[i], fg, bg, scale);
+    }
+    fb_flush_rows(DISPLAY_WIDTH - x - len * cell, DISPLAY_WIDTH - 1 - x);
+}
+
 void display_draw_text(int x, int y, const char *s, uint16_t fg, uint16_t bg, int scale)
 {
     if (scale < 1) scale = 1;
     int cell = GLYPH_SIZE * scale;
-    if (!s_fb || x < 0 || y < 0 || y + cell > DISPLAY_HEIGHT) return;
+    if (!s_fb || !s || x < 0 || y < 0 || y + cell > DISPLAY_HEIGHT) return;
+
+    uint16_t cps[160];
     int len = 0;
-    while (s[len] && x + (len + 1) * cell <= DISPLAY_WIDTH) len++;
+    const uint8_t *p = (const uint8_t *)s;
+    while (*p && len < 160 && x + (len + 1) * cell <= DISPLAY_WIDTH) {
+        uint8_t b0 = *p++;
+        uint32_t cp = b0;
+        if ((b0 & 0xE0u) == 0xC0u && (p[0] & 0xC0u) == 0x80u) {
+            cp = ((uint32_t)(b0 & 0x1Fu) << 6) | (uint32_t)(p[0] & 0x3Fu);
+            p += 1;
+        } else if ((b0 & 0xF0u) == 0xE0u && (p[0] & 0xC0u) == 0x80u && (p[1] & 0xC0u) == 0x80u) {
+            cp = ((uint32_t)(b0 & 0x0Fu) << 12) | ((uint32_t)(p[0] & 0x3Fu) << 6) | (uint32_t)(p[1] & 0x3Fu);
+            p += 2;
+        } else if ((b0 & 0xF8u) == 0xF0u && (p[0] & 0xC0u) == 0x80u && (p[1] & 0xC0u) == 0x80u && (p[2] & 0xC0u) == 0x80u) {
+            cp = 0xFFFDu;
+            p += 3;
+        }
+        cps[len++] = (uint16_t)(cp <= 0xFFFFu ? cp : 0xFFFDu);
+    }
     if (len == 0) return;
-    for (int i = 0; i < len; i++) glyph_at(x + i * cell, y, s[i], fg, bg, scale);
-    fb_flush_rows(DISPLAY_WIDTH - x - len * cell, DISPLAY_WIDTH - 1 - x);
+    display_draw_codepoints(x, y, cps, len, fg, bg, scale);
 }
 
 void display_draw_bitmap(int x, int y, int w, int h, const uint16_t *px)

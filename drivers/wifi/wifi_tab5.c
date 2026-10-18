@@ -16,6 +16,7 @@
 #include <m5os/task.h>
 #include <m5os/mutex.h>
 #include <m5os/vfs.h>
+#include <m5os/kmalloc.h>
 #include <m5os/errno.h>
 
 #include "soc/sdmmc_struct.h"
@@ -179,7 +180,7 @@ static uint16_t     s_dns_txid = 0x1234u;
 static volatile bool s_dns_done;
 static uint8_t      s_dns_resolved_ip[4];
 
-/* Single-connection TCP client state */
+/* Multi-connection TCP client state */
 #define TCP_STATE_CLOSED      0
 #define TCP_STATE_SYN_SENT    1
 #define TCP_STATE_ESTABLISHED 2
@@ -191,21 +192,39 @@ static uint8_t      s_dns_resolved_ip[4];
 #define TCP_PSH  0x08u
 #define TCP_ACK  0x10u
 
-#define TCP_RX_BUF_SIZE 16384u
+#define TCP_RX_BUF_SIZE 65536u
 
-static volatile uint8_t s_tcp_state;
-static uint8_t      s_tcp_remote_ip[4];
-static uint8_t      s_tcp_remote_mac[6];
-static uint16_t     s_tcp_local_port = 49152u;
-static uint16_t     s_tcp_remote_port;
-static uint32_t     s_tcp_snd_nxt;
-static uint32_t     s_tcp_snd_una;
-static uint32_t     s_tcp_rcv_nxt;
+typedef struct {
+    volatile uint8_t state;
+    uint8_t      remote_ip[4];
+    uint8_t      remote_mac[6];
+    uint16_t     local_port;
+    uint16_t     remote_port;
+    uint32_t     snd_nxt;
+    uint32_t     snd_una;
+    uint32_t     rcv_nxt;
+    uint8_t     *rx_buf;
+    size_t       rx_head;
+    size_t       rx_tail;
+    size_t       rx_count;
+} tcp_conn_t;
+
+static tcp_conn_t   s_tcp_conns[WIFI_MAX_TCP_SOCKETS];
+static uint16_t     s_next_local_port = 49152u;
 static uint16_t     s_ip_id = 1u;
-static uint8_t      s_tcp_rx_buf[TCP_RX_BUF_SIZE];
-static size_t       s_tcp_rx_head;
-static size_t       s_tcp_rx_tail;
-static size_t       s_tcp_rx_count;
+
+/* UDP rx callback & Tailscale virtual tunnel (100.64.0.0/10) state */
+static uint16_t              s_udp_rx_port;
+static wifi_udp_rx_cb_t      s_udp_rx_cb;
+static uint8_t               s_tun_ip[4];
+static wifi_tun_tx_cb_t      s_tun_tx_cb;
+static wifi_tun_resolve_cb_t s_tun_resolve_cb;
+
+static bool is_tailscale_ip(const uint8_t ip[4])
+{
+    return ip && ip[0] == 100u && (ip[1] & 0xC0u) == 64u;
+}
+
 
 /* =========================================================================
  * String / Byte Helpers
@@ -835,12 +854,17 @@ static void dhcp_send_discover(void);
 
 static void sdio_poll_rx_locked(void)
 {
-    if (!s_sdio_ready) return;
+    static bool s_in_sdio_poll = false;
+    if (!s_sdio_ready || s_in_sdio_poll) return;
+    s_in_sdio_poll = true;
 
     for (int iter = 0; iter < 8; iter++) {
         uint8_t regs[20];
         mem_zero(regs, sizeof regs);
-        if (!sdio_reg_read(ESP_SLAVE_INT_RAW_REG, regs, 20)) return;
+        if (!sdio_reg_read(ESP_SLAVE_INT_RAW_REG, regs, 20)) {
+            s_in_sdio_poll = false;
+            return;
+        }
 
         uint32_t intr = (uint32_t)regs[0] | ((uint32_t)regs[1] << 8) |
                         ((uint32_t)regs[2] << 16) | ((uint32_t)regs[3] << 24);
@@ -889,6 +913,7 @@ static void sdio_poll_rx_locked(void)
             pos += (size_t)offset + (size_t)plen;
         }
     }
+    s_in_sdio_poll = false;
 }
 
 /* =========================================================================
@@ -1097,12 +1122,19 @@ static void handle_rpc_event(uint32_t msg_id, const uint8_t *payload, size_t len
         s_status.disconnect_reason = 0;
         ksnprintf(s_status.last_msg, sizeof s_status.last_msg, "Associated with %s (ch %u), requesting IP...",
                   s_status.ssid, s_status.channel);
+        kprintf("wifi: RPC_EVT_STA_CONNECTED ssid=\"%s\" bssid=%02X:%02X:%02X:%02X:%02X:%02X ch=%u auth=%u\n",
+                s_status.ssid,
+                s_status.bssid[0], s_status.bssid[1], s_status.bssid[2],
+                s_status.bssid[3], s_status.bssid[4], s_status.bssid[5],
+                (unsigned)s_status.channel, (unsigned)s_status.authmode);
         /* Kick off DHCP Discover over ESP_STA_IF */
         s_dhcp_state = 1;
         s_dhcp_last_tx_us = 0;
         dhcp_send_discover();
     } else if (msg_id == RPC_EVT_STA_DISCONNECTED) {
         uint32_t reason = 0;
+        int32_t rssi = 0;
+        uint8_t bssid[6] = {0};
         size_t pos = 0;
         while (pos < len) {
             uint64_t tag = 0;
@@ -1118,9 +1150,17 @@ static void handle_rpc_event(uint32_t msg_id, const uint8_t *payload, size_t len
                     if (!pb_get_varint(payload, send, &spos, &stag)) break;
                     uint32_t f2 = (uint32_t)(stag >> 3);
                     uint8_t  w2 = (uint8_t)(stag & 0x7u);
-                    if (f2 == 4 && w2 == 0) {
+                    if (f2 == 3 && w2 == 2) {
+                        uint64_t blen = 0;
+                        if (!pb_get_varint(payload, send, &spos, &blen) || spos + blen > send) break;
+                        if (blen == 6) mem_copy(bssid, payload + spos, 6);
+                        spos += (size_t)blen;
+                    } else if (f2 == 4 && w2 == 0) {
                         uint64_t v = 0;
                         if (pb_get_varint(payload, send, &spos, &v)) reason = (uint32_t)v;
+                    } else if (f2 == 5 && w2 == 0) {
+                        uint64_t v = 0;
+                        if (pb_get_varint(payload, send, &spos, &v)) rssi = (int32_t)v;
                     } else {
                         if (!pb_skip_field(payload, send, &spos, w2)) break;
                     }
@@ -1130,6 +1170,9 @@ static void handle_rpc_event(uint32_t msg_id, const uint8_t *payload, size_t len
                 if (!pb_skip_field(payload, len, &pos, w1)) break;
             }
         }
+        kprintf("wifi: RPC_EVT_STA_DISCONNECTED bssid=%02X:%02X:%02X:%02X:%02X:%02X rssi=%d reason=%u\n",
+                bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5],
+                (int)rssi, (unsigned)reason);
         s_status.disconnect_reason = (uint16_t)reason;
         s_status.state = WIFI_STATE_DISCONNECTED;
         mem_zero(s_status.ip, 4);
@@ -1411,18 +1454,21 @@ static uint16_t tcp_checksum(const uint8_t src_ip[4], const uint8_t dst_ip[4],
     return (uint16_t)(~sum & 0xFFFFu);
 }
 
-static bool tcp_send_segment_locked(uint8_t flags, uint32_t seq, uint32_t ack,
+static bool tcp_send_segment_locked(tcp_conn_t *c, uint8_t flags, uint32_t seq, uint32_t ack,
                                     const void *data, size_t data_len)
 {
-    if (data_len > 1360u) return false;
-    uint8_t pkt[1420];
+    if (!c || data_len > 1360u) return false;
+    bool via_tun = (is_tailscale_ip(c->remote_ip) && s_tun_tx_cb != NULL && s_tun_ip[0] != 0);
+    const uint8_t *src_ip = via_tun ? s_tun_ip : s_status.ip;
+
+    static uint8_t pkt[1420];
     size_t opt_len = (flags & TCP_SYN) ? 4u : 0u;
     size_t tcp_hdr_len = 20u + opt_len;
     size_t tcp_len = tcp_hdr_len + data_len;
     size_t ip_len  = 20u + tcp_len;
 
     mem_zero(pkt, 14u + 20u + tcp_hdr_len);
-    mem_copy(&pkt[0], s_tcp_remote_mac, 6);
+    mem_copy(&pkt[0], c->remote_mac, 6);
     mem_copy(&pkt[6], s_status.mac, 6);
     pkt[12] = 0x08u; pkt[13] = 0x00u;
 
@@ -1436,17 +1482,17 @@ static bool tcp_send_segment_locked(uint8_t flags, uint32_t seq, uint32_t ack,
     ip[6] = 0x40u; /* DF */
     ip[8] = 64u;   /* TTL */
     ip[9] = 6u;    /* TCP */
-    mem_copy(&ip[12], s_status.ip, 4);
-    mem_copy(&ip[16], s_tcp_remote_ip, 4);
+    mem_copy(&ip[12], src_ip, 4);
+    mem_copy(&ip[16], c->remote_ip, 4);
     uint16_t hcsum = ip_checksum(ip, 20);
     ip[10] = (uint8_t)(hcsum >> 8);
     ip[11] = (uint8_t)(hcsum & 0xFFu);
 
     uint8_t *tcp = &pkt[34];
-    tcp[0] = (uint8_t)(s_tcp_local_port >> 8);
-    tcp[1] = (uint8_t)(s_tcp_local_port & 0xFFu);
-    tcp[2] = (uint8_t)(s_tcp_remote_port >> 8);
-    tcp[3] = (uint8_t)(s_tcp_remote_port & 0xFFu);
+    tcp[0] = (uint8_t)(c->local_port >> 8);
+    tcp[1] = (uint8_t)(c->local_port & 0xFFu);
+    tcp[2] = (uint8_t)(c->remote_port >> 8);
+    tcp[3] = (uint8_t)(c->remote_port & 0xFFu);
     tcp[4] = (uint8_t)(seq >> 24);
     tcp[5] = (uint8_t)(seq >> 16);
     tcp[6] = (uint8_t)(seq >> 8);
@@ -1457,22 +1503,34 @@ static bool tcp_send_segment_locked(uint8_t flags, uint32_t seq, uint32_t ack,
     tcp[11] = (uint8_t)(ack & 0xFFu);
     tcp[12] = (uint8_t)((tcp_hdr_len / 4u) << 4);
     tcp[13] = flags;
-    size_t free_win = (s_tcp_rx_count < TCP_RX_BUF_SIZE) ? (TCP_RX_BUF_SIZE - s_tcp_rx_count) : 0u;
-    if (free_win > 14600u) free_win = 14600u;
+    size_t free_win = (c->rx_count < TCP_RX_BUF_SIZE) ? (TCP_RX_BUF_SIZE - c->rx_count) : 0u;
+    if (free_win > 32768u) free_win = 32768u;
     tcp[14] = (uint8_t)(free_win >> 8);
     tcp[15] = (uint8_t)(free_win & 0xFFu);
 
     if (opt_len == 4u) {
-        tcp[20] = 2u; tcp[21] = 4u; tcp[22] = 0x05u; tcp[23] = 0x50u; /* MSS = 1360 */
+        uint16_t mss = via_tun ? 1280u : 1360u;
+        tcp[20] = 2u; tcp[21] = 4u;
+        tcp[22] = (uint8_t)(mss >> 8);
+        tcp[23] = (uint8_t)(mss & 0xFFu);
     }
     if (data_len > 0 && data) {
         mem_copy(tcp + tcp_hdr_len, data, data_len);
     }
 
-    uint16_t tcsum = tcp_checksum(s_status.ip, s_tcp_remote_ip, tcp, tcp_len);
+    uint16_t tcsum = tcp_checksum(src_ip, c->remote_ip, tcp, tcp_len);
     tcp[16] = (uint8_t)(tcsum >> 8);
     tcp[17] = (uint8_t)(tcsum & 0xFFu);
 
+    if (via_tun) {
+        static uint8_t s_tun_ip_pkt[1406];
+        mem_copy(s_tun_ip_pkt, ip, ip_len);
+        wifi_tun_tx_cb_t tx_cb = s_tun_tx_cb;
+        mutex_unlock(&s_wifi_lock);
+        bool ok = tx_cb(s_tun_ip_pkt, ip_len);
+        mutex_lock(&s_wifi_lock);
+        return ok;
+    }
     return sdio_send_packet(ESP_STA_IF, 0, pkt, 14u + ip_len);
 }
 
@@ -1518,43 +1576,18 @@ static void handle_dns_rx(const uint8_t *msg, size_t len)
     }
 }
 
-static void handle_sta_rx_frame(const uint8_t *frame, size_t len)
+static void handle_ipv4_rx_locked(const uint8_t *frame, size_t frame_len, const uint8_t *ip, size_t max_ip_len, bool from_tun)
 {
-    if (len < 14) return;
-    uint16_t ethertype = ((uint16_t)frame[12] << 8) | (uint16_t)frame[13];
-
-    /* 1. ARP Request Responder & ARP Reply Cache (0x0806) */
-    if (ethertype == 0x0806u && len >= 42) {
-        uint16_t oper = ((uint16_t)frame[20] << 8) | (uint16_t)frame[21];
-        arp_learn(&frame[28], &frame[22]);
-        if (oper == 1 && s_status.ip[0] != 0 &&
-            frame[38] == s_status.ip[0] && frame[39] == s_status.ip[1] &&
-            frame[40] == s_status.ip[2] && frame[41] == s_status.ip[3]) {
-            uint8_t reply[42];
-            mem_copy(&reply[0], &frame[6], 6);
-            mem_copy(&reply[6], s_status.mac, 6);
-            reply[12] = 0x08u; reply[13] = 0x06u;
-            mem_copy(&reply[14], &frame[14], 6);
-            reply[20] = 0x00u; reply[21] = 0x02u; /* ARP Reply */
-            mem_copy(&reply[22], s_status.mac, 6);
-            mem_copy(&reply[28], s_status.ip, 4);
-            mem_copy(&reply[32], &frame[22], 10);
-            sdio_send_packet(ESP_STA_IF, 0, reply, sizeof reply);
-        }
-        return;
-    }
-
-    if (ethertype != 0x0800u || len < 34) return;
-    const uint8_t *ip = &frame[14];
+    if (max_ip_len < 20u) return;
     size_t ihl = (size_t)(ip[0] & 0x0Fu) * 4u;
     size_t ip_total_len = ((size_t)ip[2] << 8) | ip[3];
-    if (ihl < 20 || 14u + ihl > len) return;
-    if (14u + ip_total_len > len) ip_total_len = len - 14u;
+    if (ihl < 20u || ihl > max_ip_len) return;
+    if (ip_total_len > max_ip_len) ip_total_len = max_ip_len;
     if (ip_total_len < ihl) return;
     uint8_t proto = ip[9];
 
-    /* Learn MAC of local-subnet sender */
-    if (s_status.ip[0] != 0 &&
+    /* Learn MAC of local-subnet sender on physical interface */
+    if (!from_tun && frame && s_status.ip[0] != 0 &&
         ((ip[12] ^ s_status.ip[0]) & s_status.netmask[0]) == 0 &&
         ((ip[13] ^ s_status.ip[1]) & s_status.netmask[1]) == 0 &&
         ((ip[14] ^ s_status.ip[2]) & s_status.netmask[2]) == 0 &&
@@ -1563,43 +1596,88 @@ static void handle_sta_rx_frame(const uint8_t *frame, size_t len)
     }
 
     /* 2. ICMP Echo Request (ping) Responder */
-    if (proto == 1u && s_status.ip[0] != 0 && len >= 14u + ihl + 8u && len <= 1514u) {
+    if (proto == 1u && ip_total_len >= ihl + 8u && ip_total_len <= 1480u) {
         const uint8_t *icmp = ip + ihl;
-        if (icmp[0] == 8u && icmp[1] == 0u &&
-            ip[16] == s_status.ip[0] && ip[17] == s_status.ip[1] &&
-            ip[18] == s_status.ip[2] && ip[19] == s_status.ip[3]) {
-            uint8_t reply[1514];
-            mem_copy(reply, frame, len);
-            mem_copy(&reply[0], &frame[6], 6);
-            mem_copy(&reply[6], s_status.mac, 6);
-            mem_copy(&reply[14 + 12], s_status.ip, 4);
-            mem_copy(&reply[14 + 16], &ip[12], 4);
-            reply[14 + 10] = 0; reply[14 + 11] = 0;
-            uint16_t hcsum = ip_checksum(&reply[14], ihl);
-            reply[14 + 10] = (uint8_t)(hcsum >> 8);
-            reply[14 + 11] = (uint8_t)(hcsum & 0xFFu);
+        if (icmp[0] == 8u && icmp[1] == 0u) {
+            bool for_sta = (!from_tun && s_status.ip[0] != 0 &&
+                            ip[16] == s_status.ip[0] && ip[17] == s_status.ip[1] &&
+                            ip[18] == s_status.ip[2] && ip[19] == s_status.ip[3]);
+            bool for_tun = (from_tun && s_tun_ip[0] != 0 &&
+                            ip[16] == s_tun_ip[0] && ip[17] == s_tun_ip[1] &&
+                            ip[18] == s_tun_ip[2] && ip[19] == s_tun_ip[3]);
+            if (for_sta && frame && frame_len >= 14u + ip_total_len) {
+                static uint8_t reply[1514];
+                size_t rlen = 14u + ip_total_len;
+                mem_copy(reply, frame, rlen);
+                mem_copy(&reply[0], &frame[6], 6);
+                mem_copy(&reply[6], s_status.mac, 6);
+                mem_copy(&reply[14 + 12], s_status.ip, 4);
+                mem_copy(&reply[14 + 16], &ip[12], 4);
+                reply[14 + 10] = 0; reply[14 + 11] = 0;
+                uint16_t hcsum = ip_checksum(&reply[14], ihl);
+                reply[14 + 10] = (uint8_t)(hcsum >> 8);
+                reply[14 + 11] = (uint8_t)(hcsum & 0xFFu);
 
-            uint8_t *ricmp = &reply[14 + ihl];
-            size_t icmp_len = len - (14u + ihl);
-            ricmp[0] = 0; /* Echo Reply */
-            ricmp[2] = 0; ricmp[3] = 0;
-            uint16_t icsum = ip_checksum(ricmp, icmp_len);
-            ricmp[2] = (uint8_t)(icsum >> 8);
-            ricmp[3] = (uint8_t)(icsum & 0xFFu);
-            sdio_send_packet(ESP_STA_IF, 0, reply, len);
+                uint8_t *ricmp = &reply[14 + ihl];
+                size_t icmp_len = ip_total_len - ihl;
+                ricmp[0] = 0; /* Echo Reply */
+                ricmp[2] = 0; ricmp[3] = 0;
+                uint16_t icsum = ip_checksum(ricmp, icmp_len);
+                ricmp[2] = (uint8_t)(icsum >> 8);
+                ricmp[3] = (uint8_t)(icsum & 0xFFu);
+                sdio_send_packet(ESP_STA_IF, 0, reply, rlen);
+            } else if (for_tun && s_tun_tx_cb) {
+                static uint8_t rip[1480];
+                mem_copy(rip, ip, ip_total_len);
+                mem_copy(&rip[12], s_tun_ip, 4);
+                mem_copy(&rip[16], &ip[12], 4);
+                rip[10] = 0; rip[11] = 0;
+                uint16_t hcsum = ip_checksum(rip, ihl);
+                rip[10] = (uint8_t)(hcsum >> 8);
+                rip[11] = (uint8_t)(hcsum & 0xFFu);
+
+                uint8_t *ricmp = rip + ihl;
+                size_t icmp_len = ip_total_len - ihl;
+                ricmp[0] = 0; /* Echo Reply */
+                ricmp[2] = 0; ricmp[3] = 0;
+                uint16_t icsum = ip_checksum(ricmp, icmp_len);
+                ricmp[2] = (uint8_t)(icsum >> 8);
+                ricmp[3] = (uint8_t)(icsum & 0xFFu);
+                wifi_tun_tx_cb_t tx_cb = s_tun_tx_cb;
+                mutex_unlock(&s_wifi_lock);
+                tx_cb(rip, ip_total_len);
+                mutex_lock(&s_wifi_lock);
+            }
         }
         return;
     }
 
-    /* 3. UDP: DNS Client (src port 53) & DHCPv4 Client (src port 67 -> dst port 68) */
+    /* 3. UDP: DNS Client (src port 53), custom UDP RX callback (e.g. WireGuard :41641), & DHCPv4 Client */
     if (proto == 17u && ip_total_len >= ihl + 8u) {
         const uint8_t *udp = ip + ihl;
         uint16_t src_port = ((uint16_t)udp[0] << 8) | (uint16_t)udp[1];
         uint16_t dst_port = ((uint16_t)udp[2] << 8) | (uint16_t)udp[3];
+        uint16_t udp_hdr_len = ((uint16_t)udp[4] << 8) | (uint16_t)udp[5];
         size_t udp_payload_len = ip_total_len - ihl - 8u;
+        if (udp_hdr_len >= 8u && (size_t)(udp_hdr_len - 8u) < udp_payload_len) {
+            udp_payload_len = (size_t)(udp_hdr_len - 8u);
+        }
 
-        if (src_port == 53u && udp_payload_len >= 12u) {
+        if ((src_port == 53u || src_port == 5353u) && udp_payload_len >= 12u) {
             handle_dns_rx(udp + 8u, udp_payload_len);
+            return;
+        }
+        if (s_udp_rx_cb && dst_port == s_udp_rx_port) {
+            uint8_t src_ip_copy[4];
+            mem_copy(src_ip_copy, &ip[12], 4);
+            /* Copy payload so callback can run without holding s_wifi_lock */
+            static uint8_t s_udp_cb_buf[1600];
+            size_t copy_len = udp_payload_len > sizeof(s_udp_cb_buf) ? sizeof(s_udp_cb_buf) : udp_payload_len;
+            mem_copy(s_udp_cb_buf, udp + 8u, copy_len);
+            wifi_udp_rx_cb_t cb = s_udp_rx_cb;
+            mutex_unlock(&s_wifi_lock);
+            cb(src_ip_copy, src_port, dst_port, s_udp_cb_buf, copy_len);
+            mutex_lock(&s_wifi_lock);
             return;
         }
         if (src_port != 67u || dst_port != 68u || udp_payload_len < 240u) return;
@@ -1644,6 +1722,9 @@ static void handle_sta_rx_frame(const uint8_t *frame, size_t len)
             mem_copy(s_status.gateway, gw, 4);
             if (dns[0]) mem_copy(s_dns_ip, dns, 4);
             else if (gw[0]) mem_copy(s_dns_ip, gw, 4);
+            if (!from_tun && frame && ip[12] != 0) {
+                arp_learn(&ip[12], &frame[6]);
+            }
             s_dhcp_state = 3;
             ksnprintf(s_status.last_msg, sizeof s_status.last_msg,
                       "Connected to %s (IP %u.%u.%u.%u)",
@@ -1654,15 +1735,24 @@ static void handle_sta_rx_frame(const uint8_t *frame, size_t len)
     }
 
     /* 4. TCP Client State Machine (IPPROTO_TCP = 6) */
-    if (proto == 6u && s_tcp_state != TCP_STATE_CLOSED && ip_total_len >= ihl + 20u) {
-        if (ip[12] != s_tcp_remote_ip[0] || ip[13] != s_tcp_remote_ip[1] ||
-            ip[14] != s_tcp_remote_ip[2] || ip[15] != s_tcp_remote_ip[3]) {
-            return;
-        }
+    if (proto == 6u && ip_total_len >= ihl + 20u) {
         const uint8_t *tcp = ip + ihl;
         uint16_t src_port = ((uint16_t)tcp[0] << 8) | tcp[1];
         uint16_t dst_port = ((uint16_t)tcp[2] << 8) | tcp[3];
-        if (src_port != s_tcp_remote_port || dst_port != s_tcp_local_port) return;
+
+        tcp_conn_t *c = NULL;
+        for (int s = 0; s < WIFI_MAX_TCP_SOCKETS; s++) {
+            tcp_conn_t *cand = &s_tcp_conns[s];
+            if (cand->state != TCP_STATE_CLOSED &&
+                cand->local_port == dst_port &&
+                cand->remote_port == src_port &&
+                ip[12] == cand->remote_ip[0] && ip[13] == cand->remote_ip[1] &&
+                ip[14] == cand->remote_ip[2] && ip[15] == cand->remote_ip[3]) {
+                c = cand;
+                break;
+            }
+        }
+        if (!c) return;
 
         uint32_t seq = ((uint32_t)tcp[4] << 24) | ((uint32_t)tcp[5] << 16) |
                        ((uint32_t)tcp[6] << 8)  | tcp[7];
@@ -1675,57 +1765,88 @@ static void handle_sta_rx_frame(const uint8_t *frame, size_t len)
         size_t plen = ip_total_len - ihl - doff;
 
         if (flags & TCP_RST) {
-            s_tcp_state = TCP_STATE_CLOSED;
+            c->state = TCP_STATE_CLOSED;
             return;
         }
 
-        if (s_tcp_state == TCP_STATE_SYN_SENT) {
-            if ((flags & (TCP_SYN | TCP_ACK)) == (TCP_SYN | TCP_ACK) && ack == s_tcp_snd_nxt) {
-                s_tcp_snd_una = ack;
-                s_tcp_rcv_nxt = seq + 1u;
-                s_tcp_state   = TCP_STATE_ESTABLISHED;
-                tcp_send_segment_locked(TCP_ACK, s_tcp_snd_nxt, s_tcp_rcv_nxt, NULL, 0);
+        if (c->state == TCP_STATE_SYN_SENT) {
+            if ((flags & (TCP_SYN | TCP_ACK)) == (TCP_SYN | TCP_ACK) && ack == c->snd_nxt) {
+                c->snd_una = ack;
+                c->rcv_nxt = seq + 1u;
+                c->state   = TCP_STATE_ESTABLISHED;
+                tcp_send_segment_locked(c, TCP_ACK, c->snd_nxt, c->rcv_nxt, NULL, 0);
             }
             return;
         }
 
         if (flags & TCP_ACK) {
-            int32_t diff = (int32_t)(ack - s_tcp_snd_una);
-            if (diff > 0) s_tcp_snd_una = ack;
+            int32_t diff = (int32_t)(ack - c->snd_una);
+            if (diff > 0) c->snd_una = ack;
         }
 
-        bool need_ack = false;
-        if (plen > 0) {
-            int32_t offset = (int32_t)(seq - s_tcp_rcv_nxt);
+        bool need_ack = (flags & TCP_SYN) != 0;
+        if (plen > 0 && c->rx_buf) {
+            int32_t offset = (int32_t)(seq - c->rcv_nxt);
             if (offset <= 0 && (size_t)(-offset) < plen) {
                 size_t skip = (size_t)(-offset);
                 const uint8_t *new_data = payload + skip;
                 size_t new_len = plen - skip;
-                size_t space = TCP_RX_BUF_SIZE - s_tcp_rx_count;
+                size_t space = TCP_RX_BUF_SIZE - c->rx_count;
                 if (new_len > space) new_len = space;
                 for (size_t i = 0; i < new_len; i++) {
-                    s_tcp_rx_buf[s_tcp_rx_head] = new_data[i];
-                    s_tcp_rx_head = (s_tcp_rx_head + 1u) % TCP_RX_BUF_SIZE;
+                    c->rx_buf[c->rx_head] = new_data[i];
+                    c->rx_head = (c->rx_head + 1u) % TCP_RX_BUF_SIZE;
                 }
-                s_tcp_rx_count += new_len;
-                s_tcp_rcv_nxt  += (uint32_t)new_len;
+                c->rx_count += new_len;
+                c->rcv_nxt  += (uint32_t)new_len;
             }
             need_ack = true;
         }
 
         if (flags & TCP_FIN) {
-            if (seq + (uint32_t)plen == s_tcp_rcv_nxt) {
-                s_tcp_rcv_nxt++;
-                s_tcp_state = TCP_STATE_CLOSE_WAIT;
+            if (seq + (uint32_t)plen == c->rcv_nxt) {
+                c->rcv_nxt++;
+                c->state = TCP_STATE_CLOSE_WAIT;
             }
             need_ack = true;
         }
 
         if (need_ack) {
-            tcp_send_segment_locked(TCP_ACK, s_tcp_snd_nxt, s_tcp_rcv_nxt, NULL, 0);
+            tcp_send_segment_locked(c, TCP_ACK, c->snd_nxt, c->rcv_nxt, NULL, 0);
         }
     }
 }
+
+static void handle_sta_rx_frame(const uint8_t *frame, size_t len)
+{
+    if (len < 14) return;
+    uint16_t ethertype = ((uint16_t)frame[12] << 8) | (uint16_t)frame[13];
+
+    /* 1. ARP Request Responder & ARP Reply Cache (0x0806) */
+    if (ethertype == 0x0806u && len >= 42) {
+        uint16_t oper = ((uint16_t)frame[20] << 8) | (uint16_t)frame[21];
+        arp_learn(&frame[28], &frame[22]);
+        if (oper == 1 && s_status.ip[0] != 0 &&
+            frame[38] == s_status.ip[0] && frame[39] == s_status.ip[1] &&
+            frame[40] == s_status.ip[2] && frame[41] == s_status.ip[3]) {
+            uint8_t reply[42];
+            mem_copy(&reply[0], &frame[6], 6);
+            mem_copy(&reply[6], s_status.mac, 6);
+            reply[12] = 0x08u; reply[13] = 0x06u;
+            mem_copy(&reply[14], &frame[14], 6);
+            reply[20] = 0x00u; reply[21] = 0x02u; /* ARP Reply */
+            mem_copy(&reply[22], s_status.mac, 6);
+            mem_copy(&reply[28], s_status.ip, 4);
+            mem_copy(&reply[32], &frame[22], 10);
+            sdio_send_packet(ESP_STA_IF, 0, reply, sizeof reply);
+        }
+        return;
+    }
+
+    if (ethertype != 0x0800u || len < 34) return;
+    handle_ipv4_rx_locked(frame, len, &frame[14], len - 14u, false);
+}
+
 
 /* =========================================================================
  * Saved Credentials (/home/wifi.cfg + ESP32-C6 NVS Flash)
@@ -1883,12 +2004,14 @@ static bool set_c6_sta_config_locked(const char *ssid, const char *password)
     size_t sta_len = 0;
     sta_len += pb_put_bytes(sta + sta_len, 1, ssid ? ssid : "", str_len(ssid));
     sta_len += pb_put_bytes(sta + sta_len, 2, password ? password : "", str_len(password));
-    sta_len += pb_put_uint(sta + sta_len, 3, 0); /* scan_method = WIFI_FAST_SCAN */
+    sta_len += pb_put_uint(sta + sta_len, 3, 0); /* scan_method (slave sets WIFI_ALL_CHANNEL_SCAN) */
     sta_len += pb_put_uint(sta + sta_len, 4, 0); /* bssid_set = false */
-    sta_len += pb_put_uint(sta + sta_len, 7, 0); /* channel = 0 */
+    sta_len += pb_put_uint(sta + sta_len, 6, 0); /* channel = 0 */
+    sta_len += pb_put_uint(sta + sta_len, 7, 0); /* listen_interval = 0 */
     sta_len += pb_put_uint(sta + sta_len, 8, 0); /* sort_method = WIFI_CONNECT_AP_BY_SIGNAL */
     sta_len += pb_put_bytes(sta + sta_len, 9, thresh, thresh_len);
     sta_len += pb_put_bytes(sta + sta_len, 10, pmf, pmf_len);
+    sta_len += pb_put_uint(sta + sta_len, 14, 0x1Eu); /* he_dcm_max_constellation_tx=3, rx=3 */
 
     uint8_t cfg[220];
     size_t cfg_len = pb_put_bytes(cfg, 2, sta, sta_len); /* wifi_config.sta = field 2 */
@@ -2091,6 +2214,13 @@ int wifi_scan(wifi_ap_t *out_aps, int max_aps)
                 pos += (size_t)rlen;
                 if (!rec.ssid[0]) continue; /* skip hidden empty SSIDs */
 
+                if (str_eq(rec.ssid, "shado")) {
+                    kprintf("wifi: scan shado bssid=%02X:%02X:%02X:%02X:%02X:%02X ch=%u rssi=%d auth=%u\n",
+                            rec.bssid[0], rec.bssid[1], rec.bssid[2],
+                            rec.bssid[3], rec.bssid[4], rec.bssid[5],
+                            (unsigned)rec.channel, (int)rec.rssi, (unsigned)rec.authmode);
+                }
+
                 rec.saved     = s_status.has_saved && str_eq(rec.ssid, s_status.saved_ssid);
                 rec.connected = (prev_state == WIFI_STATE_CONNECTED) && str_eq(rec.ssid, s_status.ssid);
 
@@ -2142,16 +2272,12 @@ bool wifi_connect(const char *ssid, const char *password, bool save)
     mutex_lock(&s_wifi_lock);
     s_manual_disconnect = false;
 
-    /* Disconnect cleanly first if already connected/connecting */
+    /* Always disconnect cleanly first and drain any asynchronous disconnect events from ESP32-C6 */
     rpc_call_locked(RPC_REQ_WIFI_DISCONNECT, RPC_RESP_WIFI_DISCONNECT, NULL, 0, 1000, NULL);
-
-    str_copy(s_status.ssid, sizeof s_status.ssid, ssid);
-    mem_zero(s_status.ip, 4);
-    mem_zero(s_status.netmask, 4);
-    mem_zero(s_status.gateway, 4);
-    s_status.disconnect_reason = 0;
-    s_status.state = WIFI_STATE_CONNECTING;
-    ksnprintf(s_status.last_msg, sizeof s_status.last_msg, "Connecting to %s...", ssid);
+    for (int i = 0; i < 25; i++) {
+        sdio_poll_rx_locked();
+        task_sleep(10);
+    }
 
     if (save) {
         str_copy(s_status.saved_ssid, sizeof s_status.saved_ssid, ssid);
@@ -2168,6 +2294,16 @@ bool wifi_connect(const char *ssid, const char *password, bool save)
         return false;
     }
 
+    /* Drain any late events before resetting state and starting esp_wifi_connect */
+    sdio_poll_rx_locked();
+    str_copy(s_status.ssid, sizeof s_status.ssid, ssid);
+    mem_zero(s_status.ip, 4);
+    mem_zero(s_status.netmask, 4);
+    mem_zero(s_status.gateway, 4);
+    s_status.disconnect_reason = 0;
+    s_status.state = WIFI_STATE_CONNECTING;
+    ksnprintf(s_status.last_msg, sizeof s_status.last_msg, "Connecting to %s...", ssid);
+
     int32_t resp_code = -1;
     if (!rpc_call_locked(RPC_REQ_WIFI_CONNECT, RPC_RESP_WIFI_CONNECT, NULL, 0, 3000, &resp_code) ||
         resp_code != 0) {
@@ -2177,8 +2313,16 @@ bool wifi_connect(const char *ssid, const char *password, bool save)
         return false;
     }
 
-    /* Wait up to 10s for association + DHCP IP assignment */
-    uint64_t deadline = hal_time_now_us() + 10000000ULL;
+    /* If a stale disconnect event arrived during RPC_REQ_WIFI_CONNECT, clear it now */
+    if (s_status.state != WIFI_STATE_CONNECTED) {
+        s_status.disconnect_reason = 0;
+        s_status.state = WIFI_STATE_CONNECTING;
+    }
+
+    /* Wait up to 16s for association + DHCP IP assignment */
+    int retries = 0;
+    uint64_t connect_sent_us = hal_time_now_us();
+    uint64_t deadline = connect_sent_us + 16000000ULL;
     while (hal_time_now_us() < deadline) {
         sdio_poll_rx_locked();
         if (s_status.state == WIFI_STATE_CONNECTED) {
@@ -2186,12 +2330,36 @@ bool wifi_connect(const char *ssid, const char *password, bool save)
                 break;
             }
             if ((s_dhcp_state == 1 || s_dhcp_state == 2) &&
-                hal_time_now_us() - s_dhcp_last_tx_us > 1500000ULL) {
+                hal_time_now_us() - s_dhcp_last_tx_us > 1200000ULL) {
                 s_dhcp_state = 1;
                 dhcp_send_discover();
             }
         } else if (s_status.state == WIFI_STATE_DISCONNECTED && s_status.disconnect_reason != 0) {
-            break;
+            uint64_t elapsed = hal_time_now_us() - connect_sent_us;
+            if (elapsed < 450000ULL) {
+                /* Stale disconnect event from prior disconnect; keep waiting for active scan */
+                s_status.disconnect_reason = 0;
+                s_status.state = WIFI_STATE_CONNECTING;
+            } else if (retries < 2 && hal_time_now_us() + 4000000ULL < deadline) {
+                retries++;
+                for (int i = 0; i < 20; i++) {
+                    sdio_poll_rx_locked();
+                    task_sleep(10);
+                }
+                s_status.disconnect_reason = 0;
+                s_status.state = WIFI_STATE_CONNECTING;
+                ksnprintf(s_status.last_msg, sizeof s_status.last_msg,
+                          "Retrying %s (%d/2)...", ssid, retries);
+                rpc_call_locked(RPC_REQ_WIFI_CONNECT, RPC_RESP_WIFI_CONNECT, NULL, 0, 2000, NULL);
+                if (s_status.state != WIFI_STATE_CONNECTED) {
+                    s_status.disconnect_reason = 0;
+                    s_status.state = WIFI_STATE_CONNECTING;
+                }
+                connect_sent_us = hal_time_now_us();
+                continue;
+            } else {
+                break;
+            }
         }
         task_sleep(20);
     }
@@ -2398,7 +2566,31 @@ static bool arp_resolve_locked(const uint8_t target_ip[4], uint8_t out_mac[6], u
     return false;
 }
 
-static void dns_send_query_locked(const uint8_t dns_srv[4], const uint8_t dst_mac[6], const char *host)
+static uint16_t udp_checksum(const uint8_t src_ip[4], const uint8_t dst_ip[4],
+                             const uint8_t *udp_seg, size_t udp_len)
+{
+    uint32_t sum = 0;
+    sum += ((uint32_t)src_ip[0] << 8) | src_ip[1];
+    sum += ((uint32_t)src_ip[2] << 8) | src_ip[3];
+    sum += ((uint32_t)dst_ip[0] << 8) | dst_ip[1];
+    sum += ((uint32_t)dst_ip[2] << 8) | dst_ip[3];
+    sum += 17u; /* IPPROTO_UDP */
+    sum += (uint32_t)udp_len;
+    for (size_t i = 0; i + 1 < udp_len; i += 2) {
+        sum += ((uint32_t)udp_seg[i] << 8) | udp_seg[i + 1];
+    }
+    if (udp_len & 1u) {
+        sum += (uint32_t)udp_seg[udp_len - 1] << 8;
+    }
+    while (sum >> 16) {
+        sum = (sum & 0xFFFFu) + (sum >> 16);
+    }
+    uint16_t res = (uint16_t)(~sum & 0xFFFFu);
+    return res == 0 ? 0xFFFFu : res;
+}
+
+static void dns_send_query_locked(const uint8_t dns_srv[4], const uint8_t dst_mac[6],
+                                  uint16_t dst_port, const char *host)
 {
     uint8_t pkt[320];
     mem_zero(pkt, sizeof pkt);
@@ -2436,9 +2628,13 @@ static void dns_send_query_locked(const uint8_t dns_srv[4], const uint8_t dst_ma
 
     uint8_t *udp = &pkt[34];
     udp[0] = 0xC0u; udp[1] = 0x35u; /* src port 49205 */
-    udp[2] = 0x00u; udp[3] = 53u;   /* dst port 53 */
+    udp[2] = (uint8_t)(dst_port >> 8);
+    udp[3] = (uint8_t)(dst_port & 0xFFu);
     udp[4] = (uint8_t)(udp_len >> 8);
     udp[5] = (uint8_t)(udp_len & 0xFFu);
+    uint16_t ucsum = udp_checksum(s_status.ip, dns_srv, udp, udp_len);
+    udp[6] = (uint8_t)(ucsum >> 8);
+    udp[7] = (uint8_t)(ucsum & 0xFFu);
 
     uint8_t *ip = &pkt[14];
     s_ip_id++;
@@ -2465,31 +2661,66 @@ bool wifi_resolve_host(const char *host, uint8_t out_ip[4])
 
     ensure_lock();
     mutex_lock(&s_wifi_lock);
+    wifi_tun_resolve_cb_t tun_res = s_tun_resolve_cb;
+    mutex_unlock(&s_wifi_lock);
+    if (tun_res && tun_res(host, out_ip)) {
+        return true;
+    }
+
+    mutex_lock(&s_wifi_lock);
     if (s_status.state != WIFI_STATE_CONNECTED || s_status.ip[0] == 0) {
         mutex_unlock(&s_wifi_lock);
         return false;
     }
 
-    uint8_t dns_srv[4];
-    if (s_dns_ip[0] != 0) mem_copy(dns_srv, s_dns_ip, 4);
-    else if (s_status.gateway[0] != 0) mem_copy(dns_srv, s_status.gateway, 4);
-    else { dns_srv[0] = 8; dns_srv[1] = 8; dns_srv[2] = 8; dns_srv[3] = 8; }
+    uint8_t primary_dns[4];
+    if (s_dns_ip[0] != 0) mem_copy(primary_dns, s_dns_ip, 4);
+    else if (s_status.gateway[0] != 0) mem_copy(primary_dns, s_status.gateway, 4);
+    else { primary_dns[0] = 8; primary_dns[1] = 8; primary_dns[2] = 8; primary_dns[3] = 8; }
 
-    uint8_t dst_mac[6];
-    if (!arp_resolve_locked(dns_srv, dst_mac, 2000)) {
+    static const uint8_t dns_google[4] = {8, 8, 8, 8};
+    static const uint8_t dns_cf[4]     = {1, 1, 1, 1};
+    static const uint8_t mdns_ip[4]    = {224, 0, 0, 251};
+    static const uint8_t mdns_mac[6]   = {0x01, 0x00, 0x5E, 0x00, 0x00, 0xFB};
+
+    uint8_t gw_mac[6];
+    if (!arp_resolve_locked(primary_dns, gw_mac, 2000)) {
         mutex_unlock(&s_wifi_lock);
+        if (str_eq(host, "controlplane.tailscale.com")) {
+            out_ip[0] = 192; out_ip[1] = 200; out_ip[2] = 0; out_ip[3] = 101;
+            return true;
+        }
         return false;
+    }
+
+    bool has_dot = false;
+    for (size_t i = 0; host[i]; i++) {
+        if (host[i] == '.') { has_dot = true; break; }
+    }
+    char host_local[80];
+    if (!has_dot) {
+        ksnprintf(host_local, sizeof(host_local), "%s.local", host);
     }
 
     s_dns_txid++;
     s_dns_done = false;
     uint64_t deadline = hal_time_now_us() + 3000000ULL;
     uint64_t last_tx  = 0;
+    int attempt = 0;
 
     while (hal_time_now_us() < deadline) {
         uint64_t now = hal_time_now_us();
-        if (now - last_tx >= 600000ULL) {
-            dns_send_query_locked(dns_srv, dst_mac, host);
+        if (now - last_tx >= 550000ULL) {
+            const uint8_t *srv = primary_dns;
+            if (attempt == 1) srv = dns_google;
+            else if (attempt == 2) srv = dns_cf;
+            dns_send_query_locked(srv, gw_mac, 53u, host);
+            if (!has_dot) {
+                /* Also query mDNS (224.0.0.251:5353) and router DNS for <host>.local */
+                dns_send_query_locked(mdns_ip, mdns_mac, 5353u, host_local);
+                dns_send_query_locked(primary_dns, gw_mac, 53u, host_local);
+            }
+            attempt++;
             last_tx = now;
         }
         sdio_poll_rx_locked();
@@ -2502,12 +2733,16 @@ bool wifi_resolve_host(const char *host, uint8_t out_ip[4])
     }
 
     mutex_unlock(&s_wifi_lock);
+    if (str_eq(host, "controlplane.tailscale.com")) {
+        out_ip[0] = 192; out_ip[1] = 200; out_ip[2] = 0; out_ip[3] = 101;
+        return true;
+    }
     return false;
 }
 
-bool wifi_tcp_connect(const uint8_t ip[4], uint16_t port, uint32_t timeout_ms)
+bool wifi_tcp_connect_sock(int sock, const uint8_t ip[4], uint16_t port, uint32_t timeout_ms)
 {
-    if (!ip || !ip[0] || port == 0) return false;
+    if (sock < 0 || sock >= WIFI_MAX_TCP_SOCKETS || !ip || !ip[0] || port == 0) return false;
     ensure_lock();
     mutex_lock(&s_wifi_lock);
 
@@ -2516,62 +2751,83 @@ bool wifi_tcp_connect(const uint8_t ip[4], uint16_t port, uint32_t timeout_ms)
         return false;
     }
 
-    /* Close any previous active connection */
-    if (s_tcp_state == TCP_STATE_ESTABLISHED || s_tcp_state == TCP_STATE_CLOSE_WAIT) {
-        tcp_send_segment_locked(TCP_RST | TCP_ACK, s_tcp_snd_nxt, s_tcp_rcv_nxt, NULL, 0);
+    tcp_conn_t *c = &s_tcp_conns[sock];
+    if (!c->rx_buf) {
+        c->rx_buf = (uint8_t *)kmalloc_psram(TCP_RX_BUF_SIZE);
+        if (!c->rx_buf) c->rx_buf = (uint8_t *)kmalloc(TCP_RX_BUF_SIZE);
+        if (!c->rx_buf) {
+            mutex_unlock(&s_wifi_lock);
+            return false;
+        }
     }
-    s_tcp_state = TCP_STATE_CLOSED;
+
+    /* Close any previous active connection on this socket */
+    if (c->state == TCP_STATE_ESTABLISHED || c->state == TCP_STATE_CLOSE_WAIT) {
+        tcp_send_segment_locked(c, TCP_RST | TCP_ACK, c->snd_nxt, c->rcv_nxt, NULL, 0);
+    }
+    c->state = TCP_STATE_CLOSED;
 
     uint8_t dst_mac[6];
-    if (!arp_resolve_locked(ip, dst_mac, 2500)) {
+    mem_zero(dst_mac, 6);
+    if (is_tailscale_ip(ip)) {
+        if (!s_tun_tx_cb || s_tun_ip[0] == 0) {
+            mutex_unlock(&s_wifi_lock);
+            return false;
+        }
+    } else if (!arp_resolve_locked(ip, dst_mac, 2500)) {
         mutex_unlock(&s_wifi_lock);
         return false;
     }
 
-    mem_copy(s_tcp_remote_ip, ip, 4);
-    mem_copy(s_tcp_remote_mac, dst_mac, 6);
-    s_tcp_local_port = (uint16_t)(49152u + ((s_tcp_local_port - 49152u + 1u + (hal_time_now_us() & 0xFFu)) & 0x3FFFu));
-    s_tcp_remote_port = port;
-    s_tcp_snd_una = (uint32_t)(hal_time_now_us() ^ 0x5A3C96E1u);
-    s_tcp_snd_nxt = s_tcp_snd_una + 1u;
-    s_tcp_rcv_nxt = 0;
-    s_tcp_rx_head = 0;
-    s_tcp_rx_tail = 0;
-    s_tcp_rx_count = 0;
-    s_tcp_state = TCP_STATE_SYN_SENT;
+    mem_copy(c->remote_ip, ip, 4);
+    mem_copy(c->remote_mac, dst_mac, 6);
+    s_next_local_port = (uint16_t)(49152u + ((s_next_local_port - 49152u + 1u + (hal_time_now_us() & 0x7Fu)) & 0x3FFFu));
+    c->local_port = s_next_local_port;
+    c->remote_port = port;
+    c->snd_una = (uint32_t)(hal_time_now_us() ^ (0x5A3C96E1u + (uint32_t)sock * 0x13579BDFu));
+    c->snd_nxt = c->snd_una + 1u;
+    c->rcv_nxt = 0;
+    c->rx_head = 0;
+    c->rx_tail = 0;
+    c->rx_count = 0;
+    c->state = TCP_STATE_SYN_SENT;
 
     uint64_t deadline = hal_time_now_us() + (uint64_t)timeout_ms * 1000ULL;
     uint64_t last_syn = 0;
 
     while (hal_time_now_us() < deadline) {
         uint64_t now = hal_time_now_us();
-        if (now - last_syn >= 500000ULL) {
-            tcp_send_segment_locked(TCP_SYN, s_tcp_snd_una, 0, NULL, 0);
-            last_syn = now;
+        if (last_syn == 0 || (now - last_syn >= 600000ULL)) {
+            tcp_send_segment_locked(c, TCP_SYN, c->snd_una, 0, NULL, 0);
+            last_syn = hal_time_now_us();
         }
         sdio_poll_rx_locked();
-        if (s_tcp_state == TCP_STATE_ESTABLISHED) {
+        if (c->state == TCP_STATE_ESTABLISHED) {
             mutex_unlock(&s_wifi_lock);
             return true;
         }
-        if (s_tcp_state == TCP_STATE_CLOSED) {
+        if (c->state == TCP_STATE_CLOSED) {
             break;
         }
+        mutex_unlock(&s_wifi_lock);
         task_sleep(5);
+        mutex_lock(&s_wifi_lock);
     }
 
-    s_tcp_state = TCP_STATE_CLOSED;
+    c->state = TCP_STATE_CLOSED;
     mutex_unlock(&s_wifi_lock);
     return false;
 }
 
-int wifi_tcp_send(const void *data, size_t len, uint32_t timeout_ms)
+int wifi_tcp_send_sock(int sock, const void *data, size_t len, uint32_t timeout_ms)
 {
+    if (sock < 0 || sock >= WIFI_MAX_TCP_SOCKETS) return -1;
     if (!data || len == 0) return 0;
     ensure_lock();
     mutex_lock(&s_wifi_lock);
 
-    if (s_tcp_state != TCP_STATE_ESTABLISHED) {
+    tcp_conn_t *c = &s_tcp_conns[sock];
+    if (c->state != TCP_STATE_ESTABLISHED) {
         mutex_unlock(&s_wifi_lock);
         return -1;
     }
@@ -2581,8 +2837,8 @@ int wifi_tcp_send(const void *data, size_t len, uint32_t timeout_ms)
 
     while (sent < len) {
         size_t chunk = (len - sent > 1024u) ? 1024u : (len - sent);
-        uint32_t seg_seq = s_tcp_snd_nxt;
-        s_tcp_snd_nxt += (uint32_t)chunk;
+        uint32_t seg_seq = c->snd_nxt;
+        c->snd_nxt += (uint32_t)chunk;
 
         uint64_t deadline = hal_time_now_us() + (uint64_t)timeout_ms * 1000ULL;
         uint64_t last_tx  = 0;
@@ -2591,18 +2847,20 @@ int wifi_tcp_send(const void *data, size_t len, uint32_t timeout_ms)
         while (hal_time_now_us() < deadline) {
             uint64_t now = hal_time_now_us();
             if (now - last_tx >= 350000ULL) {
-                tcp_send_segment_locked(TCP_PSH | TCP_ACK, seg_seq, s_tcp_rcv_nxt, p + sent, chunk);
+                tcp_send_segment_locked(c, TCP_PSH | TCP_ACK, seg_seq, c->rcv_nxt, p + sent, chunk);
                 last_tx = now;
             }
             sdio_poll_rx_locked();
-            if ((int32_t)(s_tcp_snd_una - s_tcp_snd_nxt) >= 0) {
+            if ((int32_t)(c->snd_una - c->snd_nxt) >= 0) {
                 acked = true;
                 break;
             }
-            if (s_tcp_state != TCP_STATE_ESTABLISHED && s_tcp_state != TCP_STATE_CLOSE_WAIT) {
+            if (c->state != TCP_STATE_ESTABLISHED && c->state != TCP_STATE_CLOSE_WAIT) {
                 break;
             }
+            mutex_unlock(&s_wifi_lock);
             task_sleep(2);
+            mutex_lock(&s_wifi_lock);
         }
 
         if (!acked) {
@@ -2616,12 +2874,14 @@ int wifi_tcp_send(const void *data, size_t len, uint32_t timeout_ms)
     return (int)sent;
 }
 
-int wifi_tcp_recv(void *buf, size_t max_len, uint32_t timeout_ms)
+int wifi_tcp_recv_sock(int sock, void *buf, size_t max_len, uint32_t timeout_ms)
 {
+    if (sock < 0 || sock >= WIFI_MAX_TCP_SOCKETS) return -1;
     if (!buf || max_len == 0) return 0;
     ensure_lock();
     mutex_lock(&s_wifi_lock);
 
+    tcp_conn_t *c = &s_tcp_conns[sock];
     uint8_t *out = (uint8_t *)buf;
     uint64_t deadline = hal_time_now_us() + (uint64_t)timeout_ms * 1000ULL;
 
@@ -2629,17 +2889,22 @@ int wifi_tcp_recv(void *buf, size_t max_len, uint32_t timeout_ms)
         if (s_sdio_ready) {
             sdio_poll_rx_locked();
         }
-        if (s_tcp_rx_count > 0) {
-            size_t n = (s_tcp_rx_count > max_len) ? max_len : s_tcp_rx_count;
+        if (c->rx_count > 0 && c->rx_buf) {
+            size_t prev_free = (c->rx_count < TCP_RX_BUF_SIZE) ? (TCP_RX_BUF_SIZE - c->rx_count) : 0u;
+            size_t n = (c->rx_count > max_len) ? max_len : c->rx_count;
             for (size_t i = 0; i < n; i++) {
-                out[i] = s_tcp_rx_buf[s_tcp_rx_tail];
-                s_tcp_rx_tail = (s_tcp_rx_tail + 1u) % TCP_RX_BUF_SIZE;
+                out[i] = c->rx_buf[c->rx_tail];
+                c->rx_tail = (c->rx_tail + 1u) % TCP_RX_BUF_SIZE;
             }
-            s_tcp_rx_count -= n;
+            c->rx_count -= n;
+            size_t new_free = TCP_RX_BUF_SIZE - c->rx_count;
+            if (c->state == TCP_STATE_ESTABLISHED && prev_free < 16384u && new_free >= 16384u) {
+                tcp_send_segment_locked(c, TCP_ACK, c->snd_nxt, c->rcv_nxt, NULL, 0);
+            }
             mutex_unlock(&s_wifi_lock);
             return (int)n;
         }
-        if (s_tcp_state != TCP_STATE_ESTABLISHED) {
+        if (c->state != TCP_STATE_ESTABLISHED) {
             mutex_unlock(&s_wifi_lock);
             return -1;
         }
@@ -2653,32 +2918,157 @@ int wifi_tcp_recv(void *buf, size_t max_len, uint32_t timeout_ms)
     }
 }
 
-void wifi_tcp_close(void)
+void wifi_tcp_close_sock(int sock)
 {
+    if (sock < 0 || sock >= WIFI_MAX_TCP_SOCKETS) return;
     ensure_lock();
     mutex_lock(&s_wifi_lock);
-    if (s_tcp_state == TCP_STATE_ESTABLISHED || s_tcp_state == TCP_STATE_CLOSE_WAIT) {
-        tcp_send_segment_locked(TCP_FIN | TCP_ACK, s_tcp_snd_nxt, s_tcp_rcv_nxt, NULL, 0);
-        s_tcp_snd_nxt++;
+    tcp_conn_t *c = &s_tcp_conns[sock];
+    if (c->state == TCP_STATE_ESTABLISHED || c->state == TCP_STATE_CLOSE_WAIT) {
+        tcp_send_segment_locked(c, TCP_FIN | TCP_ACK, c->snd_nxt, c->rcv_nxt, NULL, 0);
+        c->snd_nxt++;
         for (int i = 0; i < 10; i++) {
             sdio_poll_rx_locked();
             task_sleep(5);
         }
     }
-    s_tcp_state = TCP_STATE_CLOSED;
-    s_tcp_rx_head = s_tcp_rx_tail = s_tcp_rx_count = 0;
+    c->state = TCP_STATE_CLOSED;
+    c->rx_head = c->rx_tail = c->rx_count = 0;
     mutex_unlock(&s_wifi_lock);
+}
+
+bool wifi_tcp_is_connected_sock(int sock)
+{
+    if (sock < 0 || sock >= WIFI_MAX_TCP_SOCKETS) return false;
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    if (s_sdio_ready) sdio_poll_rx_locked();
+    tcp_conn_t *c = &s_tcp_conns[sock];
+    bool ok = (c->state == TCP_STATE_ESTABLISHED || c->rx_count > 0);
+    mutex_unlock(&s_wifi_lock);
+    return ok;
+}
+
+bool wifi_tcp_connect(const uint8_t ip[4], uint16_t port, uint32_t timeout_ms)
+{
+    return wifi_tcp_connect_sock(0, ip, port, timeout_ms);
+}
+
+int wifi_tcp_send(const void *data, size_t len, uint32_t timeout_ms)
+{
+    return wifi_tcp_send_sock(0, data, len, timeout_ms);
+}
+
+int wifi_tcp_recv(void *buf, size_t max_len, uint32_t timeout_ms)
+{
+    return wifi_tcp_recv_sock(0, buf, max_len, timeout_ms);
+}
+
+void wifi_tcp_close(void)
+{
+    wifi_tcp_close_sock(0);
 }
 
 bool wifi_tcp_is_connected(void)
 {
+    return wifi_tcp_is_connected_sock(0);
+}
+
+bool wifi_udp_send(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port,
+                   const void *data, size_t len)
+{
+    if (!dst_ip || !dst_ip[0] || dst_port == 0 || len > 1440u) return false;
     ensure_lock();
     mutex_lock(&s_wifi_lock);
-    if (s_sdio_ready) sdio_poll_rx_locked();
-    bool ok = (s_tcp_state == TCP_STATE_ESTABLISHED || s_tcp_rx_count > 0);
+    if (s_status.state != WIFI_STATE_CONNECTED || s_status.ip[0] == 0) {
+        mutex_unlock(&s_wifi_lock);
+        return false;
+    }
+
+    uint8_t dst_mac[6];
+    if (!arp_resolve_locked(dst_ip, dst_mac, 1000)) {
+        mutex_unlock(&s_wifi_lock);
+        return false;
+    }
+
+    static uint8_t pkt[1500];
+    size_t udp_len = 8u + len;
+    size_t ip_len  = 20u + udp_len;
+    mem_zero(pkt, 14u + 20u + 8u);
+
+    mem_copy(&pkt[0], dst_mac, 6);
+    mem_copy(&pkt[6], s_status.mac, 6);
+    pkt[12] = 0x08u; pkt[13] = 0x00u;
+
+    uint8_t *ip = &pkt[14];
+    s_ip_id++;
+    ip[0] = 0x45u;
+    ip[2] = (uint8_t)(ip_len >> 8);
+    ip[3] = (uint8_t)(ip_len & 0xFFu);
+    ip[4] = (uint8_t)(s_ip_id >> 8);
+    ip[5] = (uint8_t)(s_ip_id & 0xFFu);
+    ip[6] = 0x40u;
+    ip[8] = 64u;
+    ip[9] = 17u; /* UDP */
+    mem_copy(&ip[12], s_status.ip, 4);
+    mem_copy(&ip[16], dst_ip, 4);
+    uint16_t hcsum = ip_checksum(ip, 20);
+    ip[10] = (uint8_t)(hcsum >> 8);
+    ip[11] = (uint8_t)(hcsum & 0xFFu);
+
+    uint8_t *udp = &pkt[34];
+    udp[0] = (uint8_t)(src_port >> 8);
+    udp[1] = (uint8_t)(src_port & 0xFFu);
+    udp[2] = (uint8_t)(dst_port >> 8);
+    udp[3] = (uint8_t)(dst_port & 0xFFu);
+    udp[4] = (uint8_t)(udp_len >> 8);
+    udp[5] = (uint8_t)(udp_len & 0xFFu);
+    udp[6] = 0u;
+    udp[7] = 0u;
+
+    if (len > 0 && data) {
+        mem_copy(&pkt[42], data, len);
+    }
+
+    uint16_t ucsum = udp_checksum(s_status.ip, dst_ip, udp, udp_len);
+    udp[6] = (uint8_t)(ucsum >> 8);
+    udp[7] = (uint8_t)(ucsum & 0xFFu);
+
+    bool ok = sdio_send_packet(ESP_STA_IF, 0, pkt, 14u + ip_len);
     mutex_unlock(&s_wifi_lock);
     return ok;
 }
+
+void wifi_set_udp_rx_callback(uint16_t port, wifi_udp_rx_cb_t cb)
+{
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    s_udp_rx_port = port;
+    s_udp_rx_cb   = cb;
+    mutex_unlock(&s_wifi_lock);
+}
+
+void wifi_set_tun_callbacks(const uint8_t tun_ip[4], wifi_tun_tx_cb_t tx_cb,
+                            wifi_tun_resolve_cb_t resolve_cb)
+{
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    if (tun_ip) mem_copy(s_tun_ip, tun_ip, 4);
+    else mem_zero(s_tun_ip, 4);
+    s_tun_tx_cb      = tx_cb;
+    s_tun_resolve_cb = resolve_cb;
+    mutex_unlock(&s_wifi_lock);
+}
+
+void wifi_tun_inject_rx_ipv4(const uint8_t *ipv4_pkt, size_t len)
+{
+    if (!ipv4_pkt || len < 20u) return;
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    handle_ipv4_rx_locked(NULL, 0, ipv4_pkt, len, true);
+    mutex_unlock(&s_wifi_lock);
+}
+
 
 /* =========================================================================
  * Background Wi-Fi Daemon Task (Boot Auto-Connect + RX Polling + Reconnect)
@@ -2712,12 +3102,16 @@ static void wifi_daemon_task(void *arg)
                 dhcp_send_discover();
             }
         }
+        bool auth_failed = (s_status.disconnect_reason == 15u ||
+                            s_status.disconnect_reason == 202u ||
+                            s_status.disconnect_reason == 204u);
         bool need_reconnect = (s_wifi_inited &&
                                s_status.state == WIFI_STATE_DISCONNECTED &&
                                s_status.has_saved &&
                                s_status.auto_connect &&
                                !s_manual_disconnect &&
-                               (tick > 0 && (tick % 100u) == 0));
+                               !auth_failed &&
+                               (tick > 0 && (tick % 300u) == 0));
         mutex_unlock(&s_wifi_lock);
 
         if (need_reconnect) {
@@ -2734,5 +3128,5 @@ void wifi_boot_start(void)
     ensure_lock();
     if (s_daemon_started) return;
     s_daemon_started = true;
-    task_create_stack("wifid", wifi_daemon_task, NULL, TASK_PRIO_DEFAULT, 8192);
+    task_create_stack("wifid", wifi_daemon_task, NULL, TASK_PRIO_DEFAULT, 16384);
 }

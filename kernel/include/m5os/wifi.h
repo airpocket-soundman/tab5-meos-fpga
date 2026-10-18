@@ -86,11 +86,31 @@ bool wifi_forget(void);
 const char *wifi_auth_name(uint8_t authmode);
 const char *wifi_state_name(wifi_state_t state);
 
-/* Network / TCP client helpers over ESP_STA_IF */
+/* Network / TCP client helpers over ESP_STA_IF (supports up to WIFI_MAX_TCP_SOCKETS simultaneous connections) */
+#define WIFI_MAX_TCP_SOCKETS 4
+
 bool wifi_resolve_host(const char *host, uint8_t out_ip[4]);
+bool wifi_tcp_connect_sock(int sock, const uint8_t ip[4], uint16_t port, uint32_t timeout_ms);
+int  wifi_tcp_send_sock(int sock, const void *data, size_t len, uint32_t timeout_ms);
+int  wifi_tcp_recv_sock(int sock, void *buf, size_t max_len, uint32_t timeout_ms);
+void wifi_tcp_close_sock(int sock);
+bool wifi_tcp_is_connected_sock(int sock);
+
 bool wifi_tcp_connect(const uint8_t ip[4], uint16_t port, uint32_t timeout_ms);
 int  wifi_tcp_send(const void *data, size_t len, uint32_t timeout_ms);
 int  wifi_tcp_recv(void *buf, size_t max_len, uint32_t timeout_ms);
 void wifi_tcp_close(void);
 bool wifi_tcp_is_connected(void);
 
+/* UDP datagram & virtual tunnel (Tailscale 100.64.0.0/10) hooks */
+typedef void (*wifi_udp_rx_cb_t)(const uint8_t src_ip[4], uint16_t src_port,
+                                 uint16_t dst_port, const uint8_t *data, size_t len);
+typedef bool (*wifi_tun_tx_cb_t)(const uint8_t *ipv4_pkt, size_t len);
+typedef bool (*wifi_tun_resolve_cb_t)(const char *host, uint8_t out_ip[4]);
+
+bool wifi_udp_send(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port,
+                   const void *data, size_t len);
+void wifi_set_udp_rx_callback(uint16_t port, wifi_udp_rx_cb_t cb);
+void wifi_set_tun_callbacks(const uint8_t tun_ip[4], wifi_tun_tx_cb_t tx_cb,
+                            wifi_tun_resolve_cb_t resolve_cb);
+void wifi_tun_inject_rx_ipv4(const uint8_t *ipv4_pkt, size_t len);

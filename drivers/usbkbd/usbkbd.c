@@ -82,7 +82,7 @@ static int ctrl(uint8_t type, uint8_t req, uint16_t value, uint16_t index, void 
 
 static void emit(uint8_t usage, uint8_t mods)
 {
-    char buf[4];
+    char buf[6];
     hid_decode(usage, mods, s_caps, buf);
     if (buf[0]) { kconsole_inject(buf); s_stats.last_char = (unsigned char)buf[0]; }
 }

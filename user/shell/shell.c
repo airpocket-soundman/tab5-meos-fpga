@@ -13,7 +13,9 @@
 #include "../camera/camera_app.h"
 #include "../wifi/wifi_app.h"
 #include "../ssh/ssh_app.h"
+#include "../tailscale/tailscale_app.h"
 #include "../../drivers/lcd/fbcon.h"
+
 #define FILER_PAUSE_SETTLE_MS 100u
 #include "shell.h"
 #include <m5os/vfs.h>
@@ -671,7 +673,25 @@ static int cmd_ssh(int argc, char **argv)
     return ssh_cmd_main(argc, argv);
 }
 
+static int cmd_tailscale(int argc, char **argv)
+{
+#if M5OS_HAS_KEYBOARD
+    if (argc < 2 || sh_streq(argv[1], "gui")) {
+        fbcon_pause(true);
+        task_sleep(FILER_PAUSE_SETTLE_MS);
+        dq_clear();
+        tailscale_app_main();
+        dq_clear();
+        fbcon_pause(false);
+        return 0;
+    }
+#endif
+    tailscale_cmd_main(argc, argv);
+    return 0;
+}
+
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
+
 
 static int cmd_cd(int argc, char **argv)
 {
@@ -783,9 +803,12 @@ static const command_t s_commands[] = {
     { "snap",    cmd_snap,    "snap [FILE.bmp] capture one 640x360 BMP photo from camera" },
     { "keys",    cmd_keys,    "keyboard statistics (bring-up diagnostics)" },
 #endif
-    { "wifi",    cmd_wifi,    "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
-    { "ssh",     cmd_ssh,     "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },
-    { "apps",    cmd_apps,    "list running and finished applications" },
+    { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
+    { "ssh",       cmd_ssh,       "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },
+    { "tailscale", cmd_tailscale, "tailscale [up|status|ip|ping|down|gui]          Tailscale Mesh VPN" },
+    { "ts",        cmd_tailscale, "ts [up|status|ip|ping|down|gui]                 alias for tailscale" },
+    { "apps",      cmd_apps,      "list running and finished applications" },
+
     { "stop",    cmd_stop,    "stop APP_ID     stop an application and reclaim its resources" },
     { "pwd",     cmd_pwd,     "print working directory" },
     { "cd",      cmd_cd,      "cd [DIR]" },
@@ -1040,6 +1063,8 @@ void shell_task(void *arg)
     if (s_out < 0 || s_in < 0) { kprintf("shell: cannot open /dev/uart\n"); return; }
     int32_t forever = -1;
     vfs_ioctl(s_in, UART_IOC_SET_RX_TIMEOUT, &forever);      /* read() now waits for input */
+
+    tailscale_boot_start();
 
     sh_puts("\nMeOS " M5OS_VERSION_STRING "\nBoard: " M5OS_BOARD_NAME "\nCPU: " M5OS_CPU_NAME "\nScheduler: MeOS\nFreeRTOS: disabled\n\n");
     char line[LINE_MAX];

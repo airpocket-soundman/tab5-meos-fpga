@@ -246,21 +246,27 @@ wifi forget           # Erase saved Wi-Fi credentials from /home/wifi.cfg and ES
 
 ---
 
-## SSH-2 Client (`ssh`)
+## Multi-Tab Graphical SSH-2 Client (`ssh`)
 
 Implemented in `user/ssh/ssh_app.c` (RFC 4253 / 4252 / 4254 / 8731):
 * **Self-Contained Cryptography**: Built-in, zero-dependency implementations of **X25519** (`curve25519-sha256` & `curve25519-sha256@libssh.org`), **AES-128-CTR** (`aes128-ctr`), and **SHA-256 / HMAC-SHA-256** (`hmac-sha2-256`).
-* **Authentication**: Supports both `"password"` and `"keyboard-interactive"` (PAM) authentication, displaying the server's SSH-2 banner, host key type, and `SHA256` fingerprint upon connection.
-* **Interactive PTY & Single-Command Execution**:
-  * Requests an 80×45 `vt100` pseudo-terminal (`pty-req` + `shell`) with ANSI escape sequence handling in `fbcon.c` and OpenSSH-style `~.` escape sequence to disconnect.
-  * Supports non-interactive single-command execution (`exec`) when trailing command arguments are supplied.
-  * Remembers the last target (`user@host[:port]`) in `/home/ssh.cfg` and provides an interactive TUI connection modal when invoked as `ssh` (no arguments), `run ssh`, or by pressing `S` inside the Filer (`files`).
+* **Authentication & Saved Host/Password Manager (`/home/ssh_hosts.cfg`)**:
+  * Supports both `"password"` and `"keyboard-interactive"` (PAM) authentication, displaying the server's SSH-2 banner, host key type, and `SHA256` fingerprint upon connection.
+  * Automatically persists connected hosts (`user@host:port`) and their passwords in `/home/ssh_hosts.cfg` (up to 16 profiles).
+  * Launching `ssh` with no arguments (or `ssh gui`, `run ssh`, or pressing `S` in Filer) opens the **Graphical SSH Host & Tab Manager**, where you can select a saved host with `↑`/`↓` and press `Enter` to connect in the current tab or `T` to open in a new tab—without re-entering the password.
+  * Supports adding (`N`), editing (`E`), deleting (`D`), and revealing/masking passwords (`P`) directly in the GUI.
+* **4 Simultaneous SSH Tabs & Terminal Scrollback History**:
+  * Supports up to **4 concurrent SSH-2 sessions (`Tab 1` .. `Tab 4`)** backed by 4 independent TCP sockets (`wifi_tcp_*_sock`) and PSRAM-allocated VT100/ANSI color terminal buffers.
+  * Switch between active tabs at any time using `Ctrl-T`, `F1`–`F4`, `Ctrl-B 1`–`4`, `Ctrl-B n`/`p`, or via the Host Manager GUI (`Ctrl-O`).
+  * Each tab maintains a **256-line scrollback ring buffer** in PSRAM. Press `PgUp` or `Ctrl-U` (or `Ctrl-B u` / `Ctrl-B [`) to scroll through past terminal output (`↑`/`↓` for line scroll, `PgUp`/`PgDn` for page scroll, `Home`/`End` for top/bottom, `Enter`/`Esc` to return to live view).
 
 ```sh
-ssh user@192.168.1.10                        # Interactive SSH-2 shell (prompts for password)
-ssh user@example.com -p 2222                 # Connect to custom port with DNS resolution
-ssh user@192.168.1.10 -pw secret uname -a    # Execute a single remote command
-ssh                                          # Open interactive TUI connection dialog
+ssh                                          # Open Multi-Tab Graphical SSH Client & Host Manager
+ssh user@192.168.1.10                        # Connect from CLI (uses saved password if registered)
+ssh user@192.168.1.10 -pw secret uname -a    # Execute a single remote command & save profile
+ssh hosts                                    # List saved SSH hosts and password status
+ssh add user@192.168.1.10:22 secret          # Register/update a saved SSH host & password
+ssh del 1                                    # Delete saved SSH profile #1
 ```
 
 ---

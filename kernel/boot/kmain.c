@@ -428,7 +428,7 @@ void kernel_main(void)
     if (lcd_ok) fbcon_start();                       /* no touch: the whole screen is the console */
     keyboard_start();                                /* typed characters go to the shell like serial input */
 #endif
-    task_create_stack("shell", shell_task, NULL, TASK_PRIO_DEFAULT + 1, 6144);
+    task_create_stack("shell", shell_task, NULL, TASK_PRIO_DEFAULT + 1, 32768);
 #endif
     sched_start_preemption();
 

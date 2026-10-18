@@ -42,11 +42,29 @@ bool wifi_set_auto_connect(bool enable) { (void)enable; return false; }
 bool wifi_forget(void) { return false; }
 
 bool wifi_resolve_host(const char *host, uint8_t out_ip[4]) { (void)host; (void)out_ip; return false; }
+bool wifi_tcp_connect_sock(int sock, const uint8_t ip[4], uint16_t port, uint32_t timeout_ms) { (void)sock; (void)ip; (void)port; (void)timeout_ms; return false; }
+int  wifi_tcp_send_sock(int sock, const void *data, size_t len, uint32_t timeout_ms) { (void)sock; (void)data; (void)len; (void)timeout_ms; return -1; }
+int  wifi_tcp_recv_sock(int sock, void *buf, size_t max_len, uint32_t timeout_ms) { (void)sock; (void)buf; (void)max_len; (void)timeout_ms; return -1; }
+void wifi_tcp_close_sock(int sock) { (void)sock; }
+bool wifi_tcp_is_connected_sock(int sock) { (void)sock; return false; }
+
 bool wifi_tcp_connect(const uint8_t ip[4], uint16_t port, uint32_t timeout_ms) { (void)ip; (void)port; (void)timeout_ms; return false; }
 int  wifi_tcp_send(const void *data, size_t len, uint32_t timeout_ms) { (void)data; (void)len; (void)timeout_ms; return -1; }
 int  wifi_tcp_recv(void *buf, size_t max_len, uint32_t timeout_ms) { (void)buf; (void)max_len; (void)timeout_ms; return -1; }
 void wifi_tcp_close(void) { }
 bool wifi_tcp_is_connected(void) { return false; }
+
+bool wifi_udp_send(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port, const void *data, size_t len)
+{
+    (void)dst_ip; (void)src_port; (void)dst_port; (void)data; (void)len;
+    return false;
+}
+void wifi_set_udp_rx_callback(uint16_t port, wifi_udp_rx_cb_t cb) { (void)port; (void)cb; }
+void wifi_set_tun_callbacks(const uint8_t tun_ip[4], wifi_tun_tx_cb_t tx_cb, wifi_tun_resolve_cb_t resolve_cb)
+{
+    (void)tun_ip; (void)tx_cb; (void)resolve_cb;
+}
+void wifi_tun_inject_rx_ipv4(const uint8_t *ipv4_pkt, size_t len) { (void)ipv4_pkt; (void)len; }
 
 void wifi_get_status(wifi_status_t *out)
 {
@@ -55,3 +73,4 @@ void wifi_get_status(wifi_status_t *out)
     out->state = WIFI_STATE_UNINIT;
     ksnprintf(out->last_msg, sizeof out->last_msg, "Wi-Fi driver not supported on this board");
 }
+

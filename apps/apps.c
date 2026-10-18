@@ -19,8 +19,8 @@ void wifi_main(void *arg);
 void ssh_main(void *arg);
 
 #define APP_STACK_DEFAULT  4096u
-#define APP_STACK_GUI      6144u
-#define APP_STACK_CAMERA   8192u
+#define APP_STACK_GUI      8192u
+#define APP_STACK_CAMERA   24576u
 #define APP_PRIO_DEFAULT   TASK_PRIO_DEFAULT
 
 /* name, entry, permissions, stack, priority, description */

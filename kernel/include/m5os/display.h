@@ -24,5 +24,6 @@ void display_fill_rect(int x, int y, int w, int h, uint16_t color);
 void display_draw_rect(int x, int y, int w, int h, uint16_t color);   /* outline */
 void display_draw_char(int x, int y, char c, uint16_t fg, uint16_t bg, int scale);
 void display_draw_text(int x, int y, const char *s, uint16_t fg, uint16_t bg, int scale);
+void display_draw_codepoints(int x, int y, const uint16_t *cps, int count, uint16_t fg, uint16_t bg, int scale);
 void display_draw_bitmap(int x, int y, int w, int h, const uint16_t *rgb565);
 void display_draw_bitmap_scaled(int x, int y, int w, int h, const uint16_t *rgb565, int scale);

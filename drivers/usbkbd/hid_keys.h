@@ -10,5 +10,5 @@
 #define HID_USAGE_FIRST 0x04          /* 'a'; 0..3 mean "no key" / rollover error */
 #define HID_USAGE_CAPSLOCK 0x39
 
-/* Fills out[0..3] with the bytes the console should receive (NUL-terminated; empty if the key prints nothing). */
-void hid_decode(uint8_t usage, uint8_t mods, bool caps_lock, char out[4]);
+/* Fills out[0..5] with the bytes the console should receive (NUL-terminated; empty if the key prints nothing). */
+void hid_decode(uint8_t usage, uint8_t mods, bool caps_lock, char out[6]);

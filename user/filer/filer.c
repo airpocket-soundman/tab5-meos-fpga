@@ -4,7 +4,9 @@
 #include "../camera/camera_app.h"
 #include "../wifi/wifi_app.h"
 #include "../ssh/ssh_app.h"
+#include "../tailscale/tailscale_app.h"
 #include "../../drivers/lcd/fbcon.h"
+
 #include <m5os/display.h>
 #include <m5os/kmalloc.h>
 #include <m5os/vfs.h>
@@ -539,7 +541,17 @@ void filer_run(const char *start_dir)
             reload(s_n ? s_ent[s_sel].name : NULL);
             break;
         }
+        case 't': case 'T': {                                       /* launch Tailscale VPN manager */
+            tailscale_app_main();
+            fbcon_pause(true);
+            task_sleep(100);
+            dq_clear();
+            s_full = true;
+            reload(s_n ? s_ent[s_sel].name : NULL);
+            break;
+        }
         case 'v': case 'V': if (s_n && !s_ent[s_sel].dir) { view_file(&s_ent[s_sel]); s_full = true; } break;
+
         case ' ':
             if (s_n && s_ent[s_sel].name[0] != '.') { s_mark[s_sel] = !s_mark[s_sel]; move_to(s_sel + 1); }
             break;
