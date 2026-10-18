@@ -21,6 +21,10 @@ static volatile bool s_paused;
 static bool s_cursor_on;
 static int  s_cursor_row = -1, s_cursor_col;
 
+static uint8_t s_esc_state; /* 0=normal, 1=saw ESC, 2=in CSI '[', 3=in OSC ']' */
+static char    s_csi_buf[24];
+static uint8_t s_csi_len;
+
 static void clear_row(int r)
 {
     for (int c = 0; c < COLS; c++) s_scr[r][c] = ' ';
@@ -36,12 +40,69 @@ static void newline(void)
     clear_row(ROWS - 1);
 }
 
+static int parse_csi_num(const char *s, int def_val)
+{
+    int v = 0;
+    bool any = false;
+    while (*s >= '0' && *s <= '9') {
+        v = v * 10 + (*s - '0');
+        any = true;
+        s++;
+    }
+    return (any && v > 0) ? v : def_val;
+}
+
 static void feed(char ch)
 {
-    if (ch == '\r') return;
+    unsigned char u = (unsigned char)ch;
+    if (s_esc_state == 1) {
+        if (ch == '[') { s_esc_state = 2; s_csi_len = 0; return; }
+        if (ch == ']') { s_esc_state = 3; return; }
+        s_esc_state = 0;
+        return;
+    }
+    if (s_esc_state == 2) {
+        if (u >= 0x40 && u <= 0x7E) {
+            s_csi_buf[s_csi_len] = 0;
+            int n = parse_csi_num(s_csi_buf, 1);
+            if (ch == 'J' && s_csi_buf[0] == '2') {
+                for (int r = 0; r < ROWS; r++) clear_row(r);
+                s_row = 0; s_col = 0;
+            } else if (ch == 'H' || ch == 'f') {
+                if (s_csi_len == 0) { s_row = 0; s_col = 0; }
+            } else if (ch == 'K') {
+                int start_c = (s_csi_buf[0] == '2') ? 0 : s_col;
+                int end_c   = (s_csi_buf[0] == '1') ? (s_col + 1 < COLS ? s_col + 1 : COLS) : COLS;
+                for (int c = start_c; c < end_c; c++) s_scr[s_row][c] = ' ';
+                s_dirty[s_row] = true;
+            } else if (ch == 'A') {
+                s_row -= n; if (s_row < 0) s_row = 0;
+            } else if (ch == 'B') {
+                s_row += n; if (s_row >= ROWS) s_row = ROWS - 1;
+            } else if (ch == 'C') {
+                s_col += n; if (s_col >= COLS) s_col = COLS - 1;
+            } else if (ch == 'D') {
+                s_col -= n; if (s_col < 0) s_col = 0;
+            } else if (ch == 'G') {
+                s_col = n - 1;
+                if (s_col < 0) s_col = 0;
+                if (s_col >= COLS) s_col = COLS - 1;
+            }
+            s_esc_state = 0;
+            return;
+        }
+        if (s_csi_len + 1 < sizeof(s_csi_buf)) s_csi_buf[s_csi_len++] = ch;
+        return;
+    }
+    if (s_esc_state == 3) {
+        if (u == 0x07 || ch == '\\') s_esc_state = 0;
+        return;
+    }
+    if (u == 0x1B) { s_esc_state = 1; return; }
+    if (ch == '\r') { s_col = 0; return; }
     if (ch == '\n') { newline(); return; }
     if (ch == '\b') { if (s_col > 0) s_col--; return; }
-    if ((unsigned char)ch < 0x20 || (unsigned char)ch > 0x7E) return;
+    if (u < 0x20 || u > 0x7E) return;
     if (s_col >= COLS) newline();
     s_scr[s_row][s_col++] = ch;
     s_dirty[s_row] = true;
@@ -83,9 +144,12 @@ static void fbcon_task(void *arg)
         flush_rows();
 
         uint32_t now = (uint32_t)(hal_time_now_us() / 1000u);
-        if (now - last_blink >= BLINK_MS) { blink = !blink; last_blink = now; moved = true; }
-        if (moved || s_cursor_row != s_row || s_cursor_col != (s_col < COLS ? s_col : COLS - 1)) {
-            if (s_cursor_row >= 0 && s_cursor_row != s_row && s_cursor_on) {   /* erase a cursor left on another row */
+        if (moved) { blink = true; last_blink = now; }
+        else if (now - last_blink >= BLINK_MS) { blink = !blink; last_blink = now; moved = true; }
+
+        int cur_c = s_col < COLS ? s_col : COLS - 1;
+        if (moved || s_cursor_row != s_row || s_cursor_col != cur_c) {
+            if (s_cursor_row >= 0 && (s_cursor_row != s_row || s_cursor_col != cur_c) && s_cursor_on) {
                 char under[2] = { s_scr[s_cursor_row][s_cursor_col], 0 };
                 display_draw_text(s_cursor_col * CELL, s_cursor_row * CELL, under, COL_FG, COL_BG, SCALE);
             }

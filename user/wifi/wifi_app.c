@@ -149,7 +149,7 @@ static void draw_header(const wifi_status_t *st)
         dq_window(0, 0, w, HEADER_ROWS);
     }
 
-    draw_padded_color(2, 1, 26, "M5OS WI-FI SETTINGS", COLOR_CYAN, COLOR_BLACK);
+    draw_padded_color(2, 1, 26, "MeOS WI-FI SETTINGS", COLOR_CYAN, COLOR_BLACK);
 
     /* Status badge + signal indicator */
     if (st->state == WIFI_STATE_CONNECTED) {

@@ -159,6 +159,7 @@ void kputs(const char *s)
 {
     bool l = console_lock();
     while (*s) con_out(*s++, NULL);
+    hal_console_flush();
     console_unlock(l);
 }
 
@@ -166,6 +167,7 @@ void kconsole_write(const char *buf, size_t n)
 {
     bool l = console_lock();
     for (size_t i = 0; i < n; i++) con_out(buf[i], NULL);
+    hal_console_flush();
     console_unlock(l);
 }
 
@@ -175,6 +177,7 @@ void kprintf(const char *fmt, ...)
     va_start(ap, fmt);
     bool l = console_lock();
     vformat(con_out, NULL, fmt, ap);
+    hal_console_flush();
     console_unlock(l);
     va_end(ap);
 }

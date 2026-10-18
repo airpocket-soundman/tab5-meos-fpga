@@ -315,7 +315,7 @@ void camera_app_run(const char *save_dir, char *last_saved_name)
 
     dq_clear();
     dq_window(0, 0, cols, HEADER_ROWS);
-    dq_text(2, 1, "M5 CAMERA");
+    dq_text(2, 1, "MeOS CAMERA");
     padded_line(14, 1, "Initializing SC202CS MIPI-CSI + ISP...");
     dq_window(0, HEADER_ROWS, cols, mid_rows);
     dq_window(0, fy, cols, FOOTER_ROWS);
@@ -339,7 +339,7 @@ void camera_app_run(const char *save_dir, char *last_saved_name)
     for (;;) {
         if (full_redraw) {
             dq_window(0, 0, cols, HEADER_ROWS);
-            dq_text(2, 1, "M5 CAMERA");
+            dq_text(2, 1, "MeOS CAMERA");
             dq_window(0, HEADER_ROWS, cols, mid_rows);
             dq_window(0, fy, cols, FOOTER_ROWS);
             dq_text(2, fy + 1, "Space/Enter/S:Capture  Z:Size  M:Mirror  I:Flip  A:AutoExp  Up/Dn:Exp  L/R:Gain  Q:Quit");

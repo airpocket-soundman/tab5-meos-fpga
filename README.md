@@ -1,7 +1,7 @@
 # MeOS
 
 An educational and experimental lightweight operating system built from scratch for M5Stack devices (**M5Stack CoreS3**, **M5Cardputer**, and **M5Stack Tab5**).
-M5OS implements its own **preemptive/cooperative scheduler, task management, timer, IPC message queues, memory allocator, VFS, custom filesystem (M5FS), dynamic binary loader (M5EX), GUI/TUI window system, camera driver, and SDIO Wi-Fi stack**—without ever starting FreeRTOS.
+MeOS implements its own **preemptive/cooperative scheduler, task management, timer, IPC message queues, memory allocator, VFS, custom filesystem (M5FS), dynamic binary loader (M5EX), GUI/TUI window system, camera driver, SDIO Wi-Fi stack, and SSH-2 client**—without ever starting FreeRTOS.
 
 ---
 
@@ -17,7 +17,7 @@ M5OS implements its own **preemptive/cooperative scheduler, task management, tim
 | 5 | Device abstraction (`device_open/read/write/ioctl`), blocking mutex, `uart`/`display`/`buttons` | ✅ Verified on hardware |
 | 6 | M5FS custom filesystem + SD block device | ✅ M5FS verified on hardware over RAM disk |
 | 7 | VFS (`/dev` = devfs, `/` = M5FS), mount table | ✅ Verified on hardware (`VFSTEST ALL PASS`) |
-| 8 | Interactive Shell (`help ps kill ls cat echo mem uptime run` + file & network utilities) | ✅ Verified on hardware |
+| 8 | Interactive Shell (`help history ps kill ls cat echo mem uptime run` + cursor-key history & line editing) | ✅ Verified on hardware |
 | 9 | App lifecycle (`app_start/stop/list`, permissions, automatic resource reclamation) | ✅ Verified on hardware (`APPTEST ALL PASS`) |
 | 10 | App loader (`M5EX` relocatable binary format, dynamic loading over serial/FS) | ✅ Verified on hardware (`M5EXTEST ALL PASS` + host push & run) |
 | 11 | IPC (fixed-size per-task mailboxes, blocking/timeout send & receive) | ✅ Verified on hardware (`MSGTEST ALL PASS`) |
@@ -25,6 +25,7 @@ M5OS implements its own **preemptive/cooperative scheduler, task management, tim
 | 13 | TUI Window System (`dqwin`), Full-Screen Filer (`files`), and Text Editor (`edit`) | ✅ Verified on M5Cardputer & M5Stack Tab5 |
 | 14 | Camera App (`camera` / `snap`, MIPI-CSI SC202CS + ISP) & Filer BMP Image Viewer | ✅ Verified on M5Stack Tab5 |
 | 15 | Graphical Wi-Fi Manager (`wifi`) & FreeRTOS-free ESP32-C6 SDIO / ESP-Hosted Stack | ✅ Verified on M5Stack Tab5 |
+| 16 | SSH-2 Client (`ssh`, `curve25519-sha256` / `aes128-ctr` / `hmac-sha2-256`) + TCP/DNS Stack | ✅ Verified on M5Stack Tab5 |
 
 ---
 
@@ -35,9 +36,9 @@ M5OS implements its own **preemptive/cooperative scheduler, task management, tim
 | **SoC** | ESP32-S3 (Xtensa LX7) + 8 MB PSRAM, 16 MB Flash | ESP32-S3FN8: 8 MB Flash, **no PSRAM** | **ESP32-P4 (Dual-core RISC-V @ 400 MHz)** + 32 MB PSRAM, 16 MB Flash + **ESP32-C6** co-processor |
 | **Display** | ILI9342C 320×240 (SPI, via AXP2101/AW9523) | ST7789 135×240 in landscape (240×135) | ST7121 / ILI9881C 720×1280 MIPI-DSI in landscape (**1280×720**) |
 | **Input** | Capacitive touch (FT6336U) | **Built-in Keyboard** (74HC138 matrix / TCA8418 I2C) | **Tab5 Keyboard** (I2C HID `0x6D`) or USB-A HID boot keyboard |
-| **UI Mode** | Touch GUI (Window Manager + Launcher) | Full-screen console (`fbcon`) + TUI apps (`dqwin`) | High-res console (`fbcon` 80×22) + TUI apps (`files`, `edit`, `camera`, `wifi`) |
+| **UI Mode** | Touch GUI (Window Manager + Launcher) | Full-screen console (`fbcon`) + TUI apps (`dqwin`) | High-res console (`fbcon` 80×45) + TUI apps (`files`, `edit`, `camera`, `wifi`, `ssh`) |
 | **Camera** | — | — | **SC202CS** 1600×1200 MIPI-CSI + Hardware ISP + Auto-Gain/White-Balance |
-| **Wi-Fi** | — | — | **ESP32-C6** over SDIO Slot 1 (ESP-Hosted RPC + DHCPv4/ARP/ICMP) |
+| **Wi-Fi / Net** | — | — | **ESP32-C6** over SDIO Slot 1 (DHCPv4/ARP/ICMP/DNS/TCP + **SSH-2 Client**) |
 | **Build Command** | `tools/build.sh cores3` | `tools/build.sh cardputer` | `tools/build.sh tab5` |
 
 ```sh
@@ -89,7 +90,7 @@ M5OS_SELFTEST=1 idf.py build                                     # Run full regr
                                      __wrap_esp_startup_start_app()  kernel/boot/boot_hook.c
                                               │
                                               ▼
- ┌──────────────────────────────────── M5OS ────────────────────────────────────┐
+ ┌──────────────────────────────────── MeOS ────────────────────────────────────┐
  │ user/    shell  launcher  filer  edit  camera  wifi   apps/  hello clock ... │
  │ ──────────────────────────── Syscall-level APIs ──────────────────────────── │
  │ kernel/  task ─ scheduler ─ timer ─ memory ─ ipc ─ irq                       │
@@ -99,7 +100,7 @@ M5OS_SELFTEST=1 idf.py build                                     # Run full regr
  └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-`kernel/` only depends on the abstract declarations in `kernel/include/m5os/arch.h` and `hal_*.h`. Porting M5OS to another SoC architecture only requires implementing `hal/<chip>/`.
+`kernel/` only depends on the abstract declarations in `kernel/include/m5os/arch.h` and `hal_*.h`. Porting MeOS to another SoC architecture only requires implementing `hal/<chip>/`.
 
 ---
 
@@ -181,6 +182,7 @@ Implemented in `user/filer/filer.c` (inspired by VZ Editor's filer). Run `files`
 | `P` | **Image Viewer** (renders 24-bit `.bmp` photos full-screen) |
 | `A` | Launch **Camera App** directly from Filer and refresh directory on exit |
 | `W` | Launch **Graphical Wi-Fi Settings App** directly from Filer |
+| `S` | Launch **SSH-2 Client** interactive connection dialog directly from Filer |
 | `E` / `F` | Open file in Text Editor / Create new file in Text Editor |
 | `Q` / `ESC` | Exit Filer |
 
@@ -212,7 +214,7 @@ Implemented in `drivers/wifi/wifi_tab5.c` and `user/wifi/wifi_app.c` for M5Stack
 ### FreeRTOS-Free ESP32-C6 SDIO & ESP-Hosted Driver (`drivers/wifi/wifi_tab5.c`)
 * **Polled SDMMC Slot 1 Driver**: Drives ESP32-P4's SDMMC Host Slot 1 (`CLK=GPIO12`, `CMD=GPIO13`, `D0..D3=GPIO11..8`, `C6_RST=GPIO15`) in 4-bit 20 MHz SDIO mode using polled IDMAC descriptors and explicit L1/L2 cache synchronization (`esp_cache_msync`)—with zero FreeRTOS dependencies.
 * **ESP-Hosted-MCU Protocol**: Implements the 12-byte `esp_payload_header` streaming transport, slave token flow control, `ESP_PRIV_IF` capability handshake, and a lightweight Protobuf wire-format encoder/decoder over `ESP_SERIAL_IF` (`RPCRsp` / `RPCEvt`).
-* **Built-in DHCPv4, ARP & ICMP Stack (`ESP_STA_IF`)**: Handles Ethernet II frames directly over SDIO Function 1, automatically acquiring an IPv4 address, netmask, and gateway via DHCP (`Discover` → `Offer` → `Request` → `Ack`) and responding to ARP requests and ICMP Echo (`ping`) packets on the local network.
+* **Built-in DHCPv4, ARP, ICMP, UDP DNS & TCP Client Stack (`ESP_STA_IF`)**: Handles Ethernet II frames directly over SDIO Function 1, automatically acquiring an IPv4 address, netmask,gateway, and DNS server via DHCP (`Discover` → `Offer` → `Request` → `Ack`), resolving hostnames via UDP DNS (`wifi_resolve_host`), and providing a reliable TCP client state machine (`wifi_tcp_connect/send/recv/close`) with a 16 KB receive ring buffer and retransmission.
 * **Persistent Credentials & Auto-Connect (`wifid`)**:
   * Saves credentials both to `/home/wifi.cfg` (`ssid=...`, `pass=...`, `auto=1`) and to the **ESP32-C6's own NVS flash** (`RPC_REQ_WIFI_SET_STORAGE = FLASH`), so remembered Wi-Fi networks survive power cycles even when running on a volatile RAM disk.
   * The background `wifid` kernel task automatically connects to the saved network at boot and reconnects if the link drops (unless manually disconnected by the user).
@@ -240,6 +242,25 @@ wifi scan             # Scan and print nearby Wi-Fi networks in a formatted tabl
 wifi connect <SSID> [PASSWORD]  # Connect to an AP from the CLI and save credentials
 wifi auto [on|off]    # Enable or disable automatic connection on boot
 wifi forget           # Erase saved Wi-Fi credentials from /home/wifi.cfg and ESP32-C6 NVS
+```
+
+---
+
+## SSH-2 Client (`ssh`)
+
+Implemented in `user/ssh/ssh_app.c` (RFC 4253 / 4252 / 4254 / 8731):
+* **Self-Contained Cryptography**: Built-in, zero-dependency implementations of **X25519** (`curve25519-sha256` & `curve25519-sha256@libssh.org`), **AES-128-CTR** (`aes128-ctr`), and **SHA-256 / HMAC-SHA-256** (`hmac-sha2-256`).
+* **Authentication**: Supports both `"password"` and `"keyboard-interactive"` (PAM) authentication, displaying the server's SSH-2 banner, host key type, and `SHA256` fingerprint upon connection.
+* **Interactive PTY & Single-Command Execution**:
+  * Requests an 80×45 `vt100` pseudo-terminal (`pty-req` + `shell`) with ANSI escape sequence handling in `fbcon.c` and OpenSSH-style `~.` escape sequence to disconnect.
+  * Supports non-interactive single-command execution (`exec`) when trailing command arguments are supplied.
+  * Remembers the last target (`user@host[:port]`) in `/home/ssh.cfg` and provides an interactive TUI connection modal when invoked as `ssh` (no arguments), `run ssh`, or by pressing `S` inside the Filer (`files`).
+
+```sh
+ssh user@192.168.1.10                        # Interactive SSH-2 shell (prompts for password)
+ssh user@example.com -p 2222                 # Connect to custom port with DNS resolution
+ssh user@192.168.1.10 -pw secret uname -a    # Execute a single remote command
+ssh                                          # Open interactive TUI connection dialog
 ```
 
 ---

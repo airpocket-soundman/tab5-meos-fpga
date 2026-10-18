@@ -131,13 +131,14 @@ static void emit(const keydef_t *k, bool shift, bool fn, bool ctrl)
 {
     uint8_t c = fn ? k->f : (shift ? k->s : k->n);
     if (ctrl && k->n >= 'a' && k->n <= 'z') c = (uint8_t)(k->n - 'a' + 1);          /* Ctrl-C = 0x03, ... */
-    char buf[4] = { 0 };
+    char buf[5] = { 0 };
     switch (c) {
     case K_NONE: case K_OPT: return;
     case K_ENTER: buf[0] = '\r'; break;
-    case K_BKSP: case K_DEL: buf[0] = 0x7F; break;
-    case K_TAB:  buf[0] = '\t'; break;
-    case K_ESC:  buf[0] = 0x1B; break;
+    case K_BKSP:  buf[0] = 0x7F; break;
+    case K_DEL:   buf[0] = 0x1B; buf[1] = '['; buf[2] = '3'; buf[3] = '~'; break;
+    case K_TAB:   buf[0] = '\t'; break;
+    case K_ESC:   buf[0] = 0x1B; break;
     case K_UP: case K_DOWN: case K_LEFT: case K_RIGHT:
         buf[0] = 0x1B; buf[1] = '['; buf[2] = (char)(c == K_UP ? 'A' : c == K_DOWN ? 'B' : c == K_RIGHT ? 'C' : 'D'); break;
     default:

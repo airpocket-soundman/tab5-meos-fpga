@@ -12,6 +12,7 @@
 #include "../edit/edit.h"
 #include "../camera/camera_app.h"
 #include "../wifi/wifi_app.h"
+#include "../ssh/ssh_app.h"
 #include "../../drivers/lcd/fbcon.h"
 #define FILER_PAUSE_SETTLE_MS 100u
 #include "shell.h"
@@ -35,7 +36,7 @@
 #endif
 
 #define LINE_MAX     128
-#define ARG_MAX      8
+#define ARG_MAX      16
 #define OUT_BUF      160
 #define CAT_CHUNK    128
 #define PS_MAX       TASK_MAX
@@ -665,6 +666,11 @@ static int cmd_wifi(int argc, char **argv)
     return 1;
 }
 
+static int cmd_ssh(int argc, char **argv)
+{
+    return ssh_cmd_main(argc, argv);
+}
+
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
 
 static int cmd_cd(int argc, char **argv)
@@ -705,41 +711,89 @@ static int cmd_mount(int argc, char **argv)
     return 0;
 }
 
+/* ----------------------------------------------------------- line editing */
+
+#define HIST_MAX     32
+#define CH_CTRL_A    0x01
+#define CH_CTRL_B    0x02
+#define CH_CTRL_D    0x04
+#define CH_CTRL_E    0x05
+#define CH_CTRL_F    0x06
+#define CH_CTRL_K    0x0B
+#define CH_CTRL_N    0x0E
+#define CH_CTRL_P    0x10
+
+static char s_history[HIST_MAX][LINE_MAX];
+static int  s_hist_count = 0;
+
+static bool str_eq(const char *a, const char *b) { while (*a && *a == *b) { a++; b++; } return *a == *b; }
+
+static int str_copy_len(char *dst, const char *src, int max_len)
+{
+    int i = 0;
+    while (src[i] && i < max_len - 1) {
+        dst[i] = src[i];
+        i++;
+    }
+    dst[i] = 0;
+    return i;
+}
+
+static void history_add(const char *line)
+{
+    int i = 0;
+    while (line[i] == ' ' || line[i] == '\t') i++;
+    if (!line[i]) return;
+    if (s_hist_count > 0 && str_eq(line, s_history[(s_hist_count - 1) % HIST_MAX])) return;
+    str_copy_len(s_history[s_hist_count % HIST_MAX], line, LINE_MAX);
+    s_hist_count++;
+}
+
+static int cmd_history(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    int first = (s_hist_count > HIST_MAX) ? (s_hist_count - HIST_MAX) : 0;
+    for (int i = first; i < s_hist_count; i++) {
+        SH_PRINTF("  %3d  %s\n", i + 1, s_history[i % HIST_MAX]);
+    }
+    return 0;
+}
+
 static const command_t s_commands[] = {
-    { "help",   cmd_help,   "list commands" },
-    { "ps",     cmd_ps,     "list tasks" },
-    { "kill",   cmd_kill,   "kill PID        terminate one task (an app: its owner task)" },
-    { "ls",     cmd_ls,     "ls [PATH]       list a directory (/dev lists devices)" },
-    { "cat",    cmd_cat,    "cat FILE...     print files" },
-    { "echo",   cmd_echo,   "echo TEXT [> FILE | >> FILE]" },
-    { "mem",    cmd_mem,    "heap usage" },
-    { "uptime", cmd_uptime, "time since boot" },
-    { "run",    cmd_run,    "run [APP]       start an application (no argument: list them)" },
-    { "put",    cmd_put,    "put PATH        receive a file as base64 (see tools/m5ex_push.py)" },
-    { "send",   cmd_send,   "send PID TEXT   send a message to a task" },
-    { "recv",   cmd_recv,   "recv [MS]       receive messages (waits up to MS, default 1000)" },
-    { "tap",    cmd_tap,    "tap X Y         simulate a touch on the screen" },
-    { "gui",    cmd_gui,    "list windows (front first)" },
+    { "help",    cmd_help,    "list commands" },
+    { "history", cmd_history, "show command history (or use Up/Down arrows)" },
+    { "ps",      cmd_ps,      "list tasks" },
+    { "kill",    cmd_kill,    "kill PID        terminate one task (an app: its owner task)" },
+    { "ls",      cmd_ls,      "ls [PATH]       list a directory (/dev lists devices)" },
+    { "cat",     cmd_cat,     "cat FILE...     print files" },
+    { "echo",    cmd_echo,    "echo TEXT [> FILE | >> FILE]" },
+    { "mem",     cmd_mem,     "heap usage" },
+    { "uptime",  cmd_uptime,  "time since boot" },
+    { "run",     cmd_run,     "run [APP]       start an application (no argument: list them)" },
+    { "put",     cmd_put,     "put PATH        receive a file as base64 (see tools/m5ex_push.py)" },
+    { "send",    cmd_send,    "send PID TEXT   send a message to a task" },
+    { "recv",    cmd_recv,    "recv [MS]       receive messages (waits up to MS, default 1000)" },
+    { "tap",     cmd_tap,     "tap X Y         simulate a touch on the screen" },
+    { "gui",     cmd_gui,     "list windows (front first)" },
 #if M5OS_HAS_KEYBOARD
-    { "files",  cmd_files,  "files [DIR]     full-screen file manager (filer)" },
-    { "edit",   cmd_edit,   "edit FILE       full-screen text editor (^S save, ^Q quit)" },
-    { "camera", cmd_camera, "camera [DIR]    full-screen camera viewfinder (Space:capture, Q:quit)" },
-    { "cam",    cmd_camera, "cam [DIR]       alias for camera" },
-    { "snap",   cmd_snap,   "snap [FILE.bmp] capture one 640x360 BMP photo from camera" },
-    { "keys",   cmd_keys,   "keyboard statistics (bring-up diagnostics)" },
+    { "files",   cmd_files,   "files [DIR]     full-screen file manager (filer)" },
+    { "edit",    cmd_edit,    "edit FILE       full-screen text editor (^S save, ^Q quit)" },
+    { "camera",  cmd_camera,  "camera [DIR]    full-screen camera viewfinder (Space:capture, Q:quit)" },
+    { "cam",     cmd_camera,  "cam [DIR]       alias for camera" },
+    { "snap",    cmd_snap,    "snap [FILE.bmp] capture one 640x360 BMP photo from camera" },
+    { "keys",    cmd_keys,    "keyboard statistics (bring-up diagnostics)" },
 #endif
-    { "wifi",   cmd_wifi,   "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
-    { "apps",   cmd_apps,   "list running and finished applications" },
-    { "stop",   cmd_stop,   "stop APP_ID     stop an application and reclaim its resources" },
-    { "pwd",    cmd_pwd,    "print working directory" },
-    { "cd",     cmd_cd,     "cd [DIR]" },
-    { "mkdir",  cmd_mkdir,  "mkdir DIR" },
-    { "rm",     cmd_rm,     "rm FILE|EMPTYDIR" },
-    { "mount",  cmd_mount,  "show mounts and free space" },
+    { "wifi",    cmd_wifi,    "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
+    { "ssh",     cmd_ssh,     "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },
+    { "apps",    cmd_apps,    "list running and finished applications" },
+    { "stop",    cmd_stop,    "stop APP_ID     stop an application and reclaim its resources" },
+    { "pwd",     cmd_pwd,     "print working directory" },
+    { "cd",      cmd_cd,      "cd [DIR]" },
+    { "mkdir",   cmd_mkdir,   "mkdir DIR" },
+    { "rm",      cmd_rm,      "rm FILE|EMPTYDIR" },
+    { "mount",   cmd_mount,   "show mounts and free space" },
     { NULL, NULL, NULL },
 };
-
-/* ----------------------------------------------------------- line editing */
 
 static int read_byte(void)
 {
@@ -756,38 +810,191 @@ static void prompt(void)
     sh_puts("> ");
 }
 
+static void refresh_line(const char *line, int len, int pos)
+{
+    char buf[LINE_MAX * 2 + 16];
+    int n = 0;
+    buf[n++] = '\r';
+    buf[n++] = '>';
+    buf[n++] = ' ';
+    for (int i = 0; i < len && n < (int)sizeof(buf) - 8; i++) {
+        buf[n++] = line[i];
+    }
+    buf[n++] = '\x1b';
+    buf[n++] = '[';
+    buf[n++] = 'K';
+    for (int i = len; i > pos && n < (int)sizeof(buf) - 1; i--) {
+        buf[n++] = '\b';
+    }
+    sh_write(buf, (size_t)n);
+}
+
 /* Returns the line length, or -1 for a cancelled line (Ctrl-C).  echo=false is used for `put`. */
 static int read_line_ex(char *line, bool echo)
 {
     int len = 0;
+    int pos = 0;
     int last = 0;
+    int hist_pos = s_hist_count;
+    int first_hist = (s_hist_count > HIST_MAX) ? (s_hist_count - HIST_MAX) : 0;
+    char saved_line[LINE_MAX];
+    saved_line[0] = 0;
+    line[0] = 0;
+
     for (;;) {
         int c = read_byte();
         int prev = last;
         last = c;
         if (c == '\n' && prev == '\r') continue;             /* CR LF from the terminal: one Enter */
-        if (c == '\r' || c == '\n') { if (echo) sh_puts("\n"); line[len] = 0; return len; }
-        if (c == CH_CTRL_C) { if (echo) sh_puts("^C\n"); return -1; }
+        if (c == '\r' || c == '\n') {
+            if (echo) sh_puts("\n");
+            line[len] = 0;
+            if (echo && len > 0) history_add(line);
+            return len;
+        }
+        if (c == CH_CTRL_C) { if (echo) sh_puts("^C\n"); line[0] = 0; return -1; }
+
         if (c == CH_BACKSPACE || c == CH_DEL) {
-            if (len > 0) { len--; if (echo) sh_puts("\b \b"); }
+            if (pos > 0) {
+                for (int i = pos - 1; i < len - 1; i++) line[i] = line[i + 1];
+                pos--;
+                len--;
+                line[len] = 0;
+                if (echo) {
+                    if (pos == len) sh_puts("\b \b");
+                    else            refresh_line(line, len, pos);
+                }
+            }
+            continue;
+        }
+        if (c == CH_CTRL_D) {
+            if (pos < len) {
+                for (int i = pos; i < len - 1; i++) line[i] = line[i + 1];
+                len--;
+                line[len] = 0;
+                if (echo) refresh_line(line, len, pos);
+            }
             continue;
         }
         if (c == CH_CTRL_U) {
-            while (len > 0) { len--; if (echo) sh_puts("\b \b"); }
+            if (len > 0) {
+                len = 0;
+                pos = 0;
+                line[0] = 0;
+                if (echo) refresh_line(line, len, pos);
+            }
             continue;
         }
-        if (c == CH_ESC) {                                   /* swallow ESC [ x  /  ESC O x */
+        if (c == CH_CTRL_K) {
+            if (pos < len) {
+                len = pos;
+                line[len] = 0;
+                if (echo) refresh_line(line, len, pos);
+            }
+            continue;
+        }
+        if (c == CH_CTRL_A) {
+            if (pos > 0) { pos = 0; if (echo) refresh_line(line, len, pos); }
+            continue;
+        }
+        if (c == CH_CTRL_E) {
+            if (pos < len) { pos = len; if (echo) refresh_line(line, len, pos); }
+            continue;
+        }
+        if (c == CH_CTRL_B) {
+            if (pos > 0) { pos--; if (echo) sh_puts("\b"); }
+            continue;
+        }
+        if (c == CH_CTRL_F) {
+            if (pos < len) { if (echo) sh_write(&line[pos], 1); pos++; }
+            continue;
+        }
+        if (c == CH_CTRL_P || c == CH_CTRL_N) {
+            if (!echo) continue;
+            if (c == CH_CTRL_P && hist_pos > first_hist) {
+                if (hist_pos == s_hist_count) { line[len] = 0; str_copy_len(saved_line, line, LINE_MAX); }
+                hist_pos--;
+                len = str_copy_len(line, s_history[hist_pos % HIST_MAX], LINE_MAX);
+                pos = len;
+                refresh_line(line, len, pos);
+            } else if (c == CH_CTRL_N && hist_pos < s_hist_count) {
+                hist_pos++;
+                if (hist_pos == s_hist_count) len = str_copy_len(line, saved_line, LINE_MAX);
+                else                          len = str_copy_len(line, s_history[hist_pos % HIST_MAX], LINE_MAX);
+                pos = len;
+                refresh_line(line, len, pos);
+            }
+            continue;
+        }
+        if (c == CH_ESC) {
             int c2 = read_byte();
             if (c2 == '[' || c2 == 'O') {
+                char seq[16];
+                int slen = 0;
                 int c3;
-                do { c3 = read_byte(); } while ((c3 >= '0' && c3 <= '9') || c3 == ';');
+                do {
+                    c3 = read_byte();
+                    if (slen < (int)sizeof(seq) - 1) seq[slen++] = (char)c3;
+                } while ((c3 >= '0' && c3 <= '9') || c3 == ';');
+                seq[slen] = 0;
+
+                if (!echo) continue;
+
+                if (c3 == 'A') { /* Up arrow: previous command in history */
+                    if (hist_pos > first_hist) {
+                        if (hist_pos == s_hist_count) { line[len] = 0; str_copy_len(saved_line, line, LINE_MAX); }
+                        hist_pos--;
+                        len = str_copy_len(line, s_history[hist_pos % HIST_MAX], LINE_MAX);
+                        pos = len;
+                        refresh_line(line, len, pos);
+                    }
+                } else if (c3 == 'B') { /* Down arrow: next command in history */
+                    if (hist_pos < s_hist_count) {
+                        hist_pos++;
+                        if (hist_pos == s_hist_count) len = str_copy_len(line, saved_line, LINE_MAX);
+                        else                          len = str_copy_len(line, s_history[hist_pos % HIST_MAX], LINE_MAX);
+                        pos = len;
+                        refresh_line(line, len, pos);
+                    }
+                } else if (c3 == 'C') { /* Right arrow */
+                    if (pos < len) { sh_write(&line[pos], 1); pos++; }
+                } else if (c3 == 'D') { /* Left arrow */
+                    if (pos > 0) { pos--; sh_puts("\b"); }
+                } else if (c3 == 'H') { /* Home */
+                    if (pos > 0) { pos = 0; refresh_line(line, len, pos); }
+                } else if (c3 == 'F') { /* End */
+                    if (pos < len) { pos = len; refresh_line(line, len, pos); }
+                } else if (c3 == '~') {
+                    if (seq[0] == '3') { /* Delete (ESC [ 3 ~) */
+                        if (pos < len) {
+                            for (int i = pos; i < len - 1; i++) line[i] = line[i + 1];
+                            len--;
+                            line[len] = 0;
+                            refresh_line(line, len, pos);
+                        }
+                    } else if (seq[0] == '1' || seq[0] == '7') { /* Home */
+                        if (pos > 0) { pos = 0; refresh_line(line, len, pos); }
+                    } else if (seq[0] == '4' || seq[0] == '8') { /* End */
+                        if (pos < len) { pos = len; refresh_line(line, len, pos); }
+                    }
+                }
             }
             continue;
         }
         if (c >= 0x20 && c < 0x7F && len < LINE_MAX - 1) {
-            line[len++] = (char)c;
-            char ch = (char)c;
-            if (echo) sh_write(&ch, 1);
+            if (pos == len) {
+                line[pos++] = (char)c;
+                len++;
+                line[len] = 0;
+                char ch = (char)c;
+                if (echo) sh_write(&ch, 1);
+            } else {
+                for (int i = len; i > pos; i--) line[i] = line[i - 1];
+                line[pos++] = (char)c;
+                len++;
+                line[len] = 0;
+                if (echo) refresh_line(line, len, pos);
+            }
         }
     }
 }
@@ -814,8 +1021,6 @@ static int tokenize(char *line, char **argv)
     return argc;
 }
 
-static bool str_eq(const char *a, const char *b) { while (*a && *a == *b) { a++; b++; } return *a == *b; }
-
 static void execute(char *line)
 {
     char *argv[ARG_MAX];
@@ -836,7 +1041,7 @@ void shell_task(void *arg)
     int32_t forever = -1;
     vfs_ioctl(s_in, UART_IOC_SET_RX_TIMEOUT, &forever);      /* read() now waits for input */
 
-    sh_puts("\nM5OS " M5OS_VERSION_STRING "\nBoard: " M5OS_BOARD_NAME "\nCPU: " M5OS_CPU_NAME "\nScheduler: M5OS\nFreeRTOS: disabled\n\n");
+    sh_puts("\nMeOS " M5OS_VERSION_STRING "\nBoard: " M5OS_BOARD_NAME "\nCPU: " M5OS_CPU_NAME "\nScheduler: MeOS\nFreeRTOS: disabled\n\n");
     char line[LINE_MAX];
     for (;;) {
         prompt();

@@ -3,6 +3,8 @@
 #include "../edit/edit.h"
 #include "../camera/camera_app.h"
 #include "../wifi/wifi_app.h"
+#include "../ssh/ssh_app.h"
+#include "../../drivers/lcd/fbcon.h"
 #include <m5os/display.h>
 #include <m5os/kmalloc.h>
 #include <m5os/vfs.h>
@@ -150,9 +152,9 @@ static void draw_chrome(void)
     int w = dq_cols(), fy = dq_rows() - FOOTER_ROWS;
     if (s_full) {
         dq_window(0, 0, w, HEADER_ROWS);
-        dq_text(2, 1, "M5 FILER");
+        dq_text(2, 1, "MeOS FILER");
         dq_window(0, fy, w, FOOTER_ROWS);
-        dq_text(2, fy + 1, "Enter/V:view P:cam W:wifi BS:up Spc:mark C:copy M:move D:del K:mkdir N:ren E:edit Q:quit");
+        dq_text(2, fy + 1, "Enter/V:view P:cam W:wifi S:ssh BS:up Spc:mark C:cp M:mv D:del K:mkdir N:ren E:edit Q:quit");
     }
     padded(12, 1, s_path);
     char st[120];
@@ -523,6 +525,15 @@ void filer_run(const char *start_dir)
         }
         case 'w': case 'W': {                                       /* launch Wi-Fi settings */
             wifi_app_run();
+            dq_clear();
+            s_full = true;
+            reload(s_n ? s_ent[s_sel].name : NULL);
+            break;
+        }
+        case 's': case 'S': {                                       /* launch SSH client */
+            ssh_app_run();
+            fbcon_pause(true);
+            task_sleep(100);
             dq_clear();
             s_full = true;
             reload(s_n ? s_ent[s_sel].name : NULL);

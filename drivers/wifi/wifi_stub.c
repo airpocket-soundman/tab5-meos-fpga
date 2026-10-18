@@ -41,6 +41,13 @@ bool wifi_save_config(const char *ssid, const char *password, bool auto_connect)
 bool wifi_set_auto_connect(bool enable) { (void)enable; return false; }
 bool wifi_forget(void) { return false; }
 
+bool wifi_resolve_host(const char *host, uint8_t out_ip[4]) { (void)host; (void)out_ip; return false; }
+bool wifi_tcp_connect(const uint8_t ip[4], uint16_t port, uint32_t timeout_ms) { (void)ip; (void)port; (void)timeout_ms; return false; }
+int  wifi_tcp_send(const void *data, size_t len, uint32_t timeout_ms) { (void)data; (void)len; (void)timeout_ms; return -1; }
+int  wifi_tcp_recv(void *buf, size_t max_len, uint32_t timeout_ms) { (void)buf; (void)max_len; (void)timeout_ms; return -1; }
+void wifi_tcp_close(void) { }
+bool wifi_tcp_is_connected(void) { return false; }
+
 void wifi_get_status(wifi_status_t *out)
 {
     if (!out) return;

@@ -44,7 +44,7 @@ static bool lcd_ready;
 
 void kernel_panic(const char *msg)
 {
-    kprintf("\n*** M5OS PANIC: %s\n", msg);
+    kprintf("\n*** MeOS PANIC: %s\n", msg);
     for (;;) { }
 }
 
@@ -105,7 +105,7 @@ static void ui_task(void *arg)
 
     uint16_t black = COLOR_BLACK;
     vfs_ioctl(disp, DISPLAY_IOC_CLEAR, &black);
-    dtext(disp, 8, 4, COLOR_WHITE, COLOR_BLACK, 3, "M5OS 0.1");
+    dtext(disp, 8, 4, COLOR_WHITE, COLOR_BLACK, 3, "MeOS 0.1");
     dtext(disp, 8, 30, COLOR_RED, COLOR_BLACK, 1, "FreeRTOS: disabled");
     display_term_t term = { .y0 = TERM_Y0, .y1 = TERM_Y1, .fg = COLOR_CYAN, .bg = COLOR_BLACK, .scale = 1 };
     vfs_ioctl(disp, DISPLAY_IOC_SET_TERM, &term);
@@ -380,9 +380,9 @@ void kernel_main(void)
 {
     hal_console_init();
     hal_time_init();
-    kprintf("\nM5OS %s booting...\n", M5OS_VERSION_STRING);
+    kprintf("\nMeOS %s booting...\n", M5OS_VERSION_STRING);
     kprintf("Board: %s\n", M5OS_BOARD_NAME);
-    kprintf("CPU: %s\nScheduler: M5OS (preemptive, %u ms tick)\nFreeRTOS: disabled\n",
+    kprintf("CPU: %s\nScheduler: MeOS (preemptive, %u ms tick)\nFreeRTOS: disabled\n",
             M5OS_CPU_NAME, SCHED_TICK_US / 1000u);
 
     kmem_init();
