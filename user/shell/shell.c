@@ -14,6 +14,12 @@
 #include "../wifi/wifi_app.h"
 #include "../ssh/ssh_app.h"
 #include "../tailscale/tailscale_app.h"
+#include "../web/web_app.h"
+#include <m5os/wasm.h>
+#if M5OS_BOARD_TAB5
+#include "../wasmapps/wasmapps.h"
+#include "../wasmapps/qrinstall.h"
+#endif
 #include "../../drivers/lcd/fbcon.h"
 
 #define FILER_PAUSE_SETTLE_MS 100u
@@ -302,7 +308,10 @@ static int cmd_run(int argc, char **argv)
     int rc;
     if (has_slash(argv[1])) {                                    /* an explicit file */
         if (!resolve(argv[1], path)) return fail("run", argv[1], ERR_INVAL);
-        rc = app_start_file(path, &id);
+        size_t pl = 0;
+        while (path[pl]) pl++;
+        bool wasm = pl > 5 && path[pl - 5] == '.' && path[pl - 4] == 'w' && path[pl - 3] == 'a' && path[pl - 2] == 's' && path[pl - 1] == 'm';
+        rc = wasm ? app_start_wasm_file(path, &id) : app_start_file(path, &id);
         if (rc != ERR_OK) return fail("run", path, rc);
         print_started(path, id);
         return 0;
@@ -311,6 +320,10 @@ static int cmd_run(int argc, char **argv)
     if (rc == ERR_NOENT) {                                       /* ... then /apps/NAME.m5ex */
         ksnprintf(path, sizeof path, "/apps/%s.m5ex", argv[1]);
         rc = app_start_file(path, &id);
+        if (rc == ERR_NOENT) {                                   /* ... then a WebAssembly app */
+            ksnprintf(path, sizeof path, "/apps/%s.wasm", argv[1]);
+            rc = app_start_wasm_file(path, &id);
+        }
         if (rc == ERR_NOENT) { SH_PRINTF("run: no such app: %s\n", argv[1]); return 1; }
         if (rc != ERR_OK) return fail("run", path, rc);
         print_started(path, id);
@@ -439,7 +452,19 @@ static int cmd_keys(int argc, char **argv)
 
 static int cmd_apps(int argc, char **argv)
 {
+#if M5OS_BOARD_TAB5
+    if (argc < 2 || !(argv[1][0] == '-' && argv[1][1] == 'l' && !argv[1][2])) {                  /* the list of installed apps: pick one to run */
+        fbcon_pause(true);
+        task_sleep(FILER_PAUSE_SETTLE_MS);
+        dq_clear();
+        wasmapps_run();
+        dq_clear();
+        fbcon_pause(false);
+        return 0;
+    }
+#else
     (void)argc; (void)argv;
+#endif
     app_info_t a[APP_MAX];
     int n = app_list(a, APP_MAX);
     sh_puts("ID   NAME     STATE    PID  PERMS    TASKS  MEMORY\n");
@@ -690,6 +715,54 @@ static int cmd_tailscale(int argc, char **argv)
     return 0;
 }
 
+static int cmd_web(int argc, char **argv)
+{
+#if M5OS_HAS_KEYBOARD
+    if (argc < 2 || (!sh_streq(argv[1], "--dump") && !sh_streq(argv[1], "--help") && !sh_streq(argv[1], "-h"))) {
+        fbcon_pause(true);
+        task_sleep(FILER_PAUSE_SETTLE_MS);
+        dq_clear();
+        web_cmd_main(argc, argv);
+        dq_clear();
+        fbcon_pause(false);
+        return 0;
+    }
+#endif
+    return web_cmd_main(argc, argv);
+}
+
+static int cmd_install(int argc, char **argv)
+{
+    char path[VFS_PATH_MAX], name[16];
+#if M5OS_BOARD_TAB5
+    if (argc == 1) {                                             /* no file: scan a QR code with the camera */
+        fbcon_pause(true);
+        task_sleep(FILER_PAUSE_SETTLE_MS);
+        dq_clear();
+        bool ok = qrinstall_run(name);
+        dq_clear();
+        fbcon_pause(false);
+        if (ok) SH_PRINTF("installed %s\n", name);
+        return ok ? 0 : 1;
+    }
+#endif
+    if (argc == 2 && (argv[1][0] == 'h' || argv[1][0] == 'm') && (has_slash(argv[1]) || argv[1][1] == 'e')) {     /* an https:// link or a meos:// code */
+        fbcon_pause(true);
+        task_sleep(FILER_PAUSE_SETTLE_MS);
+        dq_clear();
+        bool ok = qrinstall_code(argv[1], name);
+        dq_clear();
+        fbcon_pause(false);
+        if (ok) SH_PRINTF("installed %s\n", name);
+        return ok ? 0 : 1;
+    }
+    if (argc != 2 || !resolve(argv[1], path)) { sh_puts("usage: install [FILE.wasm | URL]   (no file: scan an app's QR code)\n"); return 1; }
+    int rc = wasm_install_file(path, name);
+    if (rc != ERR_OK) return fail("install", path, rc);
+    SH_PRINTF("installed %s\n", name);
+    return 0;
+}
+
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
 
 
@@ -717,6 +790,26 @@ static int cmd_rm(int argc, char **argv)
 {
     char path[VFS_PATH_MAX];
     if (argc != 2 || !resolve(argv[1], path)) { sh_puts("usage: rm FILE|EMPTYDIR\n"); return 1; }
+    size_t al = 0;
+    while (argv[1][al]) al++;
+    if (!has_slash(argv[1]) && al < 16 && wasm_is_installed(argv[1])) {          /* rm snake: uninstall an app (not a file called so) */
+        vfs_info_t st;
+        if (vfs_stat(path, &st) != ERR_OK) {
+            int r = wasm_uninstall(argv[1]);
+            if (r == ERR_OK) SH_PRINTF("uninstalled %s\n", argv[1]);
+            return r == ERR_OK ? 0 : fail("rm", argv[1], r);
+        }
+    }
+    size_t pl = 0;
+    while (path[pl]) pl++;
+    if (pl > 11 && path[0] == '/' && path[1] == 'a' && path[2] == 'p' && path[3] == 'p' && path[4] == 's' && path[5] == '/' &&
+        path[pl - 5] == '.' && path[pl - 4] == 'w' && path[pl - 3] == 'a' && path[pl - 2] == 's' && path[pl - 1] == 'm') {   /* /apps/NAME.wasm */
+        char name[16];
+        size_t k = 0;
+        for (size_t i = 6; i < pl - 5 && k < 15; i++) name[k++] = path[i];
+        name[k] = 0;
+        if (wasm_uninstall(name) == ERR_OK) { SH_PRINTF("uninstalled %s\n", name); return 0; }
+    }
     int rc = vfs_unlink(path);
     return rc == ERR_OK ? 0 : fail("rm", path, rc);
 }
@@ -807,7 +900,10 @@ static const command_t s_commands[] = {
     { "ssh",       cmd_ssh,       "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },
     { "tailscale", cmd_tailscale, "tailscale [up|status|ip|ping|down|gui]          Tailscale Mesh VPN" },
     { "ts",        cmd_tailscale, "ts [up|status|ip|ping|down|gui]                 alias for tailscale" },
-    { "apps",      cmd_apps,      "list running and finished applications" },
+    { "web",       cmd_web,       "web [url | --dump url]                          HTTP/HTTPS Web Browser" },
+    { "browser",   cmd_web,       "browser [url]                                   alias for web" },
+    { "apps",      cmd_apps,      "apps [-l]       installed WebAssembly apps (pick one to run); -l: running and finished applications" },
+    { "install",   cmd_install,   "install [FILE]  install a WebAssembly app from a file, or (no file) from a QR code the camera sees" },
 
     { "stop",    cmd_stop,    "stop APP_ID     stop an application and reclaim its resources" },
     { "pwd",     cmd_pwd,     "print working directory" },
@@ -833,6 +929,34 @@ static void prompt(void)
     sh_puts("> ");
 }
 
+/* The line is UTF-8 (the Japanese input method types it); every character is one cell on the console. */
+static int u8_prev(const char *line, int pos)                 /* start of the character before pos */
+{
+    do pos--; while (pos > 0 && ((unsigned char)line[pos] & 0xC0) == 0x80);
+    return pos;
+}
+
+static int u8_len(const char *line, int pos, int len)         /* bytes of the character starting at pos */
+{
+    int n = 1;
+    while (pos + n < len && ((unsigned char)line[pos + n] & 0xC0) == 0x80) n++;
+    return n;
+}
+
+static int u8_count(const char *line, int a, int b)           /* characters in [a, b) */
+{
+    int n = 0;
+    for (int i = a; i < b; i++) if (((unsigned char)line[i] & 0xC0) != 0x80) n++;
+    return n;
+}
+
+static void line_delete(char *line, int *len, int at, int n)  /* removes n bytes at `at` */
+{
+    for (int i = at; i + n < *len; i++) line[i] = line[i + n];
+    *len -= n;
+    line[*len] = 0;
+}
+
 static void refresh_line(const char *line, int len, int pos)
 {
     char buf[LINE_MAX * 2 + 16];
@@ -846,7 +970,7 @@ static void refresh_line(const char *line, int len, int pos)
     buf[n++] = '\x1b';
     buf[n++] = '[';
     buf[n++] = 'K';
-    for (int i = len; i > pos && n < (int)sizeof(buf) - 1; i--) {
+    for (int i = u8_count(line, pos, len); i > 0 && n < (int)sizeof(buf) - 1; i--) {
         buf[n++] = '\b';
     }
     sh_write(buf, (size_t)n);
@@ -879,10 +1003,9 @@ static int read_line_ex(char *line, bool echo)
 
         if (c == CH_BACKSPACE || c == CH_DEL) {
             if (pos > 0) {
-                for (int i = pos - 1; i < len - 1; i++) line[i] = line[i + 1];
-                pos--;
-                len--;
-                line[len] = 0;
+                int start = u8_prev(line, pos);
+                line_delete(line, &len, start, pos - start);
+                pos = start;
                 if (echo) {
                     if (pos == len) sh_puts("\b \b");
                     else            refresh_line(line, len, pos);
@@ -892,9 +1015,7 @@ static int read_line_ex(char *line, bool echo)
         }
         if (c == CH_CTRL_D) {
             if (pos < len) {
-                for (int i = pos; i < len - 1; i++) line[i] = line[i + 1];
-                len--;
-                line[len] = 0;
+                line_delete(line, &len, pos, u8_len(line, pos, len));
                 if (echo) refresh_line(line, len, pos);
             }
             continue;
@@ -925,11 +1046,11 @@ static int read_line_ex(char *line, bool echo)
             continue;
         }
         if (c == CH_CTRL_B) {
-            if (pos > 0) { pos--; if (echo) sh_puts("\b"); }
+            if (pos > 0) { pos = u8_prev(line, pos); if (echo) sh_puts("\b"); }
             continue;
         }
         if (c == CH_CTRL_F) {
-            if (pos < len) { if (echo) sh_write(&line[pos], 1); pos++; }
+            if (pos < len) { int n = u8_len(line, pos, len); if (echo) sh_write(&line[pos], (size_t)n); pos += n; }
             continue;
         }
         if (c == CH_CTRL_P || c == CH_CTRL_N) {
@@ -980,9 +1101,9 @@ static int read_line_ex(char *line, bool echo)
                         refresh_line(line, len, pos);
                     }
                 } else if (c3 == 'C') { /* Right arrow */
-                    if (pos < len) { sh_write(&line[pos], 1); pos++; }
+                    if (pos < len) { int n = u8_len(line, pos, len); sh_write(&line[pos], (size_t)n); pos += n; }
                 } else if (c3 == 'D') { /* Left arrow */
-                    if (pos > 0) { pos--; sh_puts("\b"); }
+                    if (pos > 0) { pos = u8_prev(line, pos); sh_puts("\b"); }
                 } else if (c3 == 'H') { /* Home */
                     if (pos > 0) { pos = 0; refresh_line(line, len, pos); }
                 } else if (c3 == 'F') { /* End */
@@ -990,9 +1111,7 @@ static int read_line_ex(char *line, bool echo)
                 } else if (c3 == '~') {
                     if (seq[0] == '3') { /* Delete (ESC [ 3 ~) */
                         if (pos < len) {
-                            for (int i = pos; i < len - 1; i++) line[i] = line[i + 1];
-                            len--;
-                            line[len] = 0;
+                            line_delete(line, &len, pos, u8_len(line, pos, len));
                             refresh_line(line, len, pos);
                         }
                     } else if (seq[0] == '1' || seq[0] == '7') { /* Home */
@@ -1004,19 +1123,22 @@ static int read_line_ex(char *line, bool echo)
             }
             continue;
         }
-        if (c >= 0x20 && c < 0x7F && len < LINE_MAX - 1) {
-            if (pos == len) {
-                line[pos++] = (char)c;
-                len++;
+        if (c >= 0x20 && c != 0x7F && !(c >= 0x80 && c < 0xC0)) {        /* ASCII, or the lead byte of a UTF-8 character */
+            char ch[4];
+            int n = 1;
+            ch[0] = (char)c;
+            if (c >= 0xF0) n = 4; else if (c >= 0xE0) n = 3; else if (c >= 0xC0) n = 2;
+            for (int i = 1; i < n; i++) ch[i] = (char)read_byte();
+            if (len + n < LINE_MAX) {
+                for (int i = len + n - 1; i >= pos + n; i--) line[i] = line[i - n];
+                for (int i = 0; i < n; i++) line[pos + i] = ch[i];
+                pos += n;
+                len += n;
                 line[len] = 0;
-                char ch = (char)c;
-                if (echo) sh_write(&ch, 1);
-            } else {
-                for (int i = len; i > pos; i--) line[i] = line[i - 1];
-                line[pos++] = (char)c;
-                len++;
-                line[len] = 0;
-                if (echo) refresh_line(line, len, pos);
+                if (echo) {
+                    if (pos == len) sh_write(ch, (size_t)n);
+                    else refresh_line(line, len, pos);
+                }
             }
         }
     }
@@ -1051,6 +1173,12 @@ static void execute(char *line)
     if (argc == 0) return;
     for (const command_t *c = s_commands; c->name; c++) {
         if (str_eq(argv[0], c->name)) { c->fn(argc, argv); return; }
+    }
+    uint32_t app_id;                                                /* a name that is an installed WebAssembly app: run it */
+    if (!has_slash(argv[0]) && wasm_is_installed(argv[0])) {
+        int rc = wasm_run_installed(argv[0], &app_id);
+        if (rc != ERR_OK) fail(argv[0], "cannot start", rc);
+        return;
     }
     SH_PRINTF("%s: command not found (try: help)\n", argv[0]);
 }

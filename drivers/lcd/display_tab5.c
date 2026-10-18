@@ -16,6 +16,7 @@
  * bring-up is hundreds of registers of timing that has nothing to teach about an OS.
  * Panel-specific values (init sequence, video timing) are from M5Stack's board support package.
  */
+#include <string.h>
 #include <m5os/display.h>
 #include <m5os/board.h>
 #include <m5os/hal_gpio.h>
@@ -79,7 +80,8 @@ static const panel_info_t PANEL_ST7121 = {
 };
 
 static volatile uint32_t s_frames;       /* refresh-done interrupts seen: proves the scan-out loop runs */
-static uint16_t *s_fb;                  /* physical layout: PANEL_H rows of PANEL_W pixels */
+static uint16_t *s_fb;                  /* physical layout: PANEL_H rows of PANEL_W pixels - what the panel scans out */
+static uint16_t *s_draw;                /* where drawing goes: s_fb, or an off-screen buffer of the same layout (display_set_target) */
 static esp_lcd_panel_io_handle_t s_io;
 
 static bool on_refresh_done(esp_lcd_panel_handle_t panel, esp_lcd_dpi_panel_event_data_t *ev, void *ctx)
@@ -101,7 +103,15 @@ static bool tx(uint8_t cmd, const uint8_t *data, size_t len)
 }
 
 /* Write the cache lines covering physical rows [row0, row1] back to PSRAM so the DMA sees them. */
+static void fb_flush_real(int row0, int row1);
+
 static void fb_flush_rows(int row0, int row1)
+{
+    if (s_draw != s_fb) return;                       /* drawing off-screen: nothing for the DMA to see yet */
+    fb_flush_real(row0, row1);
+}
+
+static void fb_flush_real(int row0, int row1)
 {
     uintptr_t a = (uintptr_t)s_fb + (uintptr_t)row0 * PANEL_W * BYTES_PER_PIXEL;
     uintptr_t b = (uintptr_t)s_fb + (uintptr_t)(row1 + 1) * PANEL_W * BYTES_PER_PIXEL;
@@ -110,7 +120,7 @@ static void fb_flush_rows(int row0, int row1)
     esp_cache_msync((void *)a, b - a, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
 }
 
-static inline void put(int x, int y, uint16_t c) { s_fb[(size_t)(DISPLAY_WIDTH - 1 - x) * PANEL_W + y] = c; }
+static inline void put(int x, int y, uint16_t c) { s_draw[(size_t)(DISPLAY_WIDTH - 1 - x) * PANEL_W + y] = c; }
 
 /* Panel start-up over DSI, before the video stream runs.  The two controllers want different sequences. */
 static void panel_start_ili9881c(void)
@@ -197,6 +207,7 @@ bool display_init(void)
     void *fb = NULL;
     if (esp_lcd_dpi_panel_get_frame_buffer(panel, 1, &fb) != ESP_OK || !fb) { kprintf("display: no framebuffer\n"); return false; }
     s_fb = fb;
+    s_draw = fb;
     display_clear(COLOR_BLACK);                       /* black before the stream starts */
     esp_lcd_dpi_panel_event_callbacks_t cbs = { .on_refresh_done = on_refresh_done };
     esp_lcd_dpi_panel_register_event_callbacks(panel, &cbs, NULL);
@@ -351,7 +362,7 @@ void display_draw_bitmap(int x, int y, int w, int h, const uint16_t *px)
         for (int ii = x0; ii < x1; ii += TILE) {
             int imax = ii + TILE < x1 ? ii + TILE : x1;
             for (int i = ii; i < imax; i++) {
-                uint16_t *dst_col = &s_fb[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
+                uint16_t *dst_col = &s_draw[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
                 const uint16_t *src_col = &px[i];
                 for (int j = jj; j < jmax; j++) {
                     dst_col[j] = src_col[(size_t)j * w];
@@ -360,6 +371,80 @@ void display_draw_bitmap(int x, int y, int w, int h, const uint16_t *px)
         }
     }
     fb_flush_rows(DISPLAY_WIDTH - (x + x1), DISPLAY_WIDTH - 1 - (x + x0));
+}
+
+/* Off-screen drawing (double buffering): everything drawn afterwards goes to `buf`, which must be DISPLAY_BUFFER_BYTES
+ * of memory (PSRAM is fine) and is laid out like the framebuffer.  display_present() copies a rectangle of it to the
+ * panel in one go, so the picture never shows a half-drawn state.  NULL = draw on the screen again. */
+/* Lines and triangles, for 3D.  Coordinates may lie outside the screen: everything is clipped.  Triangles are filled
+ * column by column because a column is contiguous in the (rotated) framebuffer. */
+static inline void put_clip(int x, int y, uint16_t c) { if ((unsigned)x < DISPLAY_WIDTH && (unsigned)y < DISPLAY_HEIGHT) put(x, y, c); }
+
+void display_draw_line(int x0, int y0, int x1, int y1, uint16_t color)
+{
+    if (!s_fb) return;
+    int dx = x1 > x0 ? x1 - x0 : x0 - x1, dy = y1 > y0 ? y0 - y1 : y1 - y0;      /* dy <= 0 */
+    int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy;
+    if (dx > 4000 || -dy > 4000) return;                                         /* absurd: a projection blew up */
+    int minx = x0 < x1 ? x0 : x1, maxx = x0 < x1 ? x1 : x0;
+    for (;;) {
+        put_clip(x0, y0, color);
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+    if (minx < 0) minx = 0;
+    if (maxx >= DISPLAY_WIDTH) maxx = DISPLAY_WIDTH - 1;
+    if (minx <= maxx) fb_flush_rows(DISPLAY_WIDTH - 1 - maxx, DISPLAY_WIDTH - 1 - minx);
+}
+
+void display_fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint16_t color)
+{
+    if (!s_fb) return;
+    int t;
+    if (x0 > x1) { t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }          /* sort by x */
+    if (x1 > x2) { t = x1; x1 = x2; x2 = t; t = y1; y1 = y2; y2 = t; }
+    if (x0 > x1) { t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
+    if (x2 - x0 > 4000 || x2 < 0 || x0 >= DISPLAY_WIDTH) return;
+    int xs = x0 < 0 ? 0 : x0, xe = x2 >= DISPLAY_WIDTH ? DISPLAY_WIDTH - 1 : x2;
+    for (int x = xs; x <= xe; x++) {
+        /* long edge v0-v2 and the short edge on this side of v1 */
+        int ya = x2 == x0 ? y0 : y0 + (int)(((int64_t)(y2 - y0) * (x - x0)) / (x2 - x0));
+        int yb;
+        if (x < x1) yb = x1 == x0 ? y1 : y0 + (int)(((int64_t)(y1 - y0) * (x - x0)) / (x1 - x0));
+        else        yb = x2 == x1 ? y1 : y1 + (int)(((int64_t)(y2 - y1) * (x - x1)) / (x2 - x1));
+        int lo = ya < yb ? ya : yb, hi = ya < yb ? yb : ya;
+        if (lo < 0) lo = 0;
+        if (hi >= DISPLAY_HEIGHT) hi = DISPLAY_HEIGHT - 1;
+        uint16_t *col = &s_draw[(size_t)(DISPLAY_WIDTH - 1 - x) * PANEL_W];
+        for (int y = lo; y <= hi; y++) col[y] = color;
+    }
+    fb_flush_rows(DISPLAY_WIDTH - 1 - xe, DISPLAY_WIDTH - 1 - xs);
+}
+
+void display_set_target(uint16_t *buf) { s_draw = buf ? buf : s_fb; }
+
+void display_present(int x, int y, int w, int h)
+{
+    if (!s_fb || s_draw == s_fb) return;
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > DISPLAY_WIDTH)  w = DISPLAY_WIDTH  - x;
+    if (y + h > DISPLAY_HEIGHT) h = DISPLAY_HEIGHT - y;
+    if (w <= 0 || h <= 0) return;
+    int r0 = DISPLAY_WIDTH - x - w, r1 = DISPLAY_WIDTH - 1 - x;       /* physical rows of this rectangle: contiguous runs of h pixels */
+    for (int r = r0; r <= r1; r++) memcpy(&s_fb[(size_t)r * PANEL_W + y], &s_draw[(size_t)r * PANEL_W + y], (size_t)h * sizeof(uint16_t));
+    fb_flush_real(r0, r1);
+}
+
+void display_read_bitmap(int x, int y, int w, int h, uint16_t *out)
+{
+    if (!s_fb || !out || w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > DISPLAY_WIDTH || y + h > DISPLAY_HEIGHT) return;
+    for (int i = 0; i < w; i++) {
+        const uint16_t *src_col = &s_draw[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
+        for (int j = 0; j < h; j++) out[(size_t)j * w + i] = src_col[j];
+    }
 }
 
 void display_draw_bitmap_scaled(int x, int y, int w, int h, const uint16_t *px, int scale)
@@ -373,7 +458,7 @@ void display_draw_bitmap_scaled(int x, int y, int w, int h, const uint16_t *px, 
     if (x0 >= x1 || y0 >= y1) return;
 
     for (int i = x0; i < x1; i++) {
-        uint16_t *dst_col = &s_fb[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
+        uint16_t *dst_col = &s_draw[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
         int sx = i / scale;
         const uint16_t *src_col = &px[sx];
         for (int j = y0; j < y1; j++) {

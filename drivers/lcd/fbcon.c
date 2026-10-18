@@ -3,6 +3,8 @@
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
 #include <m5os/hal_time.h>
+#include <m5os/arch.h>
+#include <m5os/kmalloc.h>
 
 #define SCALE     M5OS_FBCON_SCALE
 #define CELL      (8 * SCALE)
@@ -210,9 +212,155 @@ static void feed(char ch)
     put_codepoint((uint32_t)u);
 }
 
+
+void fbcon_overlay_colors(int style, uint16_t *fg, uint16_t *bg)
+{
+    switch (style) {
+    case FBCON_OVL_SEGMENT:  *fg = RGB565(255, 255, 255); *bg = RGB565(40, 90, 170);  break;
+    case FBCON_OVL_FOCUS:    *fg = RGB565(0, 0, 0);       *bg = RGB565(255, 215, 70); break;
+    case FBCON_OVL_CAND:     *fg = RGB565(0, 0, 0);       *bg = RGB565(225, 228, 235); break;
+    case FBCON_OVL_CAND_SEL: *fg = RGB565(255, 255, 255); *bg = RGB565(0, 100, 200);  break;
+    case FBCON_OVL_BADGE:    *fg = RGB565(0, 0, 0);       *bg = RGB565(80, 220, 120); break;
+    case FBCON_OVL_BAR:      *fg = RGB565(255, 255, 255); *bg = RGB565(45, 45, 60);   break;
+    case FBCON_OVL_PENDING:  *fg = RGB565(255, 215, 70);  *bg = RGB565(20, 40, 110);  break;
+    default:                 *fg = RGB565(255, 255, 255); *bg = RGB565(20, 40, 110);  break;
+    }
+}
+
+#if M5OS_BOARD_TAB5        /* only the Tab5 has the Japanese input method; the other boards keep their RAM */
+/* ---- overlay (see fbcon.h) --------------------------------------------------------------------- */
+
+#define OVL_SPANS 24
+#define OVL_CELLS 80
+
+typedef struct {
+    int16_t row, col;               /* anchor-relative (cursor) or absolute (screen) */
+    uint8_t anchor, len, style;
+    uint16_t cp[OVL_CELLS];
+} ovl_span_t;
+
+typedef struct { int16_t row, col; uint8_t len, style; uint16_t cp[OVL_CELLS]; } ovl_abs_t;
+
+/* The spans take ~16 KB, so they live in PSRAM and are allocated when the first overlay is built. */
+static struct ovl_mem {
+    ovl_span_t stage[OVL_SPANS], live[OVL_SPANS];
+    ovl_abs_t  paint[OVL_SPANS];                /* what is on the screen now */
+    ovl_abs_t  now[OVL_SPANS];                  /* scratch for ovl_prepare */
+} *s_ovl;
+#define s_ovl_stage (s_ovl->stage)
+#define s_ovl_live  (s_ovl->live)
+#define s_ovl_paint (s_ovl->paint)
+static int s_ovl_nstage, s_ovl_nlive, s_ovl_npaint;
+static volatile uint32_t s_ovl_gen;
+static uint32_t s_ovl_seen;
+
+void fbcon_overlay_begin(void)
+{
+    if (!s_ovl) s_ovl = kmalloc_psram(sizeof *s_ovl);
+    s_ovl_nstage = 0;
+}
+
+void fbcon_overlay_text(int anchor, int row, int col, const uint16_t *cps, int n, int style)
+{
+    if (!s_ovl || s_ovl_nstage >= OVL_SPANS || n <= 0) return;
+    if (n > OVL_CELLS) n = OVL_CELLS;
+    ovl_span_t *s = &s_ovl_stage[s_ovl_nstage++];
+    s->anchor = (uint8_t)anchor; s->row = (int16_t)row; s->col = (int16_t)col; s->len = (uint8_t)n; s->style = (uint8_t)style;
+    for (int i = 0; i < n; i++) s->cp[i] = cps[i];
+}
+
+void fbcon_overlay_end(void)
+{
+    if (!s_ovl) return;
+    uint32_t irq = arch_irq_disable();
+    s_ovl_nlive = s_ovl_nstage;
+    for (int i = 0; i < s_ovl_nstage; i++) s_ovl_live[i] = s_ovl_stage[i];
+    s_ovl_gen++;
+    arch_irq_restore(irq);
+}
+
+void fbcon_get_geometry(int *rows, int *cols, int *cur_row, int *cur_col)
+{
+    if (rows) *rows = ROWS;
+    if (cols) *cols = COLS;
+    if (cur_row) *cur_row = s_row;
+    if (cur_col) *cur_col = s_col < COLS ? s_col : COLS - 1;
+}
+
+static bool ovl_covers(int r, int c)
+{
+    if (!s_ovl) return false;
+    for (int i = 0; i < s_ovl_npaint; i++)
+        if (s_ovl_paint[i].row == r && c >= s_ovl_paint[i].col && c < s_ovl_paint[i].col + s_ovl_paint[i].len) return true;
+    return false;
+}
+
+/* Works out where the live spans go on the screen now; marks the rows of the old ones for repainting when
+ * anything moved.  Returns true if the overlay has to be painted again. */
+static bool ovl_prepare(void)
+{
+    if (!s_ovl) return false;
+    ovl_abs_t *now = s_ovl->now;
+    int n = 0;
+    bool changed = s_ovl_gen != s_ovl_seen;
+    uint32_t irq = arch_irq_disable();
+    s_ovl_seen = s_ovl_gen;
+    for (int i = 0; i < s_ovl_nlive; i++) {
+        const ovl_span_t *s = &s_ovl_live[i];
+        int r = s->row, c = s->col;
+        if (s->anchor == FBCON_ANCHOR_CURSOR) { r += s_row; c += (s_col < COLS ? s_col : COLS - 1); }
+        else { if (r < 0) r += ROWS; if (c < 0) c += COLS; }
+        int len = s->len;
+        const uint16_t *cp = s->cp;
+        if (c < 0) { cp -= c; len += c; c = 0; }
+        if (c + len > COLS) len = COLS - c;
+        if (r < 0 || r >= ROWS || len <= 0) continue;
+        now[n].row = (int16_t)r; now[n].col = (int16_t)c; now[n].len = (uint8_t)len; now[n].style = s->style;
+        for (int k = 0; k < len; k++) now[n].cp[k] = cp[k];
+        n++;
+    }
+    arch_irq_restore(irq);
+    if (n != s_ovl_npaint) changed = true;
+    for (int i = 0; !changed && i < n; i++)
+        if (now[i].row != s_ovl_paint[i].row || now[i].col != s_ovl_paint[i].col || now[i].len != s_ovl_paint[i].len) changed = true;
+    if (!changed) return false;
+    for (int i = 0; i < s_ovl_npaint; i++) s_dirty[s_ovl_paint[i].row] = true;          /* put the console text back */
+    s_cursor_on = false;
+    for (int i = 0; i < n; i++) s_ovl_paint[i] = now[i];
+    s_ovl_npaint = n;
+    return true;
+}
+
+static void ovl_paint(void)
+{
+    if (!s_ovl) return;
+    for (int i = 0; i < s_ovl_npaint; i++) {
+        uint16_t fg, bg;
+        fbcon_overlay_colors(s_ovl_paint[i].style, &fg, &bg);
+        display_draw_codepoints(s_ovl_paint[i].col * CELL, s_ovl_paint[i].row * CELL, s_ovl_paint[i].cp, s_ovl_paint[i].len, fg, bg, SCALE);
+    }
+}
+
+#else
+void fbcon_overlay_begin(void) {}
+void fbcon_overlay_text(int anchor, int row, int col, const uint16_t *cps, int n, int style) { (void)anchor; (void)row; (void)col; (void)cps; (void)n; (void)style; }
+void fbcon_overlay_end(void) {}
+void fbcon_get_geometry(int *rows, int *cols, int *cur_row, int *cur_col)
+{
+    if (rows) *rows = ROWS;
+    if (cols) *cols = COLS;
+    if (cur_row) *cur_row = s_row;
+    if (cur_col) *cur_col = s_col < COLS ? s_col : COLS - 1;
+}
+static inline bool ovl_covers(int r, int c) { (void)r; (void)c; return false; }
+static inline bool ovl_prepare(void) { return false; }
+static inline void ovl_paint(void) {}
+#endif
+
 static void draw_cursor(bool on)
 {
     int r = s_row, c = s_col < COLS ? s_col : COLS - 1;
+    if (ovl_covers(r, c)) { s_cursor_row = r; s_cursor_col = c; s_cursor_on = false; return; }      /* the overlay is there instead */
     uint16_t under = s_scr[r][c];
     display_draw_codepoints(c * CELL, r * CELL, &under, 1, on ? COL_BG : COL_FG, on ? COL_FG : COL_BG, SCALE);
     s_cursor_row = r; s_cursor_col = c; s_cursor_on = on;
@@ -243,6 +391,7 @@ static void fbcon_task(void *arg)
         bool moved = false;
         while ((n = kconsole_log_read(&pos, buf, sizeof buf)) > 0) { for (size_t i = 0; i < n; i++) feed(buf[i]); moved = true; }
         if (s_paused) { task_sleep(POLL_MS); continue; }
+        ovl_prepare();
         flush_rows();
 
         uint32_t now = (uint32_t)(hal_time_now_us() / 1000u);
@@ -251,15 +400,18 @@ static void fbcon_task(void *arg)
 
         int cur_c = s_col < COLS ? s_col : COLS - 1;
         if (moved || s_cursor_row != s_row || s_cursor_col != cur_c) {
-            if (s_cursor_row >= 0 && (s_cursor_row != s_row || s_cursor_col != cur_c) && s_cursor_on) {
+            if (s_cursor_row >= 0 && (s_cursor_row != s_row || s_cursor_col != cur_c) && s_cursor_on && !ovl_covers(s_cursor_row, s_cursor_col)) {
                 uint16_t under = s_scr[s_cursor_row][s_cursor_col];
                 display_draw_codepoints(s_cursor_col * CELL, s_cursor_row * CELL, &under, 1, COL_FG, COL_BG, SCALE);
             }
             draw_cursor(blink);
         }
+        ovl_paint();                                            /* on top of everything else, every pass: it is small */
         task_sleep(POLL_MS);
     }
 }
+
+bool fbcon_is_paused(void) { return s_paused; }
 
 void fbcon_pause(bool pause)
 {

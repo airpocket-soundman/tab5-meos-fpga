@@ -12,3 +12,7 @@ user/ssh/ssh_local_keys.h
 *_local_keys.h
 *.key
 *.pem
+
+# SKK dictionaries fetched/built for the input method (licences differ: not redistributed here)
+tools/ime/cache/
+apps/wasm/*.wasm

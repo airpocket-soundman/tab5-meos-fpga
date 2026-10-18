@@ -5,6 +5,7 @@
 #include "../wifi/wifi_app.h"
 #include "../ssh/ssh_app.h"
 #include "../tailscale/tailscale_app.h"
+#include "../web/web_app.h"
 #include "../../drivers/lcd/fbcon.h"
 
 #include <m5os/display.h>
@@ -114,8 +115,15 @@ static void draw_entry(int idx)
     const entry_t *e = &s_ent[idx];
     char size[12];
     if (e->dir) ksnprintf(size, sizeof size, "<DIR>"); else ksnprintf(size, sizeof size, "%u", (unsigned)e->size);
-    char line[COL_WIDTH + 8];
-    ksnprintf(line, sizeof line, "%c%-23s %8s ", s_mark[idx] ? '*' : ' ', e->name, size);      /* 1 + 23 + 1 + 8 + 1 = 34 = COL_WIDTH */
+    char line[COL_WIDTH + 40];
+    int cells = 0;
+    for (const char *q = e->name; *q; q++) if (((unsigned char)*q & 0xC0) != 0x80) cells++;     /* names are UTF-8: pad by characters */
+    char pad[FS_NAME_MAX + 1];
+    int np = FS_NAME_MAX - cells;
+    if (np < 0) np = 0;
+    for (int i = 0; i < np; i++) pad[i] = ' ';
+    pad[np] = 0;
+    ksnprintf(line, sizeof line, "%c%s%s %8s ", s_mark[idx] ? '*' : ' ', e->name, pad, size);   /* 1 + 23 + 1 + 8 + 1 = 34 = COL_WIDTH */
     if (idx == s_sel) dq_text_rev(cx, cy, line); else dq_text(cx, cy, line);
 }
 
@@ -142,9 +150,15 @@ static int marked_count(void) { int c = 0; for (int i = 0; i < s_n; i++) if (s_m
 static void padded(int cx, int cy, const char *s)         /* write s and blank the rest of the line inside the window */
 {
     char line[200];
-    int n = 0, w = dq_cols() - cx - 2;
-    while (s[n] && n < w && n < (int)sizeof line - 1) { line[n] = s[n]; n++; }
-    while (n < w && n < (int)sizeof line - 1) line[n++] = ' ';
+    int n = 0, w = dq_cols() - cx - 2, cells = 0;
+    while (s[n] && cells < w && n < (int)sizeof line - 5) {            /* UTF-8: count characters, never cut one */
+        int k = 1;
+        unsigned char c = (unsigned char)s[n];
+        if (c >= 0xF0) k = 4; else if (c >= 0xE0) k = 3; else if (c >= 0xC0) k = 2;
+        for (int i = 0; i < k && s[n]; i++) line[n] = s[n], n++;
+        cells++;
+    }
+    while (cells < w && n < (int)sizeof line - 1) { line[n++] = ' '; cells++; }
     line[n] = 0;
     dq_text(cx, cy, line);
 }
@@ -156,7 +170,7 @@ static void draw_chrome(void)
         dq_window(0, 0, w, HEADER_ROWS);
         dq_text(2, 1, "MeOS FILER");
         dq_window(0, fy, w, FOOTER_ROWS);
-        dq_text(2, fy + 1, "Enter/V:view P:cam W:wifi S:ssh BS:up Spc:mark C:cp M:mv D:del K:mkdir N:ren E:edit Q:quit");
+        dq_text(2, fy + 1, "Ent/V:view P:cam W:wifi S:ssh B:web BS:up Spc:mark C:cp M:mv D:del K:mkdir N:ren E:edit Q:quit");
     }
     padded(12, 1, s_path);
     char st[120];
@@ -550,6 +564,15 @@ void filer_run(const char *start_dir)
             reload(s_n ? s_ent[s_sel].name : NULL);
             break;
         }
+        case 'b': case 'B': {                                       /* launch Web Browser */
+            web_app_run();
+            fbcon_pause(true);
+            task_sleep(100);
+            dq_clear();
+            s_full = true;
+            reload(s_n ? s_ent[s_sel].name : NULL);
+            break;
+        }
         case 'v': case 'V': if (s_n && !s_ent[s_sel].dir) { view_file(&s_ent[s_sel]); s_full = true; } break;
 
         case ' ':
@@ -559,7 +582,7 @@ void filer_run(const char *start_dir)
         case 'm': case 'M': do_copy_move(true);  reload(NULL); s_full = true; break;
         case 'd': case 'D': case DQK_DEL: do_delete(); reload(NULL); s_full = true; break;
         case 'n': case 'N': do_rename(); reload(NULL); s_full = true; break;
-        case 'K': case 'B': do_mkdir(); reload(NULL); s_full = true; break;
+        case 'K': do_mkdir(); reload(NULL); s_full = true; break;
         case 'r': case 'R': reload(NULL); say("reloaded"); break;
         default: continue;
         }

@@ -15,6 +15,7 @@
 #include "../keyboard/keyboard.h"
 #include "../usbkbd/usbkbd.h"
 #include "../usbkbd/hid_keys.h"
+#include <m5os/ime.h>
 #include <m5os/hal_i2c.h>
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
@@ -33,7 +34,7 @@
 #define MAX_PER_POLL    8            /* events handled per poll, so a flood cannot starve other tasks */
 #define REPEAT_DELAY_MS 400u
 #define REPEAT_PERIOD_MS 60u
-#define TASK_STACK      4096
+#define TASK_STACK      8192         /* the input method converts on this stack */
 
 static const char *s_type = "none";
 static keyboard_stats_t s_stats = { 0, -1, -1, -1, 0 };
@@ -41,9 +42,9 @@ static bool s_caps;
 
 static void emit(uint8_t usage, uint8_t mods)
 {
-    char buf[6];
+    char buf[8];
     hid_decode(usage, mods, s_caps, buf);
-    if (buf[0]) { kconsole_inject(buf); s_stats.last_char = (unsigned char)buf[0]; }
+    if (buf[0]) { ime_feed(buf); s_stats.last_char = (unsigned char)buf[0]; }
 }
 
 static void kbd_task(void *arg)
@@ -84,6 +85,7 @@ void keyboard_stats(keyboard_stats_t *out)
 
 void keyboard_start(void)
 {
+    ime_init();                                       /* Japanese input: keys pass through it (off until Ctrl+Space) */
     hal_i2c_set_pins(PIN_SCL, PIN_SDA);              /* the system bus is no longer needed after board_init() */
     hal_i2c_init();
     uint8_t fw = 0;

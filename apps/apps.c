@@ -17,6 +17,7 @@ void intruder_main(void *arg);
 void camera_main(void *arg);
 void wifi_main(void *arg);
 void ssh_main(void *arg);
+void web_main(void *arg);
 
 #define APP_STACK_DEFAULT  4096u
 #define APP_STACK_GUI      8192u
@@ -43,6 +44,8 @@ static const app_def_t s_defs[] = {
                                                APP_STACK_CAMERA, APP_PRIO_DEFAULT, "graphical Wi-Fi scanner & connection manager" },
     { "ssh",       ssh_main,        APP_PERM_CONSOLE | APP_PERM_DISPLAY | APP_PERM_FS_READ | APP_PERM_FS_WRITE,
                                                APP_STACK_CAMERA, APP_PRIO_DEFAULT, "SSH-2 remote shell client (curve25519-sha256)" },
+    { "web",       web_main,        APP_PERM_CONSOLE | APP_PERM_DISPLAY | APP_PERM_FS_READ | APP_PERM_FS_WRITE,
+                                               APP_STACK_CAMERA, APP_PRIO_DEFAULT, "HTTP/HTTPS UTF-8 Japanese Web Browser" },
     /* ---- GUI apps: D = windows, m = receive events; the launcher also starts apps (s) ---- */
     { "launcher",   launcher_main,   APP_PERM_DISPLAY | APP_PERM_IPC | APP_PERM_SPAWN,
                                                APP_STACK_GUI, APP_PRIO_DEFAULT, "home screen" },

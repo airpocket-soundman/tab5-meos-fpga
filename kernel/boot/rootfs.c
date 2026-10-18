@@ -7,6 +7,7 @@
  */
 #include <m5os/vfs.h>
 #include <m5os/m5ex.h>
+#include <m5os/wasm.h>
 #include <m5os/fs.h>
 #include <m5os/errno.h>
 #include <m5os/kprintf.h>
@@ -66,5 +67,6 @@ bool rootfs_mount(blockdev_t *sd)
             if (fd >= 0) { vfs_write(fd, img[i].data, img[i].size); vfs_close(fd); }
         }
     }
+    wasm_store_boot();                           /* installed WebAssembly apps come back from flash (Tab5 only) */
     return true;
 }

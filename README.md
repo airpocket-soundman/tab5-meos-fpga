@@ -26,6 +26,7 @@ MeOS implements its own **preemptive/cooperative scheduler, task management, tim
 | 14 | Camera App (`camera` / `snap`, MIPI-CSI SC202CS + ISP) & Filer BMP Image Viewer | ✅ Verified on M5Stack Tab5 |
 | 15 | Graphical Wi-Fi Manager (`wifi`) & FreeRTOS-free ESP32-C6 SDIO / ESP-Hosted Stack | ✅ Verified on M5Stack Tab5 |
 | 16 | SSH-2 Client (`ssh`, `curve25519-sha256` / `aes128-ctr` / `hmac-sha2-256`) + TCP/DNS Stack | ✅ Verified on M5Stack Tab5 |
+| 17 | Japanese input method / FEP (romaji → kana → kanji, SKK dictionary, candidate list, phrase editing) | 🧪 Host-tested; not yet run on hardware |
 
 ---
 
@@ -271,10 +272,35 @@ ssh del 1                                    # Delete saved SSH profile #1
 
 ---
 
+## Japanese Input Method (FEP)
+
+Every keyboard key goes through `drivers/ime` before it reaches the console, so anything that reads
+`kconsole_getc()` (the shell, `edit`, `ssh`, the browser's address bar ...) receives UTF-8 text.
+
+| Key | Action |
+|---|---|
+| `Ctrl+Space` / `Alt`+backtick | Japanese input on / off (a green あ / ア badge shows it is on) |
+| letters | romaji → hiragana (`nn`, `n'`, doubled consonant = っ, `xtu`, `-` = ー, `, . [ ] /` = 、。「」・) |
+| `Space` | convert to kanji; again: candidate list (`Space`/`↓` next, `↑` previous, `1`–`9` pick) |
+| `←` `→` / `Shift+←` `Shift+→` | next phrase / shorten or lengthen the current phrase while converting |
+| `Enter` | commit · `Esc` / `Backspace` while converting: back to the reading |
+| `F6` `F7` `F9` `F10` | respell as hiragana / katakana / full-width Latin / half-width Latin (`F6`/`F7` with nothing typed: switch the input mode) |
+
+* **Conversion** (`conv.c`) cuts the reading into phrases by dynamic programming: a dictionary word, plain or conjugating
+  (SKK okuri-ari entries, checked against the conjugation form the okurigana spells), followed by particles / endings
+  that stay kana. Choices are remembered for the session (`ime_dict_learn`).
+* **Screen**: console programs get an overlay at the text cursor (`fbcon_overlay_*`); programs that own the display
+  (`fbcon_pause`: filer, ssh, web) get the same UI as a two-line bar at the bottom, restored afterwards.
+* **Dictionary**: a small one is built in (`tools/ime/mini.skk`). For real use put an SKK dictionary in flash once:
+  `tools/ime_flash_dict.sh -p /dev/cu.usbmodemXXXX` (downloads SKK-JISYO.L, GPL-2.0+, and writes it to the `imedict` partition
+  at `0x400000`; it is loaded into PSRAM in the background after boot). `partitions_tab5.csv` now gives the app 3.9 MB.
+* **Tests** run on the host: `tools/ime/host_test.sh [dict.bin]`.
+
 ## Known Limitations / TODO
 
 * Single-core execution (`CPU1` is not started).
 * Task stacks default to 4 KB (`kmalloc_internal`) without hardware stack guard pages (heavy tasks like `shell`, `wifid`, and `app` use 6–8 KB stacks via `task_create_stack`).
 * Do not use floating-point / PIE coprocessors across tasks on ESP32-S3 (lazy FPU context saving is not implemented).
 * Strict priority scheduling without mutex priority inheritance.
+* Japanese input: `edit` still moves its cursor per byte (it inserts UTF-8 but cannot step over a multi-byte character); choices are not saved across reboots; only the Tab5 builds the IME.
 * Touch input on Tab5 (GT911 / ST7123) and RISC-V M5EX SDK build toolchain are planned for future updates.

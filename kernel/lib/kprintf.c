@@ -1,6 +1,7 @@
 #include <m5os/kprintf.h>
 #include <m5os/hal_console.h>
 #include <m5os/mutex.h>
+#include <m5os/task.h>
 #include <m5os/arch.h>
 #include <stdarg.h>
 
@@ -104,7 +105,7 @@ static void console_unlock(bool locked) { if (locked) mutex_unlock(&s_console_lo
 /* Everything printed is also kept in a small ring so a GUI terminal can show it,
  * and the console can be fed characters as if typed (see kprintf.h). */
 #define CONSOLE_LOG_SIZE  2048u
-#define CONSOLE_IN_SIZE   64u
+#define CONSOLE_IN_SIZE   256u
 
 static char     s_log[CONSOLE_LOG_SIZE];
 static uint32_t s_log_total;                              /* characters ever logged */
@@ -135,19 +136,33 @@ size_t kconsole_log_read(uint32_t *pos, char *buf, size_t max)
     return n;
 }
 
-void kconsole_inject(const char *s)
+size_t kconsole_inject_n(const char *s, size_t n)
 {
+    size_t done = 0;
     uint32_t irq = arch_irq_disable();
-    for (; *s; s++) {
-        if (((s_in_head + 1) % CONSOLE_IN_SIZE) == s_in_tail) break;           /* full: drop the rest */
-        s_in[s_in_head] = *s;
+    for (; done < n; done++) {
+        if (((s_in_head + 1) % CONSOLE_IN_SIZE) == s_in_tail) break;           /* full: the caller keeps the rest */
+        s_in[s_in_head] = s[done];
         s_in_head = (s_in_head + 1) % CONSOLE_IN_SIZE;
     }
     arch_irq_restore(irq);
+    return done;
 }
+
+void kconsole_inject(const char *s)
+{
+    size_t n = 0;
+    while (s[n]) n++;
+    kconsole_inject_n(s, n);                                                    /* full: drop the rest */
+}
+
+/* Input focus: a full-screen app that owns the display gets the keys; everyone else reads nothing meanwhile. */
+static volatile uint32_t s_focus_task;
+void kconsole_set_focus(uint32_t task_id) { s_focus_task = task_id; }
 
 int kconsole_getc(void)
 {
+    if (s_focus_task && task_current() && task_current()->id != s_focus_task) return -1;
     int c = -1;
     uint32_t irq = arch_irq_disable();
     if (s_in_tail != s_in_head) { c = (uint8_t)s_in[s_in_tail]; s_in_tail = (s_in_tail + 1) % CONSOLE_IN_SIZE; }
