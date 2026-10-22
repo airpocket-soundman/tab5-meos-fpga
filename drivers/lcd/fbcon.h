@@ -23,3 +23,10 @@ void fbcon_overlay_begin(void);
 void fbcon_overlay_text(int anchor, int row, int col, const uint16_t *cps, int n, int style);
 void fbcon_overlay_end(void);
 void fbcon_get_geometry(int *rows, int *cols, int *cur_row, int *cur_col);
+
+/* The console normally uses the whole screen.  fbcon_set_rows() limits it to the top ROWS text rows (at least 4,
+ * at most fbcon_max_rows()); the screen below belongs to the caller (the Tab5 on-screen keyboard).  Shrinking scrolls
+ * so the cursor line stays visible; growing clears the new rows.  Cells are fbcon_cell_px() pixels square. */
+void fbcon_set_rows(int rows);
+int  fbcon_max_rows(void);
+int  fbcon_cell_px(void);

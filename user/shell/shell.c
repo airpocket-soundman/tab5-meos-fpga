@@ -41,6 +41,10 @@
 #include <m5os/board_config.h>
 #if M5OS_HAS_KEYBOARD
 #include "../../drivers/keyboard/keyboard.h"
+#if M5OS_BOARD_TAB5
+#include "../../drivers/tab5kbd/osk.h"
+#include "../../drivers/tab5kbd/tab5touch.h"
+#endif
 #endif
 
 #define LINE_MAX     128
@@ -439,6 +443,22 @@ static int cmd_gui(int argc, char **argv)
 }
 
 #if M5OS_HAS_KEYBOARD
+#if M5OS_BOARD_TAB5
+static int cmd_osk(int argc, char **argv)
+{
+    if (!osk_available()) { sh_puts("osk: no touch controller\n"); return 0; }
+    if (argc > 1 && sh_streq(argv[1], "on"))  { osk_show(true);  return 0; }
+    if (argc > 1 && sh_streq(argv[1], "off")) { osk_show(false); return 0; }
+    if (argc > 1 && sh_streq(argv[1], "debug")) { static bool on; on = !on; osk_set_debug(on); SH_PRINTF("osk: touch debug %s\n", on ? "on" : "off"); return 0; }
+    if (argc > 2 && sh_streq(argv[1], "map")) { tab5_touch_set_map(argv[2][0] - '0'); SH_PRINTF("osk: touch map %d\n", tab5_touch_map()); return 0; }
+    uint32_t frames, errors; int rx, ry, mx, my;
+    tab5_touch_stats(&frames, &errors, &rx, &ry, &mx, &my);
+    SH_PRINTF("osk: %s, touch map %d, %u frames, %u i2c errors, last raw %d,%d, controller resolution %d x %d\n",
+              osk_visible() ? "visible" : "hidden", tab5_touch_map(), frames, errors, rx, ry, mx, my);
+    return 0;
+}
+#endif
+
 static int cmd_keys(int argc, char **argv)
 {
     (void)argc; (void)argv;
@@ -895,6 +915,9 @@ static const command_t s_commands[] = {
     { "cam",     cmd_camera,  "cam [DIR]       alias for camera" },
     { "snap",    cmd_snap,    "snap [FILE.bmp] capture one 640x360 BMP photo from camera" },
     { "keys",    cmd_keys,    "keyboard statistics (bring-up diagnostics)" },
+#if M5OS_BOARD_TAB5
+    { "osk",     cmd_osk,     "osk [on|off|map N|debug]  on-screen keyboard (touch); no argument: status" },
+#endif
 #endif
     { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
     { "ssh",       cmd_ssh,       "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },
