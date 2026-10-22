@@ -1,5 +1,13 @@
 # MeOS
 
+## airpocket-soundman fork: Tab5 / FPGA research
+
+This fork studies FPGA-side DDR3 use, explicit data spill/restore, compute buffers, and GPU architecture on Tab5 with MeOS. It complements the [Linux variant](https://github.com/airpocket-soundman/tab5-linux-fpga).
+
+Read [開発目的と開始記録](docs/DEVELOPMENT_GOALS.md) for scope and next steps. No fork-specific build, hardware boot or FPGA communication has been validated yet. The original README below reports upstream results from [shi3z/MeOS](https://github.com/shi3z/MeOS).
+
+---
+
 An educational and experimental lightweight operating system built from scratch for M5Stack devices (**M5Stack CoreS3**, **M5Cardputer**, and **M5Stack Tab5**).
 MeOS implements its own **preemptive/cooperative scheduler, task management, timer, IPC message queues, memory allocator, VFS, custom filesystem (M5FS), dynamic binary loader (M5EX), GUI/TUI window system, camera driver, SDIO Wi-Fi stack, and SSH-2 client**—without ever starting FreeRTOS.
 
