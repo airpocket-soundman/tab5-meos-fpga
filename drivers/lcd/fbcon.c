@@ -18,6 +18,7 @@
 
 static uint16_t s_scr[ROWS][COLS];
 static bool s_dirty[ROWS];
+static int  s_rows = ROWS;        /* rows in use: fbcon_set_rows() shrinks the console (on-screen keyboard below it) */
 static int  s_row, s_col;
 static volatile bool s_paused;
 static bool s_cursor_on;
@@ -38,12 +39,12 @@ static void clear_row(int r)
 static void newline(void)
 {
     s_col = 0;
-    if (s_row + 1 < ROWS) { s_row++; return; }
-    for (int r = 0; r + 1 < ROWS; r++) {
+    if (s_row + 1 < s_rows) { s_row++; return; }
+    for (int r = 0; r + 1 < s_rows; r++) {
         for (int c = 0; c < COLS; c++) s_scr[r][c] = s_scr[r + 1][c];
         s_dirty[r] = true;
     }
-    clear_row(ROWS - 1);
+    clear_row(s_rows - 1);
 }
 
 static void parse_csi_params(const char *s, int *p0, int *p1, int def0, int def1)
@@ -88,7 +89,7 @@ static void feed(char ch)
         if (ch == 'M') { if (s_row > 0) s_row--; s_esc_state = 0; return; }
         if (ch == 'D' || ch == 'E') { if (ch == 'E') s_col = 0; newline(); s_esc_state = 0; return; }
         if (ch == 'c') {
-            for (int r = 0; r < ROWS; r++) clear_row(r);
+            for (int r = 0; r < s_rows; r++) clear_row(r);
             s_row = 0; s_col = 0; s_esc_state = 0;
             return;
         }
@@ -103,12 +104,12 @@ static void feed(char ch)
             int n = (p0 > 0) ? p0 : 1;
             if (ch == 'J') {
                 if (p0 == 2 || p0 == 3) {
-                    for (int r = 0; r < ROWS; r++) clear_row(r);
+                    for (int r = 0; r < s_rows; r++) clear_row(r);
                     s_row = 0; s_col = 0;
                 } else if (p0 == 0) {
                     for (int c = s_col; c < COLS; c++) s_scr[s_row][c] = ' ';
                     s_dirty[s_row] = true;
-                    for (int r = s_row + 1; r < ROWS; r++) clear_row(r);
+                    for (int r = s_row + 1; r < s_rows; r++) clear_row(r);
                 } else if (p0 == 1) {
                     for (int r = 0; r < s_row; r++) clear_row(r);
                     for (int c = 0; c <= s_col && c < COLS; c++) s_scr[s_row][c] = ' ';
@@ -118,7 +119,7 @@ static void feed(char ch)
                 int r = (p0 > 0) ? (p0 - 1) : 0;
                 int c = (p1 > 0) ? (p1 - 1) : 0;
                 if (r < 0) r = 0;
-                if (r >= ROWS) r = ROWS - 1;
+                if (r >= s_rows) r = s_rows - 1;
                 if (c < 0) c = 0;
                 if (c >= COLS) c = COLS - 1;
                 s_row = r; s_col = c;
@@ -130,7 +131,7 @@ static void feed(char ch)
             } else if (ch == 'A') {
                 s_row -= n; if (s_row < 0) s_row = 0;
             } else if (ch == 'B') {
-                s_row += n; if (s_row >= ROWS) s_row = ROWS - 1;
+                s_row += n; if (s_row >= s_rows) s_row = s_rows - 1;
             } else if (ch == 'C') {
                 s_col += n; if (s_col >= COLS) s_col = COLS - 1;
             } else if (ch == 'D') {
@@ -142,7 +143,7 @@ static void feed(char ch)
             } else if (ch == 'd') {
                 s_row = n - 1;
                 if (s_row < 0) s_row = 0;
-                if (s_row >= ROWS) s_row = ROWS - 1;
+                if (s_row >= s_rows) s_row = s_rows - 1;
             } else if (ch == 'P') {
                 if (n > COLS - s_col) n = COLS - s_col;
                 for (int c = s_col; c + n < COLS; c++) s_scr[s_row][c] = s_scr[s_row][c + n];
@@ -281,7 +282,7 @@ void fbcon_overlay_end(void)
 
 void fbcon_get_geometry(int *rows, int *cols, int *cur_row, int *cur_col)
 {
-    if (rows) *rows = ROWS;
+    if (rows) *rows = s_rows;
     if (cols) *cols = COLS;
     if (cur_row) *cur_row = s_row;
     if (cur_col) *cur_col = s_col < COLS ? s_col : COLS - 1;
@@ -309,12 +310,12 @@ static bool ovl_prepare(void)
         const ovl_span_t *s = &s_ovl_live[i];
         int r = s->row, c = s->col;
         if (s->anchor == FBCON_ANCHOR_CURSOR) { r += s_row; c += (s_col < COLS ? s_col : COLS - 1); }
-        else { if (r < 0) r += ROWS; if (c < 0) c += COLS; }
+        else { if (r < 0) r += s_rows; if (c < 0) c += COLS; }
         int len = s->len;
         const uint16_t *cp = s->cp;
         if (c < 0) { cp -= c; len += c; c = 0; }
         if (c + len > COLS) len = COLS - c;
-        if (r < 0 || r >= ROWS || len <= 0) continue;
+        if (r < 0 || r >= s_rows || len <= 0) continue;
         now[n].row = (int16_t)r; now[n].col = (int16_t)c; now[n].len = (uint8_t)len; now[n].style = s->style;
         for (int k = 0; k < len; k++) now[n].cp[k] = cp[k];
         n++;
@@ -347,7 +348,7 @@ void fbcon_overlay_text(int anchor, int row, int col, const uint16_t *cps, int n
 void fbcon_overlay_end(void) {}
 void fbcon_get_geometry(int *rows, int *cols, int *cur_row, int *cur_col)
 {
-    if (rows) *rows = ROWS;
+    if (rows) *rows = s_rows;
     if (cols) *cols = COLS;
     if (cur_row) *cur_row = s_row;
     if (cur_col) *cur_col = s_col < COLS ? s_col : COLS - 1;
@@ -368,7 +369,7 @@ static void draw_cursor(bool on)
 
 static void flush_rows(void)
 {
-    for (int r = 0; r < ROWS; r++) {
+    for (int r = 0; r < s_rows; r++) {
         if (!s_dirty[r]) continue;
         display_draw_codepoints(0, r * CELL, s_scr[r], COLS, COL_FG, COL_BG, SCALE);
         s_dirty[r] = false;
@@ -379,7 +380,7 @@ static void flush_rows(void)
 static void fbcon_task(void *arg)
 {
     (void)arg;
-    for (int r = 0; r < ROWS; r++) clear_row(r);
+    for (int r = 0; r < s_rows; r++) clear_row(r);
     uint32_t end = kconsole_log_end();
     uint32_t pos = end > HISTORY ? end - HISTORY : 0;
     uint32_t last_blink = (uint32_t)(hal_time_now_us() / 1000u);
@@ -413,11 +414,33 @@ static void fbcon_task(void *arg)
 
 bool fbcon_is_paused(void) { return s_paused; }
 
+int fbcon_cell_px(void) { return CELL; }
+int fbcon_max_rows(void) { return ROWS; }
+
+void fbcon_set_rows(int rows)
+{
+    if (rows < 4) rows = 4;
+    if (rows > ROWS) rows = ROWS;
+    uint32_t irq = arch_irq_disable();
+    if (rows == s_rows) { arch_irq_restore(irq); return; }
+    if (s_row >= rows) {                                        /* keep the cursor line visible: scroll up */
+        int d = s_row - (rows - 1);
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < COLS; c++) s_scr[r][c] = s_scr[r + d][c];
+        s_row = rows - 1;
+    }
+    for (int r = rows; r < ROWS; r++) clear_row(r);
+    for (int r = 0; r < rows; r++) s_dirty[r] = true;
+    s_cursor_row = -1;
+    s_rows = rows;
+    arch_irq_restore(irq);
+}
+
 void fbcon_pause(bool pause)
 {
     if (!pause) {
         display_clear(COL_BG);
-        for (int r = 0; r < ROWS; r++) s_dirty[r] = true;      /* repaint everything on the next pass */
+        for (int r = 0; r < s_rows; r++) s_dirty[r] = true;      /* repaint everything on the next pass */
         s_cursor_row = -1;
     }
     s_paused = pause;
