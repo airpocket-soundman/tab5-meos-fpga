@@ -153,6 +153,8 @@ GPIO操作はMeOS側に共通の管理APIを設け、MicroPythonとネイティ�
 
 USBハブを介した複数のUSBメモリ、およびキーボードとUSBメモリの同時利用を実装対象とする。現状は直結1台のみであり、未対応。ハブのポート電源・接続変化・リセット・アドレス割り当て、機器別エンドポイントとDATA PID管理、複数MSCインスタンスと独立したVFSマウント、切断時のハンドル処理を追加する。High-Speedハブ配下のFull/Low-Speed機器にはスプリットトランザクション対応が必要で、検証対象に含める。複数メモリ間の読み書きとキーボード入力の継続、個別取り外し・再接続で他機器を妨げないことを確認する。
 
+USB 2.0 High-Speedハブ（480 Mbit/s）の対応を明示的な到達条件とする。High-Speedメモリだけでなく、同じハブ配下のFull-Speed／Low-Speedの受信機・キーボードとの混在を検証する。ディスクリプタDMAはスプリット転送を扱えないため、独自ドライバにバッファDMAとTransaction Translator経由の転送制御を追加する。Full-Speedハブでの動作確認だけでUSB 2.0 High-Speedハブ対応済みとはしない。現在の試験ハブ05e3:0606はFull-Speed接続であり、High-Speed動作と混在構成は未確認。[Espressifの制約説明](https://docs.espressif.com/projects/esp-usb/en/latest/esp32p4/usb_host.html)を参照。
+
 ### USBスタックの選択（2026-10-23）
 
 M5Stack公式UserDemoはESP-IDFのUSB Host LibraryとHIDドライバーをFreeRTOSタスクから利用している。Tab5thinclientはTinyUSBのHID・MSC Host APIを利用する。本フォークは独自ディスクリプタDMAドライバへ集約する。TinyUSB 0.19.0を参照し、ホストモード切り替え完了を待ってからFIFOを設定するよう独自HALを修正した。修正版でUSBメモリの読み書きと再起動後保持を確認。PHYの電源・クロックとDWC2 HALにはESP-IDFを使用し、FreeRTOSスケジューラーは使わない。TinyUSBのOS_NONE・FIFO版は比較用に残す。実装と検証範囲は[USB実装記録](docs/USB_IMPLEMENTATION.md)、[DMA調査記録](docs/USB_DMA_INVESTIGATION.md)を参照。

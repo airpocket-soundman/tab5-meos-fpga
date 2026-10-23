@@ -45,8 +45,8 @@
         "en": "3. USB hubs, multiple drives and keyboard coexistence"
       },
       "detail": {
-        "ja": "独自DMAドライバにハブ管理、複数MSCと独立マウント、入力との同時動作、個別抜き差しを実装・確認。TinyUSBを参照・比較に使用。",
-        "en": "Extend the native DMA driver with hub management, multiple MSC volumes, concurrent input and independent removal/reconnection; use TinyUSB for reference and comparison."
+        "ja": "独自DMAドライバでFull-Speedハブを試験中。USB 2.0 High-Speedハブと速度の異なるメモリ・受信機の混在も必須とし、バッファDMA・スプリット転送を追加。複数マウント・入力併用・個別抜き差しを検証。",
+        "en": "Native DMA full-speed hub tests underway. Require USB 2.0 high-speed hubs and mixed-speed drives/receivers; add buffer DMA and split transactions. Verify multiple mounts, concurrent input and independent hot-plug."
       }
     },
     {
