@@ -1,3 +1,4 @@
 # Preserve the pinned upstream source byte-for-byte, including its whitespace.
 third_party/nimble/** -text -whitespace
 third_party/micropython/** -text -whitespace
+third_party/sl/** -text -whitespace

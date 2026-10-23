@@ -1,0 +1,10 @@
+{
+  "upstream": "https://github.com/mtoyoda/sl",
+  "commit": "923e7d7ebc5c1f009755bdeb789ac25658ccce03",
+  "version": "5.03",
+  "files": {
+    "sl.c": "91040fb68774568c9d3b51be518aad95fb896b064e20052552abb2af8562cc39",
+    "sl.h": "6c29d23f5b913ca7ff63d867f69778dddd65ffcdc5eb4a401d4a8c0e122c9122",
+    "LICENSE": "72c7d262e2c9ddf019edc90af852a01a410338efff4e75e1c005b77ada4be7c4"
+  }
+}
