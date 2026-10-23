@@ -1,0 +1,65 @@
+{
+  "updated": "2026-10-23",
+  "items": [
+    {
+      "id": "baseline",
+      "status": "verified",
+      "title": {
+        "ja": "基準ファームウェア",
+        "en": "Baseline firmware"
+      },
+      "detail": {
+        "ja": "サイズ最適化版を書き込み、起動・mem・ps・lsを確認。全機能回帰は未実施。",
+        "en": "Size-optimized firmware flashed; boot, mem, ps and ls verified. Full regression pending."
+      }
+    },
+    {
+      "id": "usb",
+      "status": "active",
+      "title": {
+        "ja": "1. USB受信機・USBメモリ",
+        "en": "1. USB receivers and storage"
+      },
+      "detail": {
+        "ja": "制御転送専用から割り込みIN・bulk対応へ拡張中。受信機の入力成功、USBメモリの読み書きは未確認。",
+        "en": "Extending control-only transport with interrupt IN and bulk. Receiver input and storage reads/writes are not yet verified."
+      }
+    },
+    {
+      "id": "ssh",
+      "status": "planned",
+      "title": {
+        "ja": "2. SSHサーバー・クライアント同時動作",
+        "en": "2. Concurrent SSH server and client"
+      },
+      "detail": {
+        "ja": "SSHからシェル操作・ファイル転送・開発。接続を維持して既存SSHクライアントをテスト。",
+        "en": "Remote shell, file transfer and development; test the existing client while keeping the server session connected."
+      }
+    },
+    {
+      "id": "touch",
+      "status": "planned",
+      "title": {
+        "ja": "3. タッチ入力・コンソールスクロール",
+        "en": "3. Touch and console scrolling"
+      },
+      "detail": {
+        "ja": "ST7123対応、上下スワイプによる過去出力の閲覧と最新位置への復帰。",
+        "en": "ST7123 input, swipe through console history and return to live output."
+      }
+    },
+    {
+      "id": "bt",
+      "status": "planned",
+      "title": {
+        "ja": "4. Bluetoothキーボード・マウス",
+        "en": "4. Bluetooth keyboard and mouse"
+      },
+      "detail": {
+        "ja": "C6経路を調査し、BLE HIDの探索・ペアリング・再接続・入力を実装。Classicは別途可否確認。",
+        "en": "Audit C6 transport; implement BLE HID discovery, pairing, reconnect and input. Assess Classic separately."
+      }
+    }
+  ]
+}

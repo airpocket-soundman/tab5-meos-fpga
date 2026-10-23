@@ -5,6 +5,7 @@ on:
     paths:
       - 'docs/site/**'
       - 'docs/DEVELOPMENT_GOALS.md'
+      - 'docs/PROGRESS.json'
       - 'tools/build_pages.py'
       - '.github/workflows/pages.yml'
   workflow_dispatch:

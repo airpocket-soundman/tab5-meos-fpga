@@ -2,6 +2,7 @@
 from pathlib import Path
 from html import escape
 import re
+import json
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'docs/site'
@@ -117,11 +118,21 @@ Fork starting commit: `a6a9f234e509737f9fe84fe13468a8ec78b60fc9` from [shi3z/MeO
 Reference: [shi3z — MeOS article](https://note.com/shi3zblog/n/n15e659e90a23). Article and upstream hardware reports are not this fork's verification results.
 '''
 
+progress = json.loads((ROOT/'docs/PROGRESS.json').read_text(encoding='utf-8'))
+
+def progress_html(lang):
+    labels = {'ja': {'verified':'実機確認（範囲限定）','active':'実装中・実機未確認','planned':'未着手'},
+              'en': {'verified':'Hardware checked (limited)','active':'In development / unverified','planned':'Not started'}}[lang]
+    title = '開発順序と進捗' if lang == 'ja' else 'Development order and progress'
+    note = 'USB以降は上から順に進めます。状態は実装・確認結果に基づき更新し、全体の完了率や日程は未設定です。' if lang == 'ja' else 'USB and later work proceed in the order shown. Status reflects evidence; no overall percentage or dates are committed.'
+    rows = ''.join('<li class="stage '+x['status']+'"><div><strong>'+escape(x['title'][lang])+'</strong><span class="status">'+labels[x['status']]+'</span></div><p>'+escape(x['detail'][lang])+'</p></li>' for x in progress['items'])
+    return '<section id="progress"><h2>'+title+'</h2><p>'+note+'</p><ol class="progress-list">'+rows+'</ol></section>'
+
 for ja in (False, True):
     lang='ja' if ja else 'en'
     title='Tab5 MeOS FPGA 開発計画' if ja else 'Tab5 MeOS FPGA Development Plan'
     subtitle='M5Stack Tab5上のMeOSに、Tang Primer 20Kによる描画処理と外部DDR3バッファを追加する計画です。実装状況、構成、検証項目を記載します。' if ja else 'Plan to add Tang Primer 20K rendering operations and external DDR3 buffers to MeOS on M5Stack Tab5. This document describes implementation status, architecture and validation requirements.'
-    notice='計画・コード調査段階。本フォークのビルド・実機起動・FPGA通信は未検証です。予定機能は実装済みを意味しません。' if ja else 'Planning and source inspection. No fork-specific build, hardware boot or FPGA communication has been validated. Planned features are not delivered capabilities.'
+    notice='基準ファームウェアのビルド・書き込み・起動とシリアルシェルを確認済みです。USB拡張は実装中。FPGA通信・GUI拡張などの予定機能は未検証です。' if ja else 'Baseline build, flashing, boot and serial shell verified. USB extensions are in development. FPGA communication and GUI extensions remain unverified.'
     prefix='../' if ja else './'
     body=markdown(plan) if ja else '<h2>Feature status & planned work</h2>'+table(EN_STATUS,['Area','Current source status','Planned work'])+markdown(en_details)
     # Source Markdown links resolve from GitHub, not from the deployed site.
@@ -130,8 +141,8 @@ for ja in (False, True):
     links=''.join(f'<a href="https://github.com/airpocket-soundman/{r}">{r}</a>' for r in related)
     doc=f'''<!doctype html>
 <html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tab5 MeOS FPGA — {'開発計画' if ja else 'Development roadmap'}</title><meta name="description" content="{subtitle}"><link rel="stylesheet" href="{prefix}style.css"><link rel="alternate" hreflang="en" href="https://airpocket-soundman.github.io/tab5-meos-fpga/"><link rel="alternate" hreflang="ja" href="https://airpocket-soundman.github.io/tab5-meos-fpga/ja/"></head>
-<body><header><strong>Tab5 MeOS FPGA</strong><nav aria-label="{'ナビゲーション' if ja else 'Navigation'}"><a href="#plan">{'開発計画' if ja else 'Roadmap'}</a><a href="{'../' if ja else './ja/'}" lang="{'en' if ja else 'ja'}" hreflang="{'en' if ja else 'ja'}">{'English' if ja else '日本語'}</a><a href="https://github.com/airpocket-soundman/tab5-meos-fpga">GitHub ↗</a></nav></header>
-<main><div class="hero"><h1>{title}</h1><p class="lead">{subtitle}</p><div class="notice">{notice}</div><p>{'更新日' if ja else 'Updated'}: <time datetime="2026-10-23">2026-10-23</time></p></div><article id="plan">{body}</article><section><h2>{'関連プロジェクト' if ja else 'Related projects'}</h2><div class="links">{links}</div></section></main><footer>Tab5 MeOS FPGA · airpocket-soundman · {'研究開発計画' if ja else 'Research roadmap'}</footer></body></html>
+<body><header><strong>Tab5 MeOS FPGA</strong><nav aria-label="{'ナビゲーション' if ja else 'Navigation'}"><a href="#progress">{'進捗' if ja else 'Progress'}</a><a href="#plan">{'開発計画' if ja else 'Roadmap'}</a><a href="{'../' if ja else './ja/'}" lang="{'en' if ja else 'ja'}" hreflang="{'en' if ja else 'ja'}">{'English' if ja else '日本語'}</a><a href="https://github.com/airpocket-soundman/tab5-meos-fpga">GitHub ↗</a></nav></header>
+<main><div class="hero"><h1>{title}</h1><p class="lead">{subtitle}</p><div class="notice">{notice}</div><p>{'更新日' if ja else 'Updated'}: <time datetime="2026-10-23">2026-10-23</time></p></div>{progress_html(lang)}<article id="plan">{body}</article><section><h2>{'関連プロジェクト' if ja else 'Related projects'}</h2><div class="links">{links}</div></section></main><footer>Tab5 MeOS FPGA · airpocket-soundman · {'研究開発計画' if ja else 'Research roadmap'}</footer></body></html>
 '''
     dest=OUT/('ja/index.html' if ja else 'index.html')
     dest.parent.mkdir(parents=True,exist_ok=True)
