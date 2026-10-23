@@ -54,7 +54,8 @@ static bool s_io_open, s_io_active, s_io_in;
 static uint16_t s_io_mps;
 static void *s_io_user;
 static size_t s_io_len, s_io_span;
-static uint8_t s_io_ep, s_ep_pid[32];
+static uint8_t s_io_ep, s_io_address, s_ep_pid[16][32];
+static bool s_low_via_hub[16];
 static uint8_t s_io_qtd[512] __attribute__((aligned(512)));
 static uint8_t s_io_data[4096] __attribute__((aligned(64)));
 
@@ -155,7 +156,8 @@ usbh_speed_t hal_usbh_speed(void)
 bool hal_usbh_open_control(uint8_t dev_addr, uint16_t max_packet)
 {
     if (!s_inited) return false;
-    if (dev_addr == 0) memset(s_ep_pid, 0, sizeof s_ep_pid);
+    if (dev_addr >= 16) return false;
+    if (dev_addr == 0) memset(s_ep_pid[0], 0, sizeof s_ep_pid[0]);
     if (s_chan_open) {                                  /* reconfigure: free and allocate again (the channel must be idle) */
         usb_dwc_hal_chan_free(&s_hal, &s_chan);
         s_chan_open = false;
@@ -163,12 +165,19 @@ bool hal_usbh_open_control(uint8_t dev_addr, uint16_t max_packet)
     if (!usb_dwc_hal_chan_alloc(&s_hal, &s_chan, NULL)) return false;
     usb_dwc_hal_ep_char_t ep = {
         .type = USB_DWC_XFER_TYPE_CTRL, .bEndpointAddress = 0, .mps = max_packet,
-        .dev_addr = dev_addr, .ls_via_fs_hub = 0,
+        .dev_addr = dev_addr, .ls_via_fs_hub = s_low_via_hub[dev_addr],
     };
     usb_dwc_hal_chan_set_ep_char(&s_hal, &s_chan, &ep);
     s_mps = max_packet;
     s_chan_open = true;
     return true;
+}
+
+void hal_usbh_prepare_device(uint8_t address, bool low_speed_via_full_speed_hub)
+{
+    if (address >= 16) return;
+    memset(s_ep_pid[address], 0, sizeof s_ep_pid[address]);
+    s_low_via_hub[address] = low_speed_via_full_speed_hub;
 }
 
 /* Run one stage (one descriptor of the list) to completion.  Returns 0, or a negative USBH_ERR_*. */
@@ -280,17 +289,19 @@ bool hal_usbh_data_open(uint8_t address, uint8_t endpoint, uint16_t mps,
                         bool interrupt, uint8_t interval)
 {
     hal_usbh_data_close();
-    if (s_io_open || !mps || mps > 1024 || !(endpoint & 15)) return false;
+    if (s_io_open || address >= 16 || !mps || mps > 1024 || !(endpoint & 15)) return false;
     memset(&s_io, 0, sizeof s_io);
     if (!usb_dwc_hal_chan_alloc(&s_hal, &s_io, NULL)) return false;
     usb_dwc_hal_ep_char_t ep = {0};
     ep.type = interrupt ? USB_DWC_XFER_TYPE_INTR : USB_DWC_XFER_TYPE_BULK;
     ep.bEndpointAddress = endpoint; ep.mps = mps; ep.dev_addr = address;
+    ep.ls_via_fs_hub = s_low_via_hub[address];
     ep.periodic.is_hs = hal_usbh_speed() == USBH_SPEED_HIGH;
     ep.periodic.interval = ep.periodic.is_hs ? (1u << ((interval > 0 && interval <= 16 ? interval : 1) - 1)) : (interval ? interval : 1);
     usb_dwc_hal_chan_set_ep_char(&s_hal, &s_io, &ep);
     s_io_ep = (endpoint & 15) + ((endpoint & 0x80) ? 16 : 0);
-    usb_dwc_hal_chan_set_pid(&s_io, s_ep_pid[s_io_ep]);
+    s_io_address = address;
+    usb_dwc_hal_chan_set_pid(&s_io, s_ep_pid[address][s_io_ep]);
     cache_write_back(s_frames, sizeof s_frames);
     s_io_open = true; s_io_in = (endpoint & 0x80) != 0; s_io_mps = mps;
     return true;
@@ -328,7 +339,7 @@ int hal_usbh_data_poll(void)
         }
         if (ev == USB_DWC_HAL_CHAN_EVENT_CPLT) {
             s_io_active = false;
-            s_ep_pid[s_io_ep] = usb_dwc_hal_chan_get_pid(&s_io);
+            s_ep_pid[s_io_address][s_io_ep] = usb_dwc_hal_chan_get_pid(&s_io);
             cache_invalidate(s_io_qtd, sizeof s_io_qtd);
             int rem, status;
             usb_dwc_hal_xfer_desc_parse(s_io_qtd, 0, &rem, &status);

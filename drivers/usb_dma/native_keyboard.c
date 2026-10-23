@@ -60,6 +60,8 @@ static uint8_t s_kbd_ep, s_kbd_interval;
 static uint16_t s_kbd_mps;
 static uint8_t s_msc_iface,s_msc_in,s_msc_out;
 static uint16_t s_msc_imps,s_msc_omps;
+static bool s_hub;
+static uint16_t s_ep0_mps;
 
 const char *usbkbd_type(void) { return s_type; }
 void usbkbd_stats(keyboard_stats_t *out) { *out = s_stats; }
@@ -100,13 +102,23 @@ static bool wait_enabled(void)
 }
 
 /* Returns the HID boot keyboard's interface number, or -1. Sets *config to the configuration value. */
-static int enumerate(usbh_speed_t speed, int *config)
+static int enumerate(usbh_speed_t speed, uint8_t address, int *config)
 {
     uint8_t d[64];
     uint16_t mps0 = speed == USBH_SPEED_LOW ? EP0_MPS_LOW : EP0_MPS_FULL;
+    bool low_via_hub = speed == USBH_SPEED_LOW && hal_usbh_speed() == USBH_SPEED_FULL;
+    hal_usbh_prepare_device(0, low_via_hub);
+    hal_usbh_prepare_device(address, low_via_hub);
     if (!hal_usbh_open_control(0, mps0)) { kprintf("usbkbd: no control channel\n"); return -1; }
 
-    int n = ctrl(0x80, REQ_GET_DESCRIPTOR, DESC_DEVICE << 8, 0, d, 18);
+    /* Read the first eight bytes before assuming endpoint-zero packet size.
+     * Some hubs return only this prefix until EP0 has been configured. */
+    int n = ctrl(0x80, REQ_GET_DESCRIPTOR, DESC_DEVICE << 8, 0, d, 8);
+    if (n < 8) { kprintf("usbkbd: device descriptor prefix failed (%d)\n", n); return -1; }
+    mps0 = d[7];
+    if (mps0 != 8 && mps0 != 16 && mps0 != 32 && mps0 != 64) return -1;
+    if (!hal_usbh_open_control(0, mps0)) return -1;
+    n = ctrl(0x80, REQ_GET_DESCRIPTOR, DESC_DEVICE << 8, 0, d, 18);
     if (n < 18) { kprintf("usbkbd: device descriptor read failed (%d)\n", n); return -1; }
     uint16_t vid = (uint16_t)(d[8] | d[9] << 8), pid = (uint16_t)(d[10] | d[11] << 8);
     mps0 = d[7];
@@ -114,9 +126,10 @@ static int enumerate(usbh_speed_t speed, int *config)
     kprintf("usbkbd: device %04x:%04x, class %u, ep0 packet %u, %s speed\n", vid, pid, d[4], mps0,
             speed == USBH_SPEED_LOW ? "low" : speed == USBH_SPEED_FULL ? "full" : "high");
 
-    if (ctrl(0x00, REQ_SET_ADDRESS, KBD_ADDRESS, 0, NULL, 0) < 0) { kprintf("usbkbd: SET_ADDRESS failed\n"); return -1; }
+    s_ep0_mps = mps0;
+    if (ctrl(0x00, REQ_SET_ADDRESS, address, 0, NULL, 0) < 0) { kprintf("usbkbd: SET_ADDRESS failed\n"); return -1; }
     task_sleep(ADDR_RECOVERY_MS);
-    if (!hal_usbh_open_control(KBD_ADDRESS, mps0)) return -1;
+    if (!hal_usbh_open_control(address, mps0)) return -1;
 
     uint8_t cfg[1024];
     n = ctrl(0x80, REQ_GET_DESCRIPTOR, DESC_CONFIG << 8, 0, cfg, 9);
@@ -129,11 +142,13 @@ static int enumerate(usbh_speed_t speed, int *config)
 
     int iface = -1, kind = 0, current = -1;
     s_kbd_ep = s_msc_in = s_msc_out = 0;
+    s_hub = false;
     for (int i = 0; i + 2 <= n;) {
         int len = cfg[i];
         if (len < 2 || i + len > n) break;
         if (cfg[i+1] == DESC_INTERFACE && len >= 9) {
             current = cfg[i+2]; kind = 0;
+            if (cfg[i+3] == 0 && cfg[i+5] == 9) s_hub = true;
             if (cfg[i+3] == 0 && cfg[i+5] == 3 && cfg[i+6] == 1 && cfg[i+7] == 1) {kind=1;}
             if (cfg[i+3] == 0 && cfg[i+5] == 8 && cfg[i+6] == 6 && cfg[i+7] == 0x50) {kind=2;s_msc_iface=current;}
         } else if (cfg[i+1] == 5 && len >= 7) {
@@ -153,11 +168,124 @@ static int enumerate(usbh_speed_t speed, int *config)
         return iface;
     }
     if(s_msc_in && s_msc_out)return -2;
+    if(s_hub)return -3;
     kprintf("usbkbd: device has no HID boot keyboard interface\n");
     return -1;
 }
 
 /* ---- the task ------------------------------------------------------------------- */
+
+static int hub_request(uint16_t mps, uint8_t type, uint8_t req, uint16_t value,
+                       uint16_t port, void *data, uint16_t len)
+{
+    mutex_lock(&usb_native_bus_lock);
+    int rc = hal_usbh_open_control(1, mps) ? ctrl(type,req,value,port,data,len) : -1;
+    mutex_unlock(&usb_native_bus_lock);
+    return rc;
+}
+static bool hub_status(uint16_t mps, unsigned port, uint32_t *out)
+{
+    uint8_t s[4];
+    if (hub_request(mps,0xa3,0,0,port,s,4)!=4) return false;
+    *out=(uint32_t)s[0] | (uint32_t)s[1]<<8 | (uint32_t)s[2]<<16 | (uint32_t)s[3]<<24;
+    return true;
+}
+static void hub_session(void)
+{
+    uint16_t hub_mps=s_ep0_mps;
+    uint8_t desc[9];
+    int n = hub_request(hub_mps,0xa0,REQ_GET_DESCRIPTOR,0x2900,0,desc,sizeof desc);
+    if (n < 7 || desc[1] != 0x29 || !desc[2] || desc[2] > 7) {
+        kprintf("usbhub: invalid descriptor (%d)\n", n);
+        return;
+    }
+    unsigned ports = desc[2];
+    kprintf("usbhub: ports=%u characteristics=%04x power-good=%u ms\n",
+            ports, desc[3] | desc[4] << 8, desc[5] * 2u);
+    for (unsigned port = 1; port <= ports; port++) {
+        if (hub_request(hub_mps,0x23,3,8,port,NULL,0)<0) {
+            kprintf("usbhub: port %u power failed\n", port);
+            return;
+        }
+    }
+    task_sleep(desc[5] * 2u + 100u);
+    int slots[7];
+    bool seen[7]={0}, used[NATIVE_MSC_SLOTS]={0};
+    for (unsigned i=0;i<ports;i++) slots[i]=-1;
+    while (hal_usbh_connected()) {
+        mutex_lock(&usb_native_bus_lock);
+        hal_usbh_poll();
+        mutex_unlock(&usb_native_bus_lock);
+        for (unsigned port = 1; port <= ports; port++) {
+            uint32_t status;
+            if (!hub_status(hub_mps,port,&status)) continue;
+            bool connected=(status&1)!=0;
+            if (!connected || (status&(1u<<16))) {
+                int slot=slots[port-1];
+                if (slot>=0) {
+                    /* Never acquire FAT while owning the bus lock: I/O takes
+                     * FAT first, then the bus. Keep stale handles invalid. */
+                    usb_fat_detach_slot(slot);
+                    usbmsc_detach_slot(slot);
+                    used[slot]=false; slots[port-1]=-1;
+                    kprintf("usbhub: port %u storage removed\n",port);
+                }
+                seen[port-1]=false;
+                if (status&(1u<<16)) hub_request(hub_mps,0x23,1,16,port,NULL,0);
+            }
+            if (!connected || seen[port-1]) continue;
+            seen[port-1]=true;
+            task_sleep(DEBOUNCE_MS);
+            if (hub_request(hub_mps,0x23,3,4,port,NULL,0)<0) continue;
+            bool enabled=false;
+            for (unsigned t=0;t<500;t+=10) {
+                task_sleep(10);
+                if (!hub_status(hub_mps,port,&status)) break;
+                if (!(status&0x10) && (status&2)) { enabled=true;break; }
+            }
+            if (!enabled) { kprintf("usbhub: port %u reset failed\n",port);continue; }
+            hub_request(hub_mps,0x23,1,20,port,NULL,0);
+            task_sleep(RESET_RECOVERY_MS);
+            usbh_speed_t speed=(status&0x400)?USBH_SPEED_HIGH:
+                               (status&0x200)?USBH_SPEED_LOW:USBH_SPEED_FULL;
+            if (hal_usbh_speed()==USBH_SPEED_HIGH && speed!=USBH_SPEED_HIGH) {
+                kprintf("usbhub: port %u requires split transfers (not enabled)\n",port);
+                hub_request(hub_mps,0x23,1,1,port,NULL,0);
+                continue;
+            }
+            uint8_t address=port+1;
+            int config=0;
+            mutex_lock(&usb_native_bus_lock);
+            int iface=enumerate(speed,address,&config);
+            bool configured=iface!=-1 && ctrl(0,REQ_SET_CONFIG,config,0,NULL,0)>=0;
+            uint8_t in=s_msc_in,out=s_msc_out,msc_iface=s_msc_iface;
+            uint16_t imps=s_msc_imps,omps=s_msc_omps;
+            mutex_unlock(&usb_native_bus_lock);
+            if (!configured) {
+                hub_request(hub_mps,0x23,1,1,port,NULL,0);
+                continue;
+            }
+            if (iface!=-2) {
+                kprintf("usbhub: port %u configured; concurrent HID/nested hubs pending\n",port);
+                continue;
+            }
+            int slot=-1;
+            for (unsigned i=0;i<NATIVE_MSC_SLOTS;i++)
+                if (!used[i] && !usb_fat_slot_busy(i)) { slot=i;break; }
+            if (slot<0) { kprintf("usbhub: no free storage slot\n");continue; }
+            if (usbmsc_attach_slot(slot,address,msc_iface,in,imps,out,omps)) {
+                slots[port-1]=slot;used[slot]=true;
+                usb_fat_mount_slot(slot,usbmsc_device_slot(slot));
+                kprintf("usbhub: port %u address=%u storage slot=%u\n",port,address,slot);
+            }
+        }
+        task_sleep(250);
+    }
+    for (unsigned i=0;i<NATIVE_MSC_SLOTS;i++) if (used[i]) {
+        usb_fat_detach_slot(i);
+        usbmsc_detach_slot(i);
+    }
+}
 
 static void keyboard_session(int iface)
 {
@@ -251,7 +379,7 @@ static void usbkbd_task(void *arg)
         task_sleep(RESET_RECOVERY_MS);
 
         int config = 0;
-        int iface = enumerate(hal_usbh_speed(), &config);
+        int iface = enumerate(hal_usbh_speed(), KBD_ADDRESS, &config);
         if (iface == -2 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             if (usbmsc_attach(s_msc_iface,s_msc_in,s_msc_imps,s_msc_out,s_msc_omps)) usb_fat_mount(usbmsc_device());
             while(hal_usbh_connected()){hal_usbh_poll();task_sleep(CONNECT_POLL_MS);}
@@ -260,6 +388,8 @@ static void usbkbd_task(void *arg)
             /* Removal already observed; do not wait for a second unplug if
              * the device was reinserted during filesystem cleanup. */
             continue;
+        } else if (iface == -3 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
+            hub_session();
         } else if (iface >= 0 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             int protocol_rc = ctrl(0x21, HID_SET_PROTOCOL, 0, (uint16_t)iface, NULL, 0);           /* 0 = boot protocol */
             ctrl(0x21, HID_SET_IDLE, 0, (uint16_t)iface, NULL, 0);               /* may STALL: not required */

@@ -19,6 +19,7 @@ bool         hal_usbh_connected(void);
 void         hal_usbh_reset(bool assert_reset);      /* drive / release bus reset (hold it >= 10 ms) */
 usbh_speed_t hal_usbh_speed(void);                   /* valid once the port is enabled (after a reset) */
 bool         hal_usbh_open_control(uint8_t dev_addr, uint16_t max_packet);   /* (re)configure the control pipe; false if no pipe */
+void hal_usbh_prepare_device(uint8_t address, bool low_speed_via_full_speed_hub);
 
 #define USBH_ERR_TIMEOUT   (-1)
 #define USBH_ERR_STALL     (-2)

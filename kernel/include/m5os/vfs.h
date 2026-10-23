@@ -28,7 +28,7 @@
 #define VFS_O_APPEND  FS_O_APPEND
 #define VFS_PATH_MAX  96
 #define VFS_FD_MAX    16
-#define VFS_MOUNT_MAX 4
+#define VFS_MOUNT_MAX 8
 
 typedef fs_info_t vfs_info_t;            /* type: FS_TYPE_FILE / FS_TYPE_DIR / FS_TYPE_DEV */
 
