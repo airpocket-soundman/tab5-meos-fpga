@@ -45,44 +45,68 @@
         "en": "3. USB hubs, multiple drives and keyboard coexistence"
       },
       "detail": {
-        "ja": "Full-SpeedハブでexFAT・FATの読み書き・保持・分離とSD併存を確認。別DMAの無線キーボードでコマンド実行、同じ版で4ファイル読み出しを確認（抜き差しを含む試験後のエラー累積12）。USBカードリーダーの認識・一覧取得、lsusbでハブ＋ストレージ3台の表示も確認。個別抜き差し・長時間入力負荷・High-Speed異速度混在は継続。",
-        "en": "Full-speed hub: exFAT/FAT write/read, persistence, isolation and SD access verified. Wireless keyboard command input and four-file readback passed (12 cumulative errors after a test including replug). USB card-reader mount/listing and lsusb with a hub plus three drives also verified. Storage hot-plug, sustained input under load and high-speed mixed-speed operation remain pending."
+        "ja": "Full-SpeedハブでexFAT・FATの読み書き・保持・分離とSD併存を確認。別DMAの無線キーボードでコマンド実行、同じ版で4ファイル読み出しを確認（抜き差しを含む試験後のエラー累積12）。USBカードリーダーの認識・一覧取得、lsusbでハブ＋ストレージ3台の表示も確認。個別抜き差し・長時間入力負荷・High-Speed異速度混在は継続。 USB3ハブのUSB2 High-Speed接続でも2本に各8192バイトを書き込み、読み戻しCRC一致を確認。",
+        "en": "Full-speed hub: exFAT/FAT write/read, persistence, isolation and SD access verified. Wireless keyboard command input and four-file readback passed (12 cumulative errors after a test including replug). USB card-reader mount/listing and lsusb with a hub plus three drives also verified. Storage hot-plug, sustained input under load and high-speed mixed-speed operation remain pending. On a USB3 hub operating at USB2 High-Speed, both drives passed new 8192-byte write/read CRC checks."
+      }
+    },
+    {
+      "id": "usb-ethernet",
+      "status": "active",
+      "title": {
+        "ja": "3a. USB Ethernet",
+        "en": "3a. USB Ethernet"
+      },
+      "detail": {
+        "ja": "RTL8153 CDC-ECMでリンク・DHCP・ping・SSHを実機確認。MSCのDMA待機中にUSBロックを解放し、USBメモリ2本の読み書きとping併用で各20/20応答、USBエラー・ドロップ0。長時間試験と抜き差し時の通信継続は未確認。",
+        "en": "RTL8153 CDC-ECM passed hardware link, DHCP, ping and SSH. Releasing the USB lock during MSC DMA waits enabled reads/writes on both drives alongside 20/20 ping replies per test with zero USB errors or drops. Long-duration and hot-plug continuity tests remain pending."
+      }
+    },
+    {
+      "id": "wifi-check",
+      "status": "active",
+      "title": {
+        "ja": "3b. Wi-Fi動作確認",
+        "en": "3b. Wi-Fi validation"
+      },
+      "detail": {
+        "ja": "C6はNG 1.0.6.0.1を通知。公式公開イメージとTab5thinclientはMCU方式。MeOS・thinclient・公式を優先しMCU方式に揃える方針。SDIO経由更新の読み取り専用通信を検証中。C6更新とWi-Fi通信は未完了。",
+        "en": "C6 reports NG 1.0.6.0.1; the published official image and Tab5thinclient use MCU. MCU was selected to prioritize MeOS, thinclient and official firmware. Read-only SDIO command validation is in progress; C6 update and Wi-Fi traffic validation are pending."
       }
     },
     {
       "id": "ssh",
-      "status": "planned",
+      "status": "active",
       "title": {
         "ja": "4. SSHサーバー・クライアント同時動作",
         "en": "4. Concurrent SSH server and client"
       },
       "detail": {
-        "ja": "SSHからシェル操作・ファイル転送・開発。接続を維持して既存SSHクライアントをテスト。",
-        "en": "Remote shell, file transfer and development; test the existing client while keeping the server session connected."
+        "ja": "共有コンソールへ接続するSSHサーバーを実装。実機で認証・コマンド実行・再接続・停止と、接続維持中のSSHクライアント実行を確認。Web/TailscaleとはTCP枠を分離。独立PTY・exec・SFTPは未実装。",
+        "en": "Shared-console SSH server implemented. Hardware authentication, commands, reconnect, stop and outbound SSH while keeping inbound SSH active passed. TCP slots are separate from Web/Tailscale. Independent PTYs, exec and SFTP are not implemented."
       }
     },
     {
       "id": "terminal-spec",
-      "status": "planned",
+      "status": "active",
       "title": {
         "ja": "4a. 共通端末・VT100／VT220／xterm対応",
         "en": "4a. Shared terminal: VT100 / VT220 / xterm"
       },
       "detail": {
-        "ja": "ローカル／SSH表示を共通化。VT100を基礎にANSI制御・キー入力を整備し、必要なVT220機能とxterm拡張を段階追加。TERM通知を実装範囲と合わせ、TUIアプリで検証。",
-        "en": "Share local/SSH terminal processing. Start with VT100 and ANSI controls/key input; add required VT220 features and xterm extensions incrementally. Match TERM to actual support and verify with TUI apps."
+        "ja": "LCD/SSHに256色・RGB、スクロール領域、行挿入削除、カーソル保存復元、代替画面等を実装。SSHは問い合わせ応答とDECCKM、Vimキー透過も追加。実parserのホスト検証済み。実機Vim/SLの通し確認と完全なVT220/xterm互換は未達。",
+        "en": "LCD/SSH implement 256/RGB colors, scroll margins, line edits, cursor save/restore and alternate screens. SSH adds DSR, DECCKM and Vim key passthrough. Actual-parser host tests passed; device Vim/SL end-to-end checks and full VT220/xterm compatibility remain pending."
       }
     },
     {
       "id": "touch",
-      "status": "planned",
+      "status": "active",
       "title": {
         "ja": "5. タッチ入力・コンソールスクロール",
         "en": "5. Touch and console scrolling"
       },
       "detail": {
-        "ja": "ST7123対応、上下スワイプによる過去出力の閲覧と最新位置への復帰。",
-        "en": "ST7123 input, swipe through console history and return to live output."
+        "ja": "256行の色付き履歴とスワイプ操作を実装。初回実機試験は反応せず、GT911専用入力ドライバーが新ST7121パネルを認識しない原因を特定。ST7123互換入力を追加し、実機再検証中。",
+        "en": "256-line colored history and swipe handling implemented. Initial device swipe failed because the GT911-only input driver did not recognize the ST7121 panel. ST7123-compatible input added; device recheck pending."
       }
     },
     {

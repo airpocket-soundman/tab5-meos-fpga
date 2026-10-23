@@ -10,6 +10,8 @@ FPGAによる描画支援を組み込んだ、M5Stack Tab5向けMeOSのGUI環境
 
 基準版とサイズ最適化版のビルド・書き込み、Tab5の起動とシリアルシェルを確認済みです。microSDと、Full-Speedハブ経由のUSBメモリ2台（exFAT・FAT）で読み書き・再起動後保持を確認しました。ハブ配下キーボードのコマンド入力とUSBカードリーダーのマウント・一覧取得も確認。`lsusb`で接続とマウント先を表示できます。[接続診断](docs/USB_DIAGNOSTICS.md)、[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照してください。入力中の長時間負荷、High-Speed異速度混在、FPGA通信、GUI拡張、周辺機能全体の回帰は未検証です。
 
+USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSHサーバー／クライアントの同時利用を実機確認しました。端末制御の拡張はホスト試験済み。タッチはST7123/ST7121入力を追加して再検証中です。USBストレージの読み書きとEthernet pingの併用試験ではパケット損失がなくなりました。Wi-FiはC6をMCU方式に揃えて検証する予定です。[Ethernet](docs/USB_ETHERNET_IMPLEMENTATION.md)、[SSHサーバー](docs/SSH_SERVER_IMPLEMENTATION.md)、[端末機能](docs/TERMINAL_IMPLEMENTATION.md)の実装記録を参照してください。
+
 ## 実装予定
 
 - FPGA通信、DDR3バッファ、矩形塗りつぶし・画像コピー、GUI統合。

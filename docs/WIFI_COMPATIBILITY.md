@@ -25,7 +25,9 @@ The new recognition helper checks the complete startup structure and bounded
 TLVs. On a match, Wi-Fi initialization stops with an explicit compatibility
 message before sending MCU RPCs. Normal MCU traffic retains the original path.
 The host test covers the observed length layout, truncated frames, invalid TLVs
-and ordinary MCU headers. Wi-Fi IP traffic has not been verified on this C6.
+and ordinary MCU headers. Wi-Fi IP traffic has not been verified on this C6. The firmware TLV reports
+project `NG`, version `1.0.6.0.1`. This identifies the protocol family, not the
+complete flash contents or how this particular unit was provisioned.
 
 ## Matching firmware candidate
 
@@ -46,10 +48,29 @@ authorized update; the firmware filename is not proof of working Wi-Fi.
 
 NG contains OTA commands, but support and partition layout on the current device
 have not been established. A merged `0x0` image is not an OTA application image.
-No experimental SDIO firmware updater has been added.
+An experimental, optional SDIO updater is being prepared. Read-only command
+communication must pass before enabling writes; no C6 update has been performed.
 
 ## Primary references
 
 - [MeOS Wi-Fi implementation](https://github.com/shi3z/MeOS/blob/main/drivers/wifi/wifi_tab5.c)
 - [Espressif NG wire structures](https://github.com/espressif/esp-hosted/blob/legacy/fg-ng/esp_hosted_ng/host/include/adapter.h)
 - [NG SDIO startup event construction](https://github.com/espressif/esp-hosted/blob/36c288f3/esp_hosted_ng/esp/esp_driver/network_adapter/main/sdio_slave_api.c)
+
+## Selected compatibility target
+
+The user selected MeOS, Tab5thinclient and the official Tab5 firmware as the
+priority on 2026-10-23. The target is therefore ESP-Hosted-MCU on the C6.
+The current Linux configuration requires NG and would need a compatible C6
+firmware again before use.
+
+Tab5thinclient uses Arduino `WiFi` through `esp_wifi_remote` and the MCU
+`esp_hosted` APIs. Its installed ESP32-P4 SDK enables an ESP32-C6 SDIO remote
+Wi-Fi target. The official Tab5 UserDemo likewise declares `esp_hosted` 1.4.0
+and `esp_wifi_remote` 0.8.5, and publishes the MCU image listed above.
+
+This establishes a common protocol family, not a guarantee that every RPC
+version is compatible. After updating, verify MeOS initialization, scanning,
+association, DHCP and IP traffic. Switching to thinclient or the official P4
+firmware also needs a device check. The observed NG version alone does not
+establish the unit's factory state or its firmware update history.
