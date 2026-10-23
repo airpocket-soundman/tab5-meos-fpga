@@ -75,3 +75,7 @@ Start with dirty rectangles and FPGA-local assets/scroll copies. A640x360 RGB565
 3. On hardware: low-speed identity/loopback, DDR test, CRC read/write, then10/20/40MHz evaluation. Frequency is an experimental sweep.
 4. Implement fill/copy/font commands and dirty rectangles; compare CPU and FPGA including transfer and LCD presentation.
 5. Integrate GUI only after resource, cancellation and peripheral-concurrency checks pass. Publish measured limits and update the shared carrier specification if a physical change is needed.
+
+## Review update: carrier second report (2026-10-24)
+
+Reviewed carrier remote main 7929491 after fetching. The previous ESD continuity defect has been corrected in copper; DRC and all eight continuity checks passed, and removing the eight straps caused all eight carrier paths to fail as expected. Remaining concerns include ESD land-pattern matching, omitted socket escape geometry, collapsed P/N branch taps and joint sensitivity corners. Full findings and executed 2D/3D calibration attempts are in [the second-report review](CARRIER_R2_REVIEW_2026-10-24.md). The native MeOS PARLIO clock/handshake, power-off isolation and recovery requirements above remain unverified. No carrier hardware files were modified.

@@ -1,0 +1,34 @@
+[
+  {
+    "energy": "original",
+    "dx_mm": 0.02104,
+    "zdiff_ohm": 101.65875920286743,
+    "single_ohm": 55.52809751094282,
+    "seconds": 5.458493947982788
+  },
+  {
+    "energy": "discrete_link",
+    "dx_mm": 0.02104,
+    "zdiff_ohm": 99.62511701819562,
+    "single_ohm": 54.99851770487827,
+    "seconds": 5.1315226554870605
+  },
+  {
+    "energy": "original",
+    "dx_mm": 0.01052,
+    "zdiff_ohm": 103.4155721238323,
+    "single_ohm": 57.433872516489416,
+    "seconds": 21.126542568206787
+  },
+  {
+    "energy": "discrete_link",
+    "dx_mm": 0.01052,
+    "zdiff_ohm": 102.45888678488097,
+    "single_ohm": 57.174952173157315,
+    "seconds": 8.33948564529419
+  },
+  {
+    "model": "zero_thickness_reference",
+    "single_ohm": 59.849406267920344
+  }
+]

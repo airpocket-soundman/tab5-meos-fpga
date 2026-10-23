@@ -1,0 +1,338 @@
+{
+  "revision_declared": "7929491",
+  "hashes": {
+    "kicad/tab5-fpga-carrier.kicad_pcb": "fa29f08c7596595f96df382bd0b19c17ebcdb81a29ee0ef968c9dfc4801c6b67",
+    "kicad/sim/tmds_roles.json": "6bc2f81411dc899d0fb12dc265e17141053186e8532e003a9968370b668bc1d1",
+    "kicad/sim/tmds_geom.json": "d7de87daa238e40759f61d2c3a1d3bce41cd062efbed8d9d5f9b49bc6d2103c5",
+    "kicad/sim/tmds_channel.py": "11bc4d2a08e40f7b0931472bccc9f1c4b4d2b8cc4002217d6c4477fb00df5cf8",
+    "kicad/sim/tmds_sparam.py": "fe4a64d45528698d869600aa5d996efc6250bf6036b6e60324cc800813d9fb70"
+  },
+  "reproduction": {
+    "D0": {
+      "max_abs_error_db": 0.0
+    },
+    "D1": {
+      "max_abs_error_db": 0.0
+    },
+    "D2": {
+      "max_abs_error_db": 0.0
+    },
+    "CK": {
+      "max_abs_error_db": 0.0
+    }
+  },
+  "paths": {
+    "HDMI_D0P": {
+      "ordered_segments": 7,
+      "loose_segments": 0,
+      "start": [
+        87.739941,
+        50.049562
+      ],
+      "end": [
+        99.225,
+        19.0
+      ]
+    },
+    "HDMI_D0N": {
+      "ordered_segments": 7,
+      "loose_segments": 0,
+      "start": [
+        87.739941,
+        50.648748
+      ],
+      "end": [
+        99.225,
+        20.5
+      ]
+    },
+    "HDMI_D0P_C": {
+      "ordered_segments": 10,
+      "loose_segments": 0,
+      "start": [
+        100.775,
+        19.0
+      ],
+      "end": [
+        115.715,
+        18.5
+      ]
+    },
+    "HDMI_D0N_C": {
+      "ordered_segments": 10,
+      "loose_segments": 0,
+      "start": [
+        100.775,
+        20.5
+      ],
+      "end": [
+        115.715,
+        19.5
+      ]
+    },
+    "HDMI_D1P": {
+      "ordered_segments": 7,
+      "loose_segments": 0,
+      "start": [
+        87.739941,
+        29.049096
+      ],
+      "end": [
+        99.225,
+        16.0
+      ]
+    },
+    "HDMI_D1N": {
+      "ordered_segments": 7,
+      "loose_segments": 0,
+      "start": [
+        87.739941,
+        29.648282
+      ],
+      "end": [
+        99.225,
+        17.5
+      ]
+    },
+    "HDMI_D1P_C": {
+      "ordered_segments": 10,
+      "loose_segments": 0,
+      "start": [
+        100.775,
+        16.0
+      ],
+      "end": [
+        115.715,
+        17.0
+      ]
+    },
+    "HDMI_D1N_C": {
+      "ordered_segments": 10,
+      "loose_segments": 0,
+      "start": [
+        100.775,
+        17.5
+      ],
+      "end": [
+        115.715,
+        18.0
+      ]
+    },
+    "HDMI_D2P": {
+      "ordered_segments": 7,
+      "loose_segments": 0,
+      "start": [
+        87.739941,
+        25.449662
+      ],
+      "end": [
+        99.225,
+        13.0
+      ]
+    },
+    "HDMI_D2N": {
+      "ordered_segments": 7,
+      "loose_segments": 0,
+      "start": [
+        87.739941,
+        26.048848
+      ],
+      "end": [
+        99.225,
+        14.5
+      ]
+    },
+    "HDMI_D2P_C": {
+      "ordered_segments": 10,
+      "loose_segments": 0,
+      "start": [
+        100.775,
+        13.0
+      ],
+      "end": [
+        115.715,
+        15.5
+      ]
+    },
+    "HDMI_D2N_C": {
+      "ordered_segments": 10,
+      "loose_segments": 0,
+      "start": [
+        100.775,
+        14.5
+      ],
+      "end": [
+        115.715,
+        16.5
+      ]
+    },
+    "HDMI_CKP": {
+      "ordered_segments": 7,
+      "loose_segments": 0,
+      "start": [
+        87.739941,
+        53.04981
+      ],
+      "end": [
+        99.225,
+        22.0
+      ]
+    },
+    "HDMI_CKN": {
+      "ordered_segments": 7,
+      "loose_segments": 0,
+      "start": [
+        87.739941,
+        53.648996
+      ],
+      "end": [
+        99.225,
+        23.5
+      ]
+    },
+    "HDMI_CKP_C": {
+      "ordered_segments": 10,
+      "loose_segments": 0,
+      "start": [
+        100.775,
+        22.0
+      ],
+      "end": [
+        115.715,
+        20.0
+      ]
+    },
+    "HDMI_CKN_C": {
+      "ordered_segments": 10,
+      "loose_segments": 0,
+      "start": [
+        100.775,
+        23.5
+      ],
+      "end": [
+        115.715,
+        21.0
+      ]
+    }
+  },
+  "joint_corner": {
+    "D0": {
+      "s11_371": -34.61083089992057,
+      "s11_742": -16.841521795362016,
+      "s11_max_1500": -9.897345198132442,
+      "s21_371": -0.601519507711761,
+      "s21_742": -0.8510773256840586,
+      "s21_1500": -1.455954279200284,
+      "s11_max_3300": -5.429699449664421
+    },
+    "D1": {
+      "s11_371": -26.01282634575362,
+      "s11_742": -24.666677938817273,
+      "s11_max_1500": -9.42555142720278,
+      "s21_371": -0.5898415806961748,
+      "s21_742": -0.7369513794893221,
+      "s21_1500": -1.5569936461315936,
+      "s11_max_3300": -6.689794781197959
+    },
+    "D2": {
+      "s11_371": -29.217029003999137,
+      "s11_742": -20.67456538679812,
+      "s11_max_1500": -10.33208171036058,
+      "s21_371": -0.5722426964673493,
+      "s21_742": -0.728949667485647,
+      "s21_1500": -1.350602806444193,
+      "s11_max_3300": -6.95315762976637
+    },
+    "CK": {
+      "s11_371": -34.385045734919885,
+      "s11_742": -16.0481369393585,
+      "s11_max_1500": -10.435571707830588,
+      "s21_371": -0.5982874181324092,
+      "s21_742": -0.8574903805028147,
+      "s21_1500": -1.3263702934795805,
+      "s11_max_3300": -4.886269086029655
+    }
+  },
+  "geometry_role_coverage": {
+    "HDMI_D2P_C": {
+      "pcb_track_mm": 18.162171808174143,
+      "role_main_plus_branch_mm": 18.162171808174133,
+      "difference_mm": 1.1102230246251565e-14
+    },
+    "HDMI_D2N_C": {
+      "pcb_track_mm": 20.366334864208405,
+      "role_main_plus_branch_mm": 20.366334864208397,
+      "difference_mm": 8.881784197001252e-15
+    },
+    "HDMI_D1P_C": {
+      "pcb_track_mm": 21.949177576683017,
+      "role_main_plus_branch_mm": 21.949177576683017,
+      "difference_mm": 8.881784197001252e-16
+    },
+    "HDMI_D1N_C": {
+      "pcb_track_mm": 26.869278882255678,
+      "role_main_plus_branch_mm": 26.869278589360686,
+      "difference_mm": 2.9289499181572864e-07
+    },
+    "HDMI_CKN": {
+      "pcb_track_mm": 43.639788616539995,
+      "role_main_plus_branch_mm": 41.23978927614522,
+      "difference_mm": 2.3999993403947784
+    },
+    "HDMI_CKN_C": {
+      "pcb_track_mm": 21.34917757668302,
+      "role_main_plus_branch_mm": 21.34917757668302,
+      "difference_mm": 8.881784197001252e-16
+    },
+    "HDMI_CKP": {
+      "pcb_track_mm": 43.63978843596091,
+      "role_main_plus_branch_mm": 41.23978927614522,
+      "difference_mm": 2.3999991598156925
+    },
+    "HDMI_CKP_C": {
+      "pcb_track_mm": 21.245014520648763,
+      "role_main_plus_branch_mm": 21.245014520648752,
+      "difference_mm": 1.0658141036401503e-14
+    },
+    "HDMI_D0P_C": {
+      "pcb_track_mm": 24.462171808174137,
+      "role_main_plus_branch_mm": 24.46217180817414,
+      "difference_mm": -3.552713678800501e-15
+    },
+    "HDMI_D0N_C": {
+      "pcb_track_mm": 22.199430108377182,
+      "role_main_plus_branch_mm": 22.199430108377197,
+      "difference_mm": -1.4210854715202004e-14
+    },
+    "HDMI_D2P": {
+      "pcb_track_mm": 25.039641233356676,
+      "role_main_plus_branch_mm": 22.63964127614522,
+      "difference_mm": 2.399999957211456
+    },
+    "HDMI_D0P": {
+      "pcb_track_mm": 43.639541233356674,
+      "role_main_plus_branch_mm": 41.23954127614522,
+      "difference_mm": 2.399999957211456
+    },
+    "HDMI_D2N": {
+      "pcb_track_mm": 25.039640616539998,
+      "role_main_plus_branch_mm": 22.639641276145223,
+      "difference_mm": 2.399999340394775
+    },
+    "HDMI_D1P": {
+      "pcb_track_mm": 25.639075233356678,
+      "role_main_plus_branch_mm": 23.239075276145226,
+      "difference_mm": 2.3999999572114525
+    },
+    "HDMI_D1N": {
+      "pcb_track_mm": 25.639075233356678,
+      "role_main_plus_branch_mm": 23.239075276145222,
+      "difference_mm": 2.399999957211456
+    },
+    "HDMI_D0N": {
+      "pcb_track_mm": 43.639540616539996,
+      "role_main_plus_branch_mm": 41.23954127614522,
+      "difference_mm": 2.3999993403947784
+    }
+  }
+}

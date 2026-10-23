@@ -1,0 +1,47 @@
+{
+  "carrier_revision": "7929491",
+  "openems_version": "0.37.0",
+  "csxcad_version": "0.7.0",
+  "python_version": "3.13.17",
+  "original_lumped_single": {
+    "width_mm": 0.3,
+    "mesh_mm": 0.15,
+    "reported_impedance_mean_ohm": 51.2,
+    "iterations": 30000,
+    "elapsed_solver_s": 107.14,
+    "energy_end_db": -20.59,
+    "energy_target_db": -40,
+    "converged": false
+  },
+  "modal_cases": [
+    {
+      "result": "msl-coarse-3d.json",
+      "cells": 81675,
+      "iterations": 22848,
+      "solver_s": 60.69,
+      "energy_end_db": -50.06
+    },
+    {
+      "result": "msl-fine-3d.json",
+      "note": "Solver reached -50 dB; postprocessing rerun after fixing summary-only attribute access.",
+      "cells": 85305,
+      "iterations": 21952,
+      "solver_s": 46.59,
+      "energy_end_db": -50.83
+    },
+    {
+      "result": "msl-zfine-3d.json",
+      "cells": 108053,
+      "iterations": 27972,
+      "solver_s": 64.32,
+      "energy_end_db": -50.72
+    }
+  ],
+  "reference_2d_thin_ohm": 59.849406267920344,
+  "conclusion": "execution supported; full-wave calibration not accepted; no complete carrier 3D simulation performed",
+  "model_hashes": {
+    "modal-coarse": "17212679d8d43917943341cb2ce6bb0aa7f5554a1bf423097604b5d4a5299f71",
+    "modal-fine": "d597d6a4d2ee213db1a9fd54b51ff96eaee01f51e6d587b1616445ec7860063d",
+    "modal-zfine": "d3c09ce36d8f52ec5559821e68b4917859583ec8d3112601241cfdbcc25469cc"
+  }
+}

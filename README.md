@@ -51,3 +51,5 @@ Forked from [shi3z/MeOS](https://github.com/shi3z/MeOS), starting at `a6a9f234e5
 The bilingual site lives in `docs/site/`. Run `python tools/build_pages.py` after changing the roadmap (Japanese text comes from `docs/DEVELOPMENT_GOALS.md`; maintain its English counterpart in the generator). GitHub Actions generates and publishes the site when its sources change on `main`. Use the language link at the top of either page to switch languages; no JavaScript is required.
 
 - [FPGA carrier compatibility and pre-fabrication requirements](docs/FPGA_CARRIER_REQUIREMENTS.md)
+
+- [Carrier second-report review and executed 2D/3D calibration](docs/CARRIER_R2_REVIEW_2026-10-24.md)
