@@ -17,6 +17,7 @@
 #include "../usbkbd/hid_keys.h"
 #include "osk.h"
 #include <m5os/ime.h>
+#include <m5os/io.h>
 #include <m5os/hal_i2c.h>
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
@@ -93,6 +94,7 @@ void keyboard_start(void)
     if (hal_i2c_read_reg(KBD_ADDR, REG_FIRMWARE, &fw)) {
         hal_i2c_write_reg(KBD_ADDR, REG_MODE, MODE_HID);
         hal_i2c_write_reg(KBD_ADDR, REG_EVENT_NUM, 0);                   /* drop anything queued before we started */
+        io_tab5_keyboard_detected(true);
         s_type = "tab5-i2c";
         kprintf("keyboard: Tab5 Keyboard accessory on Ext.Port1 (firmware %02x)\n", fw);
         task_create_stack("kbd", kbd_task, NULL, TASK_PRIO_DEFAULT + 2, TASK_STACK);
@@ -100,6 +102,7 @@ void keyboard_start(void)
         return;
     }
     kprintf("keyboard: no Tab5 Keyboard accessory (I2C 0x%02x), looking for a USB keyboard\n", KBD_ADDR);
+    io_tab5_keyboard_detected(false);
     usbkbd_start();
     osk_start();                                      /* touch screen keyboard, so the shell works with no keyboard at all */
 }
