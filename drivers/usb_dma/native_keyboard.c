@@ -6,7 +6,7 @@
  * Root-device enumeration is shared with USB Mass Storage BOT/SCSI.
  * Boot keyboard reports use the interrupt IN endpoint and the controller periodic
  * schedule. An idle endpoint may NAK indefinitely; this is not a disconnect.
- * The current implementation supports one directly attached device, no hubs.
+ * Supports a direct device or one external hub with MSC and one boot keyboard.
  * Key codes are HID usage IDs, US layout.
  */
 #include "../keyboard/keyboard.h"
@@ -88,6 +88,38 @@ static void emit(uint8_t usage, uint8_t mods)
     char buf[8];
     hid_decode(usage, mods, s_caps, buf);
     if (buf[0]) { ime_feed(buf); s_stats.last_char = (unsigned char)buf[0]; }
+}
+
+static struct {
+    uint8_t previous[8], held;
+    uint64_t pressed, repeated;
+} hub_keys;
+static void hub_key_report(const uint8_t cur[8])
+{
+    uint64_t now=hal_time_now_us();
+    for (unsigned i=2;i<8;i++) {
+        uint8_t key=cur[i];
+        if (key<HID_USAGE_FIRST) continue;
+        bool old=false;
+        for (unsigned j=2;j<8;j++) if (hub_keys.previous[j]==key) old=true;
+        if (old) continue;
+        s_stats.presses++;s_stats.last_x=key;
+        if (key==HID_USAGE_CAPSLOCK) { s_caps=!s_caps;continue; }
+        emit(key,cur[0]);hub_keys.held=key;
+        hub_keys.pressed=hub_keys.repeated=now;
+    }
+    bool held=false;
+    for (unsigned i=2;i<8;i++) if (cur[i]==hub_keys.held && cur[i]) held=true;
+    if (!held) hub_keys.held=0;
+    memcpy(hub_keys.previous,cur,8);
+}
+static void hub_key_repeat(void)
+{
+    uint64_t now=hal_time_now_us();
+    if (hub_keys.held && now-hub_keys.pressed>REPEAT_DELAY_MS*1000u &&
+        now-hub_keys.repeated>REPEAT_PERIOD_MS*1000u) {
+        emit(hub_keys.held,hub_keys.previous[0]);hub_keys.repeated=now;
+    }
 }
 
 /* ---- enumeration ---------------------------------------------------------------- */
@@ -211,16 +243,48 @@ static void hub_session(void)
     task_sleep(desc[5] * 2u + 100u);
     int slots[7];
     bool seen[7]={0}, used[NATIVE_MSC_SLOTS]={0};
+    unsigned keyboard_port=0,keyboard_fails=0;
+    bool keyboard_pending=false;
+    uint64_t status_at=0;
+    memset(&hub_keys,0,sizeof hub_keys);
     for (unsigned i=0;i<ports;i++) slots[i]=-1;
     while (hal_usbh_connected()) {
         mutex_lock(&usb_native_bus_lock);
         hal_usbh_poll();
+        uint8_t report[8];
+        int key_result=USBH_PENDING;
+        if (keyboard_port) {
+            if (!keyboard_pending) keyboard_pending=hal_usbh_keyboard_start();
+            key_result=keyboard_pending?hal_usbh_keyboard_poll(report):USBH_ERR_XFER;
+            if (key_result!=USBH_PENDING) {
+                keyboard_pending=false;
+                if (key_result==8) keyboard_fails=0;
+                else if (++keyboard_fails>=MAX_FAILS) {
+                    hal_usbh_keyboard_close();keyboard_port=0;s_type="none";
+                    memset(&hub_keys,0,sizeof hub_keys);
+                    kprintf("usbkbd: hub keyboard stopped after transfer errors\n");
+                }
+            }
+        }
         mutex_unlock(&usb_native_bus_lock);
+        if (key_result==8) hub_key_report(report);
+        else if (key_result!=USBH_PENDING) s_stats.i2c_errors++;
+        if (keyboard_port) hub_key_repeat();
+        if (hal_time_now_us()-status_at<250000u) { task_sleep(5);continue; }
+        status_at=hal_time_now_us();
         for (unsigned port = 1; port <= ports; port++) {
             uint32_t status;
             if (!hub_status(hub_mps,port,&status)) continue;
             bool connected=(status&1)!=0;
             if (!connected || (status&(1u<<16))) {
+                if (keyboard_port==port) {
+                    mutex_lock(&usb_native_bus_lock);
+                    hal_usbh_keyboard_close();
+                    mutex_unlock(&usb_native_bus_lock);
+                    keyboard_port=0;keyboard_pending=false;s_type="none";
+                    memset(&hub_keys,0,sizeof hub_keys);
+                    kprintf("usbkbd: hub keyboard disconnected\n");
+                }
                 int slot=slots[port-1];
                 if (slot>=0) {
                     /* Never acquire FAT while owning the bus lock: I/O takes
@@ -258,6 +322,12 @@ static void hub_session(void)
             mutex_lock(&usb_native_bus_lock);
             int iface=enumerate(speed,address,&config);
             bool configured=iface!=-1 && ctrl(0,REQ_SET_CONFIG,config,0,NULL,0)>=0;
+            bool keyboard_ready=false;
+            if (configured && iface>=0 && !keyboard_port &&
+                ctrl(0x21,HID_SET_PROTOCOL,0,iface,NULL,0)>=0) {
+                ctrl(0x21,HID_SET_IDLE,0,iface,NULL,0);
+                keyboard_ready=hal_usbh_keyboard_open(address,s_kbd_ep,s_kbd_mps,s_kbd_interval);
+            }
             uint8_t in=s_msc_in,out=s_msc_out,msc_iface=s_msc_iface;
             uint16_t imps=s_msc_imps,omps=s_msc_omps;
             mutex_unlock(&usb_native_bus_lock);
@@ -266,7 +336,11 @@ static void hub_session(void)
                 continue;
             }
             if (iface!=-2) {
-                kprintf("usbhub: port %u configured; concurrent HID/nested hubs pending\n",port);
+                if (keyboard_ready) {
+                    keyboard_port=port;keyboard_pending=false;keyboard_fails=0;
+                    s_type="usb-hub-hid";
+                    kprintf("usbkbd: hub keyboard ready port=%u address=%u, separate DMA pipe\n",port,address);
+                } else kprintf("usbhub: port %u unsupported or additional HID device\n",port);
                 continue;
             }
             int slot=-1;
@@ -279,12 +353,16 @@ static void hub_session(void)
                 kprintf("usbhub: port %u address=%u storage slot=%u\n",port,address,slot);
             }
         }
-        task_sleep(250);
+        task_sleep(5);
     }
     for (unsigned i=0;i<NATIVE_MSC_SLOTS;i++) if (used[i]) {
         usb_fat_detach_slot(i);
         usbmsc_detach_slot(i);
     }
+    mutex_lock(&usb_native_bus_lock);
+    hal_usbh_keyboard_close();
+    mutex_unlock(&usb_native_bus_lock);
+    s_type="none";
 }
 
 static void keyboard_session(int iface)

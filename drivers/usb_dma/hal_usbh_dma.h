@@ -39,3 +39,10 @@ bool hal_usbh_data_open(uint8_t address, uint8_t endpoint, uint16_t mps,
 void hal_usbh_data_close(void);
 int hal_usbh_data_start(void *buf, size_t len);
 int hal_usbh_data_poll(void);
+
+/* One separate boot-keyboard interrupt pipe. Bus owner serializes API calls;
+ * its pending DMA transfer may overlap the bulk pipe. */
+bool hal_usbh_keyboard_open(uint8_t address, uint8_t endpoint, uint16_t mps, uint8_t interval);
+void hal_usbh_keyboard_close(void);
+bool hal_usbh_keyboard_start(void);
+int hal_usbh_keyboard_poll(uint8_t report[8]);

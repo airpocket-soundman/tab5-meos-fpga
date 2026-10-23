@@ -45,8 +45,8 @@
         "en": "3. USB hubs, multiple drives and keyboard coexistence"
       },
       "detail": {
-        "ja": "Full-SpeedハブでexFAT・FATの2台を同時マウント。各512・8192バイトの読み書き・再起動後保持・媒体分離とSD併存を確認。ハブ配下HIDと個別抜き差しは未完了。USB 2.0 High-Speedと異速度混在向けバッファDMA・スプリット転送も追加予定。",
-        "en": "Full-speed hub verified with simultaneous exFAT/FAT mounts: 512/8192 byte write/read, reset persistence, volume isolation and SD access. Hub HID and independent hot-plug remain pending. Add buffer DMA/split transactions for USB 2.0 high-speed mixed-speed devices."
+        "ja": "Full-SpeedハブでexFAT・FATの2台の読み書き・再起動後保持・媒体分離とSD併存を確認。別DMAチャネルの無線キーボードで入力・コマンド実行を確認し、同じ版で4ファイルを読み出した。抜き差しを含む試験後の転送エラー累積12。個別ストレージ抜き差し・入力中の長時間負荷・High-Speed異速度混在は継続。",
+        "en": "Full-speed hub: exFAT/FAT write/read, reset persistence, isolation and SD access verified. Wireless keyboard command input passed on a separate DMA pipe; the same firmware read all four files. Cumulative transfer errors were 12 after a test including receiver replug. Storage hot-plug, sustained input under load and high-speed mixed-speed operation remain pending."
       }
     },
     {
