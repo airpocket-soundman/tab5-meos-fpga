@@ -1,6 +1,7 @@
 /* MeOS-owned external GPIO bindings; no ESP-IDF driver or FreeRTOS API calls.
  * Objects do not alias pins: another object must first explicitly deinit().
  * The port must invoke mp_machine_io_deinit on every VM exit/reset path. */
+#include "machine_meos.h"
 #include "py/mperrno.h"
 #include "py/runtime.h"
 #include <m5os/io.h>
@@ -12,7 +13,7 @@ void mp_machine_io_deinit(void) {
     io_owner_close(owner);
 }
 void mp_machine_io_init(void) { mp_machine_io_deinit(); }
-static void machine_error(int rc) {
+void mp_machine_error(int rc) {
   if (rc >= 0)
     return;
   int error = MP_EIO;
@@ -47,12 +48,16 @@ static void machine_error(int rc) {
   }
   mp_raise_OSError(error);
 }
-static io_owner_t machine_get_owner(void) {
+io_owner_t mp_machine_owner(void) {
   if (machine_owner && !io_owner_valid(machine_owner))
     machine_owner = 0;
   if (!machine_owner)
-    machine_error(io_owner_create("micropython", &machine_owner));
+    mp_machine_error(io_owner_create("micropython", &machine_owner));
   return machine_owner;
+}
+void mp_machine_owner_check(io_owner_t owner) {
+  if (!owner || owner != machine_owner || !io_owner_valid(owner))
+    mp_raise_OSError(MP_EBADF);
 }
 typedef struct {
   mp_obj_base_t base;
@@ -110,17 +115,18 @@ static void pin_config(meos_pin_t *self, size_t count, const mp_obj_t *pos,
   if (!output && args[VALUE].u_obj != MP_OBJ_NULL)
     mp_raise_ValueError(MP_ERROR_TEXT("value requires Pin.OUT"));
   if (constructor) {
-    self->owner = machine_get_owner();
-    machine_error(io_pins_claim(self->owner, &self->pin, 1, IO_USE_DIGITAL));
+    self->owner = mp_machine_owner();
+    mp_machine_error(io_pins_claim(self->owner, &self->pin, 1, IO_USE_DIGITAL));
     int rc = io_gpio_config(self->owner, self->pin, output, value, pull);
     if (rc < 0) {
       io_pins_release(self->owner, &self->pin, 1);
-      machine_error(rc);
+      mp_machine_error(rc);
     }
     self->active = true;
   } else {
     pin_check(self);
-    machine_error(io_gpio_config(self->owner, self->pin, output, value, pull));
+    mp_machine_error(
+        io_gpio_config(self->owner, self->pin, output, value, pull));
   }
   self->output = output;
   self->pull = pull;
@@ -151,12 +157,12 @@ static mp_obj_t pin_value(size_t n, const mp_obj_t *args) {
   pin_check(self);
   if (n == 1) {
     int value = 0;
-    machine_error(io_gpio_read(self->owner, self->pin, &value));
+    mp_machine_error(io_gpio_read(self->owner, self->pin, &value));
     return mp_obj_new_int(value);
   }
   int value = mp_obj_is_true(args[1]);
   pin_check(self);
-  machine_error(io_gpio_write(self->owner, self->pin, value));
+  mp_machine_error(io_gpio_write(self->owner, self->pin, value));
   self->value = value;
   return mp_const_none;
 }
@@ -164,7 +170,7 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_value_obj, 1, 2, pin_value);
 static mp_obj_t pin_on(mp_obj_t obj) {
   meos_pin_t *self = pin_object(obj);
   pin_check(self);
-  machine_error(io_gpio_write(self->owner, self->pin, 1));
+  mp_machine_error(io_gpio_write(self->owner, self->pin, 1));
   self->value = 1;
   return mp_const_none;
 }
@@ -172,7 +178,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(pin_on_obj, pin_on);
 static mp_obj_t pin_off(mp_obj_t obj) {
   meos_pin_t *self = pin_object(obj);
   pin_check(self);
-  machine_error(io_gpio_write(self->owner, self->pin, 0));
+  mp_machine_error(io_gpio_write(self->owner, self->pin, 0));
   self->value = 0;
   return mp_const_none;
 }
@@ -181,7 +187,7 @@ static mp_obj_t pin_deinit(mp_obj_t obj) {
   meos_pin_t *self = pin_object(obj);
   if (self->active) {
     pin_check(self);
-    machine_error(io_pins_release(self->owner, &self->pin, 1));
+    mp_machine_error(io_pins_release(self->owner, &self->pin, 1));
     self->active = false;
   }
   return mp_const_none;
@@ -239,15 +245,15 @@ static mp_obj_t adc_new(const mp_obj_type_t *type, size_t n, size_t nk,
   self->pin = (int)pin;
   self->attenuation = (unsigned)atten;
   self->active = false;
-  self->owner = machine_get_owner();
-  machine_error(io_pins_claim(self->owner, &self->pin, 1, IO_USE_ADC));
+  self->owner = mp_machine_owner();
+  mp_machine_error(io_pins_claim(self->owner, &self->pin, 1, IO_USE_ADC));
   /* Validate supported ADC GPIO through the shared service, with a first
    * read. Never bypass its owner, board-pin or channel checks. */
   int raw = 0,
       rc = io_adc_read(self->owner, self->pin, self->attenuation, &raw);
   if (rc < 0) {
     io_pins_release(self->owner, &self->pin, 1);
-    machine_error(rc);
+    mp_machine_error(rc);
   }
   self->active = true;
   return MP_OBJ_FROM_PTR(self);
@@ -256,7 +262,8 @@ static mp_obj_t adc_read(mp_obj_t obj) {
   meos_adc_t *self = adc_object(obj);
   adc_check(self);
   int raw = 0;
-  machine_error(io_adc_read(self->owner, self->pin, self->attenuation, &raw));
+  mp_machine_error(
+      io_adc_read(self->owner, self->pin, self->attenuation, &raw));
   return mp_obj_new_int(raw);
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(adc_read_obj, adc_read);
@@ -264,7 +271,8 @@ static mp_obj_t adc_read_u16(mp_obj_t obj) {
   meos_adc_t *self = adc_object(obj);
   adc_check(self);
   int raw = 0;
-  machine_error(io_adc_read(self->owner, self->pin, self->attenuation, &raw));
+  mp_machine_error(
+      io_adc_read(self->owner, self->pin, self->attenuation, &raw));
   if (raw < 0 || raw > 4095)
     mp_raise_OSError(MP_EIO);
   return mp_obj_new_int((raw << 4) | (raw >> 8));
@@ -285,7 +293,7 @@ static mp_obj_t adc_deinit(mp_obj_t obj) {
   meos_adc_t *self = adc_object(obj);
   if (self->active) {
     adc_check(self);
-    machine_error(io_pins_release(self->owner, &self->pin, 1));
+    mp_machine_error(io_pins_release(self->owner, &self->pin, 1));
     self->active = false;
   }
   return mp_const_none;
@@ -309,6 +317,10 @@ static const mp_rom_map_elem_t machine_globals[] = {
     {MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_machine)},
     {MP_ROM_QSTR(MP_QSTR_Pin), MP_ROM_PTR(&meos_pin_type)},
     {MP_ROM_QSTR(MP_QSTR_ADC), MP_ROM_PTR(&meos_adc_type)},
+    {MP_ROM_QSTR(MP_QSTR_PWM), MP_ROM_PTR(&mp_machine_pwm_type)},
+    {MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&mp_machine_uart_type)},
+    {MP_ROM_QSTR(MP_QSTR_SoftI2C), MP_ROM_PTR(&mp_machine_soft_i2c_type)},
+    {MP_ROM_QSTR(MP_QSTR_SoftSPI), MP_ROM_PTR(&mp_machine_soft_spi_type)},
 };
 static MP_DEFINE_CONST_DICT(machine_globals_dict, machine_globals);
 const mp_obj_module_t mp_module_machine = {
