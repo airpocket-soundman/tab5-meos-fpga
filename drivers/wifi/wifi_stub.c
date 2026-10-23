@@ -76,3 +76,6 @@ void wifi_get_status(wifi_status_t *out)
 
 
 void wifi_get_network_status(wifi_status_t *out) { wifi_get_status(out); }
+
+bool wifi_tcp_listen_sock(int sock,uint16_t port) { (void)sock;(void)port;return false; }
+bool wifi_tcp_accept_sock(int sock,uint32_t timeout_ms) { (void)sock;(void)timeout_ms;return false; }

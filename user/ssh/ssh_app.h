@@ -18,3 +18,6 @@ int ssh_cmd_main(int argc, char **argv);
 
 /* Run interactive TUI SSH launcher (for `run ssh` or `ssh` with no arguments). */
 void ssh_app_run(void);
+
+/* Explicitly started, authenticated shared-console SSH server. */
+int sshd_cmd_main(int argc, char **argv);

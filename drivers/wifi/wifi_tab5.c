@@ -19,6 +19,7 @@
 #include <m5os/kmalloc.h>
 #include <m5os/errno.h>
 #include <m5os/net_external.h>
+#include <string.h>
 
 #include "soc/sdmmc_struct.h"
 #include "soc/sdmmc_reg.h"
@@ -191,6 +192,8 @@ static uint8_t      s_dns_resolved_ip[4];
 #define TCP_STATE_SYN_SENT    1
 #define TCP_STATE_ESTABLISHED 2
 #define TCP_STATE_CLOSE_WAIT  3
+#define TCP_STATE_LISTEN 4
+#define TCP_STATE_SYN_RECEIVED 5
 
 #define TCP_FIN  0x01u
 #define TCP_SYN  0x02u
@@ -1781,7 +1784,15 @@ static void handle_ipv4_rx_locked(const uint8_t *frame, size_t frame_len, const 
                 break;
             }
         }
+        if (!c) {
+            for (int i=0;i<WIFI_MAX_TCP_SOCKETS;i++)
+                if (s_tcp_conns[i].state==TCP_STATE_LISTEN &&
+                    s_tcp_conns[i].local_port==dst_port) { c=&s_tcp_conns[i];break; }
+        }
         if (!c) return;
+        const uint8_t *local_ip=from_tun?s_tun_ip:NET_STATUS.ip;
+        if (memcmp(ip+16,local_ip,4)!=0 ||
+            tcp_checksum(ip+12,ip+16,tcp,ip_total_len-ihl)!=0) return;
 
         uint32_t seq = ((uint32_t)tcp[4] << 24) | ((uint32_t)tcp[5] << 16) |
                        ((uint32_t)tcp[6] << 8)  | tcp[7];
@@ -1793,11 +1804,33 @@ static void handle_ipv4_rx_locked(const uint8_t *frame, size_t frame_len, const 
         const uint8_t *payload = tcp + doff;
         size_t plen = ip_total_len - ihl - doff;
 
+        if (c->state==TCP_STATE_LISTEN) {
+            if ((flags&(TCP_SYN|TCP_ACK|TCP_RST|TCP_FIN))!=TCP_SYN) return;
+            mem_copy(c->remote_ip,ip+12,4);
+            if (frame) mem_copy(c->remote_mac,frame+6,6);
+            else mem_zero(c->remote_mac,6);
+            c->remote_port=src_port;
+            c->snd_una=(uint32_t)(hal_time_now_us()^0x6d5a913bu);
+            c->snd_nxt=c->snd_una+1;
+            c->rcv_nxt=seq+1;
+            c->rx_head=c->rx_tail=c->rx_count=0;
+            c->state=TCP_STATE_SYN_RECEIVED;
+            tcp_send_segment_locked(c,TCP_SYN|TCP_ACK,c->snd_una,c->rcv_nxt,NULL,0);
+            return;
+        }
         if (flags & TCP_RST) {
             c->state = TCP_STATE_CLOSED;
             return;
         }
 
+        if (c->state==TCP_STATE_SYN_RECEIVED) {
+            if ((flags&TCP_SYN) && seq+1==c->rcv_nxt) {
+                tcp_send_segment_locked(c,TCP_SYN|TCP_ACK,c->snd_una,c->rcv_nxt,NULL,0);
+                return;
+            }
+            if (!(flags&TCP_ACK) || ack!=c->snd_nxt || seq!=c->rcv_nxt) return;
+            c->snd_una=ack;c->state=TCP_STATE_ESTABLISHED;
+        }
         if (c->state == TCP_STATE_SYN_SENT) {
             if ((flags & (TCP_SYN | TCP_ACK)) == (TCP_SYN | TCP_ACK) && ack == c->snd_nxt) {
                 c->snd_una = ack;
@@ -2845,6 +2878,47 @@ bool wifi_resolve_host(const char *host, uint8_t out_ip[4])
         out_ip[0] = 192; out_ip[1] = 200; out_ip[2] = 0; out_ip[3] = 101;
         return true;
     }
+    return false;
+}
+
+bool wifi_tcp_listen_sock(int sock,uint16_t port)
+{
+    if (sock<0 || sock>=WIFI_MAX_TCP_SOCKETS || !port) return false;
+    ensure_lock();mutex_lock(&s_wifi_lock);
+    tcp_conn_t *c=&s_tcp_conns[sock];
+    bool ok=NET_STATUS.state==WIFI_STATE_CONNECTED && NET_STATUS.ip[0]!=0;
+    for (int i=0;i<WIFI_MAX_TCP_SOCKETS;i++)
+        if (i!=sock && s_tcp_conns[i].state!=TCP_STATE_CLOSED &&
+            s_tcp_conns[i].local_port==port) ok=false;
+    if (ok && !c->rx_buf) c->rx_buf=kmalloc_psram(TCP_RX_BUF_SIZE);
+    ok=ok && c->rx_buf;
+    if (ok) {
+        if (c->state==TCP_STATE_ESTABLISHED || c->state==TCP_STATE_CLOSE_WAIT)
+            tcp_send_segment_locked(c,TCP_RST|TCP_ACK,c->snd_nxt,c->rcv_nxt,NULL,0);
+        c->local_port=port;c->remote_port=0;
+        mem_zero(c->remote_ip,4);mem_zero(c->remote_mac,6);
+        c->rx_head=c->rx_tail=c->rx_count=0;c->state=TCP_STATE_LISTEN;
+    }
+    mutex_unlock(&s_wifi_lock);return ok;
+}
+bool wifi_tcp_accept_sock(int sock,uint32_t timeout_ms)
+{
+    if (sock<0 || sock>=WIFI_MAX_TCP_SOCKETS) return false;
+    ensure_lock();uint64_t deadline=hal_time_now_us()+(uint64_t)timeout_ms*1000u;
+    uint64_t last_syn=0;
+    do {
+        mutex_lock(&s_wifi_lock);sdio_poll_rx_locked();
+        tcp_conn_t *c=&s_tcp_conns[sock];uint8_t state=c->state;
+        if (state==TCP_STATE_SYN_RECEIVED && hal_time_now_us()-last_syn>=600000u) {
+            tcp_send_segment_locked(c,TCP_SYN|TCP_ACK,c->snd_una,c->rcv_nxt,NULL,0);
+            last_syn=hal_time_now_us();
+        }
+        mutex_unlock(&s_wifi_lock);
+        if (state==TCP_STATE_ESTABLISHED) return true;
+        if (state==TCP_STATE_CLOSED) return false;
+        if (hal_time_now_us()>=deadline) break;
+        task_sleep(5);
+    } while (true);
     return false;
 }
 

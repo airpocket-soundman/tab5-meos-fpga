@@ -681,24 +681,83 @@ static void aes128_ctr_crypt(aes128_ctr_ctx_t *ctx, uint8_t *buf, size_t len)
     }
 }
 
-/* PRNG seeded with microsecond timer + SHA-256 counter mode */
-static uint32_t s_prng_counter = 1;
+/* HMAC-SHA256 DRBG seeded once from the P4 ADC noise source. */
+#include <m5os/mutex.h>
+#if M5OS_BOARD_TAB5
+#include "ssh_entropy_tab5.inc"
+#endif
+static mutex_t s_ssh_rng_lock = MUTEX_INIT;
+static bool s_ssh_rng_ready;
+static uint8_t s_ssh_rng_key[32], s_ssh_rng_v[32];
+
+/* Fixed 256-bit HMAC key, also supports output aliasing key or message. */
+static void hmac_sha256(const uint8_t *key, size_t key_n,
+                        const uint8_t *data, size_t n, uint8_t out[32])
+{
+    uint8_t ipad[64], opad[64], digest[32];
+    (void)key_n; /* All callers below pass 32-byte DRBG keys. */
+    for (size_t i = 0; i < 64; i++) {
+        ipad[i] = (i < 32 ? key[i] : 0) ^ 0x36;
+        opad[i] = (i < 32 ? key[i] : 0) ^ 0x5c;
+    }
+    sha256_ctx_t h;
+    sha256_init(&h); sha256_update(&h, ipad, 64); sha256_update(&h, data, n);
+    sha256_final(&h, digest);
+    sha256_init(&h); sha256_update(&h, opad, 64); sha256_update(&h, digest, 32);
+    sha256_final(&h, out);
+    memset(digest, 0, sizeof(digest));
+}
+
+static bool ssh_rng_init(void)
+{
+    mutex_lock(&s_ssh_rng_lock);
+    if (!s_ssh_rng_ready) {
+        uint8_t seed[32], input[65];
+#if M5OS_BOARD_TAB5
+        if (!ssh_entropy_seed(seed)) {
+            mutex_unlock(&s_ssh_rng_lock);
+            return false;
+        }
+#else
+        /* Server refuses non-Tab5. Preserve the existing client port's source. */
+        uint64_t now = hal_time_now_us();
+        sha256_ctx_t h;
+        sha256_init(&h); sha256_update(&h, &now, sizeof(now)); sha256_final(&h, seed);
+#endif
+        memset(s_ssh_rng_key, 0, 32);
+        memset(s_ssh_rng_v, 1, 32);
+        for (uint8_t round = 0; round < 2; round++) {
+            memcpy(input, s_ssh_rng_v, 32); input[32] = round;
+            memcpy(input + 33, seed, 32);
+            hmac_sha256(s_ssh_rng_key, 32, input, sizeof(input), s_ssh_rng_key);
+            hmac_sha256(s_ssh_rng_key, 32, s_ssh_rng_v, 32, s_ssh_rng_v);
+        }
+        memset(seed, 0, sizeof(seed)); memset(input, 0, sizeof(input));
+        s_ssh_rng_ready = true;
+    }
+    mutex_unlock(&s_ssh_rng_lock);
+    return true;
+}
+
 static void ssh_random_bytes(uint8_t *out, size_t len)
 {
-    size_t pos = 0;
-    while (pos < len) {
-        uint64_t us = hal_time_now_us();
-        s_prng_counter += 0x9e3779b9u;
-        sha256_ctx_t ctx;
-        uint8_t digest[32];
-        sha256_init(&ctx);
-        sha256_update(&ctx, &us, sizeof(us));
-        sha256_update(&ctx, &s_prng_counter, sizeof(s_prng_counter));
-        sha256_final(&ctx, digest);
-        size_t n = (len - pos < 32) ? (len - pos) : 32;
-        memcpy(out + pos, digest, n);
-        pos += n;
+    if (!ssh_rng_init()) {
+        /* Fail closed: callers must not continue with an unseeded source. */
+        kputs("ssh: hardware entropy unavailable\n");
+        task_exit();
     }
+    mutex_lock(&s_ssh_rng_lock);
+    while (len) {
+        hmac_sha256(s_ssh_rng_key, 32, s_ssh_rng_v, 32, s_ssh_rng_v);
+        size_t n = len < 32 ? len : 32;
+        memcpy(out, s_ssh_rng_v, n); out += n; len -= n;
+    }
+    uint8_t update[33];
+    memcpy(update, s_ssh_rng_v, 32); update[32] = 0;
+    hmac_sha256(s_ssh_rng_key, 32, update, sizeof(update), s_ssh_rng_key);
+    hmac_sha256(s_ssh_rng_key, 32, s_ssh_rng_v, 32, s_ssh_rng_v);
+    memset(update, 0, sizeof(update));
+    mutex_unlock(&s_ssh_rng_lock);
 }
 
 /* =========================================================================
@@ -770,7 +829,7 @@ static size_t buf_put_str(uint8_t *buf, size_t pos, const char *s)
 
 static bool buf_get_u32(const uint8_t *buf, size_t len, size_t *pos, uint32_t *out)
 {
-    if (*pos + 4 > len) return false;
+    if (*pos > len || len - *pos < 4u) return false;
     *out = get_u32_be(buf + *pos);
     *pos += 4;
     return true;
@@ -780,7 +839,7 @@ static bool buf_get_str(const uint8_t *buf, size_t len, size_t *pos, const uint8
 {
     uint32_t slen = 0;
     if (!buf_get_u32(buf, len, pos, &slen)) return false;
-    if (*pos + slen > len) return false;
+    if (*pos > len || slen > len - *pos) return false;
     *out_ptr = buf + *pos;
     *out_len = slen;
     *pos += slen;
@@ -854,13 +913,16 @@ static int ssh_recv_packet(ssh_session_t *s, uint8_t **out_payload, uint32_t tim
             int r = tcp_read_exact(s->sock, s->rx_pkt, 4, timeout_ms, 8000);
             if (r <= 0) return r;
             uint32_t pkt_len = get_u32_be(s->rx_pkt);
-            if (pkt_len < 5u || 4u + pkt_len > SSH_MAX_PKT) {
+            /* Bound before addition: size_t is 32-bit on the target. A peer
+             * can otherwise wrap 4+packet_length and request a huge read. */
+            if (pkt_len < 5u || pkt_len > SSH_MAX_PKT - 4u ||
+                ((pkt_len + 4u) & 7u) != 0) {
                 kprintf("ssh: bad unencrypted packet length %u\n", pkt_len);
                 return -1;
             }
             if (tcp_read_exact(s->sock, s->rx_pkt + 4, pkt_len, 8000, 8000) != (int)pkt_len) return -1;
             uint8_t pad_len = s->rx_pkt[4];
-            if ((uint32_t)pad_len + 1u >= pkt_len) return -1;
+            if (pad_len < 4u || (uint32_t)pad_len + 1u >= pkt_len) return -1;
             size_t payload_len = pkt_len - 1u - pad_len;
             s->seq_s2c++;
             uint8_t msg_type = s->rx_pkt[5];
@@ -888,8 +950,9 @@ static int ssh_recv_packet(ssh_session_t *s, uint8_t **out_payload, uint32_t tim
             if (r <= 0) return r;
             aes128_ctr_crypt(&s->dec_s2c, s->rx_pkt, 16);
             uint32_t pkt_len = get_u32_be(s->rx_pkt);
+            if (pkt_len < 12u || pkt_len > SSH_MAX_PKT - 4u) return -1;
             size_t total_len = 4u + pkt_len;
-            if (pkt_len < 12u || total_len > SSH_MAX_PKT || (total_len & 15u) != 0) {
+            if ((total_len & 15u) != 0) {
                 kprintf("ssh: bad encrypted packet length %u\n", pkt_len);
                 return -1;
             }
@@ -909,7 +972,7 @@ static int ssh_recv_packet(ssh_session_t *s, uint8_t **out_payload, uint32_t tim
             }
             s->seq_s2c++;
             uint8_t pad_len = s->rx_pkt[4];
-            if ((uint32_t)pad_len + 1u >= pkt_len) return -1;
+            if (pad_len < 4u || (uint32_t)pad_len + 1u >= pkt_len) return -1;
             size_t payload_len = pkt_len - 1u - pad_len;
             uint8_t msg_type = s->rx_pkt[5];
             if (msg_type == SSH_MSG_IGNORE || msg_type == SSH_MSG_DEBUG ||
@@ -2231,7 +2294,7 @@ static int ssh_connect_and_run(const char *user, const char *host, uint16_t port
  * 7. Multi-Tab Graphical SSH Client + Scrollback Terminal + Host GUI
  * ========================================================================= */
 
-#define SSH_MAX_TABS      WIFI_MAX_TCP_SOCKETS
+#define SSH_MAX_TABS      2 /* 0..1: SSH clients; 2: web; 3: Tailscale; 4: sshd. */
 #define SSH_CELL_PX       (8 * M5OS_FBCON_SCALE)
 #define SSH_TOP_BAR_ROWS  2
 #define SSH_BOT_BAR_ROWS  2
@@ -3602,7 +3665,7 @@ void ssh_app_run(void)
                 task_sleep(10);
                 c3 = kconsole_getc();
             }
-            if (c2 == 'O' && c3 >= 'P' && c3 <= 'S') {
+            if (c2 == 'O' && c3 >= 'P' && c3 < 'P' + SSH_MAX_TABS) {
                 /* F1..F4 -> Switch to Tab 1..4 */
                 active_tab = c3 - 'P';
                 tabs[active_tab].all_dirty = true;
@@ -3885,3 +3948,6 @@ void ssh_main(void *arg)
     fbcon_pause(false);
 }
 
+
+/* Server shares the transport and cryptographic primitives above. */
+#include "ssh_server.inc"

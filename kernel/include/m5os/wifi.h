@@ -89,9 +89,12 @@ const char *wifi_auth_name(uint8_t authmode);
 const char *wifi_state_name(wifi_state_t state);
 
 /* Network / TCP client helpers over ESP_STA_IF (supports up to WIFI_MAX_TCP_SOCKETS simultaneous connections) */
-#define WIFI_MAX_TCP_SOCKETS 4
+#define WIFI_MAX_TCP_SOCKETS 5
 
 bool wifi_resolve_host(const char *host, uint8_t out_ip[4]);
+/* Single accepted connection uses the listening socket; call listen again after close. */
+bool wifi_tcp_listen_sock(int sock,uint16_t port);
+bool wifi_tcp_accept_sock(int sock,uint32_t timeout_ms);
 bool wifi_tcp_connect_sock(int sock, const uint8_t ip[4], uint16_t port, uint32_t timeout_ms);
 int  wifi_tcp_send_sock(int sock, const void *data, size_t len, uint32_t timeout_ms);
 int  wifi_tcp_recv_sock(int sock, void *buf, size_t max_len, uint32_t timeout_ms);

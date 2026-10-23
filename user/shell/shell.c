@@ -766,6 +766,8 @@ static int cmd_wifi(int argc, char **argv)
     return 1;
 }
 
+static int cmd_sshd(int argc,char **argv) { return sshd_cmd_main(argc,argv); }
+
 static int cmd_ssh(int argc, char **argv)
 {
     return ssh_cmd_main(argc, argv);
@@ -977,6 +979,7 @@ static const command_t s_commands[] = {
 #endif
 #endif
     { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
+    { "sshd", cmd_sshd, "sshd start USER PASSWORD [PORT] | status | stop" },
     { "ssh",       cmd_ssh,       "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },
     { "tailscale", cmd_tailscale, "tailscale [up|status|ip|ping|down|gui]          Tailscale Mesh VPN" },
     { "ts",        cmd_tailscale, "ts [up|status|ip|ping|down|gui]                 alias for tailscale" },
