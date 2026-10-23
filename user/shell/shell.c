@@ -18,6 +18,9 @@
 #include "../wifi/wifi_app.h"
 #include "../bluetooth/bt_app.h"
 #include "../io/io_app.h"
+#if M5OS_SL
+#include "../sl/sl_app.h"
+#endif
 #if M5OS_MICROPYTHON
 #include "../micropython/micropython_app.h"
 #endif
@@ -1022,6 +1025,9 @@ static int cmd_history(int argc, char **argv)
 }
 
 static const command_t s_commands[] = {
+#if M5OS_SL
+    { "sl", sl_cmd_main, "sl [-aFlc]  native steam locomotive animation" },
+#endif
 #if M5OS_MICROPYTHON
     { "python", micropython_cmd_main, "python [PATH | -c SOURCE]  MicroPython REPL/script" },
 #endif
