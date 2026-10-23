@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <m5os/wifi.h>
 #include <m5os/kprintf.h>
 #include <m5os/vfs.h>
@@ -21,6 +22,7 @@ uint64_t hal_time_now_us(void){return GetTickCount64()*1000;}
 void task_sleep(uint32_t n){Sleep(n);}
 void kputs(const char*s){fputs(s,stderr);}
 void kprintf(const char*fmt,...){(void)fmt;}
+int ksnprintf(char*b,size_t n,const char*f,...){va_list a;va_start(a,f);int r=vsnprintf(b,n,f,a);va_end(a);return r<0?0:n&&((size_t)r>=n)?(int)n-1:r;}
 void kconsole_write(const char*s,size_t n){fwrite(s,1,n,stderr);}
 uint32_t kconsole_log_end(void){return logend;}
 size_t kconsole_log_read(uint32_t *p,char*b,size_t n){if(n>logend-*p)n=logend-*p;memcpy(b,logbuf+*p,n);*p+=n;return n;}
@@ -34,13 +36,11 @@ static bool ssh_rng_init(void){return true;}
 static void ssh_random_bytes(uint8_t*p,size_t n){for(size_t i=0;i<n;i++)p[i]=rand();}
 
 
+/* HOST_VFS */
+
 /* PRODUCTION_CODE */
 void wifi_tcp_close_sock(int n){(void)n;}
 int task_create_stack(const char*n,void(*f)(void*),void*a,uint8_t p,size_t s){return -1;}
-int vfs_open(const char*p,uint32_t f){return ERR_NOENT;}
-int vfs_read(int f,void*b,size_t n){return -1;}
-int vfs_write(int f,const void*b,size_t n){return -1;}
-int vfs_close(int f){return 0;}
 void *kmalloc(size_t n){return malloc(n);}
 void *kmalloc_psram(size_t n){return malloc(n);}
 void kfree(void*p){free(p);}
@@ -87,6 +87,13 @@ static int bounds_test(void)
 }
 int main(int argc,char**argv){
 if(argc==2 && !strcmp(argv[1],"--bounds"))return bounds_test();
+if(argc<4 || strlen(argv[2])>=sizeof host_vfs_root)return 2;
+strcpy(host_vfs_root,argv[2]);
+#ifdef M5OS_TEST_SFTP
+s_sshd_storage_enabled=strcmp(argv[3],"off")!=0;
+s_sshd_storage_writable=strcmp(argv[3],"rw")==0;
+#endif
+if(argc>4)host_io_limit=(unsigned)atoi(argv[4]);
 WSADATA w;WSAStartup(MAKEWORD(2,2),&w);SOCKET l=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
 struct sockaddr_in a;memset(&a,0,sizeof(a));a.sin_family=AF_INET;a.sin_addr.s_addr=htonl(INADDR_LOOPBACK);a.sin_port=htons(atoi(argv[1]));
 if(bind(l,(struct sockaddr*)&a,sizeof(a))||listen(l,1))return 2;
@@ -98,4 +105,6 @@ ssh_session_t*s=calloc(1,sizeof(*s));s->sock=3;
 bool ok=sshd_handshake(s);fprintf(stderr,"HANDSHAKE %d\n",ok);
 if(ok){ok=sshd_authenticate(s);fprintf(stderr,"AUTH %d\n",ok);}
 if(ok)sshd_console(s);
-closesocket(host_sock);closesocket(l);WSACleanup();return ok?0:1;}
+closesocket(host_sock);closesocket(l);WSACleanup();
+fprintf(stderr,"VFS_OPEN %u\n",host_open_count);
+return host_open_count?5:ok?0:1;}

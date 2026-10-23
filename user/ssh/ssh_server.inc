@@ -3,15 +3,18 @@
  * a second shell or PTY: local keys and remote keys operate the same shell.
  */
 #include <m5os/mutex.h>
+#include "sftp_server.h"
+#include "sftp_selftest.h"
 
 #define SSHD_SOCK (WIFI_MAX_TCP_SOCKETS - 1)
 #define SSHD_BANNER "SSH-2.0-MeOS_server_1.0"
 #define SSHD_HOSTKEY_PATH "/home/ssh_host_ed25519"
-#define SSHD_INPUT_WINDOW 255u
+#define SSHD_INPUT_WINDOW 4096u
 #define SSHD_SESSION_LIMIT_US (3600ull * 1000000ull)
 
 static volatile bool s_sshd_run, s_sshd_task_live, s_sshd_connected;
 static uint16_t s_sshd_port = 22;
+static bool s_sshd_storage_enabled=true,s_sshd_storage_writable=false;
 static char s_sshd_user[33];
 static uint8_t s_sshd_password_hash[32];
 static uint8_t s_sshd_host_seed[32], s_sshd_host_pub[32];
@@ -260,7 +263,9 @@ static bool sshd_channel_output(ssh_session_t *s, const char *data, size_t len)
 
 static void sshd_console(ssh_session_t *s)
 {
-    bool opened = false, shell = false;
+    bool opened = false, shell = false, pty=false, peer_eof=false;
+    uint64_t eof_at=0;
+    sftp_server_t *storage=NULL;
     uint32_t remote_max = 0, local_window = SSHD_INPUT_WINDOW;
     uint32_t log_pos = kconsole_log_end();
     char output[512];
@@ -268,8 +273,10 @@ static void sshd_console(ssh_session_t *s)
     size_t pending_pos = 0, pending_len = 0;
     uint64_t started = hal_time_now_us();
     while (s_sshd_run && hal_time_now_us() - started < SSHD_SESSION_LIMIT_US) {
+        if(peer_eof && hal_time_now_us()-eof_at > 2000000u) break;
         if (pending_pos < pending_len) {
-            size_t n = kconsole_inject_n(pending + pending_pos, pending_len - pending_pos);
+            size_t n = storage?sftp_server_feed(storage,pending+pending_pos,pending_len-pending_pos):
+                kconsole_inject_n(pending + pending_pos, pending_len - pending_pos);
             pending_pos += n;
             local_window += n;
             if (n) {
@@ -279,13 +286,14 @@ static void sshd_console(ssh_session_t *s)
                 if (!ssh_send_packet(s, s->payload, p)) break;
             }
         }
-        if (shell && s->remote_win) {
+        if (!peer_eof && (shell || storage) && s->remote_win) {
             size_t cap = sizeof(output);
             if (cap > s->remote_win) cap = s->remote_win;
             if (cap > remote_max) cap = remote_max;
-            size_t n = kconsole_log_read(&log_pos, output, cap);
+            size_t n = storage?sftp_server_read(storage,output,cap):kconsole_log_read(&log_pos, output, cap);
             if (n && !sshd_channel_output(s, output, n)) break;
         }
+        if(storage&&sftp_server_failed(storage))break;
         uint8_t *rx;
         int n = ssh_recv_packet(s, &rx, 10);
         if (n < 0) break;
@@ -314,7 +322,7 @@ static void sshd_console(ssh_session_t *s)
                 size_t p = buf_put_u8(s->payload, 0, SSH_MSG_CHANNEL_OPEN_FAILURE);
                 p = buf_put_u32(s->payload, p, sender);
                 p = buf_put_u32(s->payload, p, 1);
-                p = buf_put_str(s->payload, p, "One console session is supported");
+                p = buf_put_str(s->payload, p, "One console or SFTP channel is supported");
                 p = buf_put_str(s->payload, p, "");
                 if (!ssh_send_packet(s, s->payload, p)) break;
                 continue;
@@ -345,12 +353,19 @@ static void sshd_console(ssh_session_t *s)
                 const uint8_t *term, *modes;
                 size_t tn, mode_n;
                 uint32_t cols, rows, width, height;
-                ok = !shell && buf_get_str(rx, n, &pos, &term, &tn) &&
+                ok = !shell && !storage && buf_get_str(rx, n, &pos, &term, &tn) &&
                      buf_get_u32(rx, n, &pos, &cols) && buf_get_u32(rx, n, &pos, &rows) &&
                      buf_get_u32(rx, n, &pos, &width) && buf_get_u32(rx, n, &pos, &height) &&
                      buf_get_str(rx, n, &pos, &modes, &mode_n) && pos == (size_t)n;
+                if(ok)pty=true;
+            } else if(sshd_string_eq(name,len,"subsystem")) {
+                const uint8_t *subsystem;size_t subsystem_len;
+                ok=!shell&&!storage&&!pty&&s_sshd_storage_enabled&&
+                    buf_get_str(rx,n,&pos,&subsystem,&subsystem_len)&&pos==(size_t)n&&
+                    sshd_string_eq(subsystem,subsystem_len,"sftp");
+                if(ok){storage=sftp_server_create(s_sshd_storage_writable);ok=storage!=NULL;}
             } else if (sshd_string_eq(name, len, "shell")) {
-                ok = !shell && pos == (size_t)n;
+                ok = !shell && !storage && pos == (size_t)n;
                 if (ok) { shell = true; log_pos = kconsole_log_end(); }
             } else if (sshd_string_eq(name, len, "window-change")) {
                 /* Shared console dimensions remain the LCD dimensions. */
@@ -373,7 +388,7 @@ static void sshd_console(ssh_session_t *s)
         } else if (rx[0] == SSH_MSG_CHANNEL_DATA) {
             const uint8_t *data;
             size_t len;
-            if (!shell || !buf_get_str(rx, n, &pos, &data, &len) || pos != (size_t)n ||
+            if (peer_eof || (!shell && !storage) || !buf_get_str(rx, n, &pos, &data, &len) || pos != (size_t)n ||
                 len > local_window || len > sizeof(pending)) break;
             /* Preserve already queued input before accepting the next packet. */
             size_t left = pending_len - pending_pos;
@@ -387,14 +402,15 @@ static void sshd_console(ssh_session_t *s)
             sshd_channel_reply(s, SSH_MSG_CHANNEL_CLOSE);
             break;
         } else if (rx[0] == SSH_MSG_CHANNEL_EOF) {
-            /* OpenSSH stdin EOF does not terminate the local shell. */
-            sshd_channel_reply(s, SSH_MSG_CHANNEL_EOF);
-            sshd_channel_reply(s, SSH_MSG_CHANNEL_CLOSE);
-            break;
+            /* EOF ends input, not the channel. Allow the peer to finish CLOSE. */
+            if(pos!=(size_t)n || peer_eof)break;
+            peer_eof=true; eof_at=hal_time_now_us();
+            if(!sshd_channel_reply(s, SSH_MSG_CHANNEL_EOF))break;
         } else {
             break;
         }
     }
+    if(storage){int close_error=sftp_server_destroy(storage);if(close_error<0)kprintf("sshd: SFTP cleanup failed (%d)\n",close_error);}
 }
 
 static void sshd_task(void *arg)
@@ -440,11 +456,20 @@ static void sshd_task(void *arg)
 
 int sshd_cmd_main(int argc, char **argv)
 {
+    if(argc==3&&!strcmp(argv[1],"storage-test"))return sftp_storage_selftest(argv[2])?0:1;
     if (argc == 1 || (argc == 2 && !strcmp(argv[1], "status"))) {
-        kprintf("sshd: %s port=%u session=%s socket=%d\n",
+        kprintf("sshd: %s port=%u session=%s socket=%d storage=%s\n",
                 s_sshd_run ? "running" : "stopped", s_sshd_port,
-                s_sshd_connected ? "authenticated" : "none", SSHD_SOCK);
+                s_sshd_connected ? "authenticated" : "none", SSHD_SOCK,
+                !s_sshd_storage_enabled?"off":s_sshd_storage_writable?"read-write":"read-only");
         return 0;
+    }
+    if(argc==3&&!strcmp(argv[1],"storage")) {
+        if(s_sshd_task_live){kputs("sshd: stop the server before changing storage policy\n");return 1;}
+        if(strcmp(argv[2],"off")&&strcmp(argv[2],"ro")&&strcmp(argv[2],"rw")){kputs("usage: sshd storage ro|rw|off\n");return 1;}
+        s_sshd_storage_enabled=strcmp(argv[2],"off")!=0;
+        s_sshd_storage_writable=!strcmp(argv[2],"rw");
+        kputs("sshd: storage policy updated (applies to the next start)\n");return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "stop")) {
         s_sshd_run = false;
@@ -454,8 +479,8 @@ int sshd_cmd_main(int argc, char **argv)
     }
     if ((argc != 4 && argc != 5) || strcmp(argv[1], "start") ||
         !argv[2][0] || strlen(argv[2]) > 32 || strlen(argv[3]) < 8 || strlen(argv[3]) > 64) {
-        kputs("usage: sshd start USER PASSWORD [PORT] | sshd status | sshd stop\n"
-              "Password: 8..64 bytes. One authenticated shared console, no exec/SFTP.\n");
+        kputs("usage: sshd start USER PASSWORD [PORT] | status | stop | storage ro|rw|off\n"
+              "Password: 8..64 bytes. One authenticated shared console OR SFTP channel; no exec.\n");
         return 1;
     }
     if (s_sshd_task_live) { kputs("sshd: already running or stopping\n"); return 1; }

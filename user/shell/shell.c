@@ -1063,7 +1063,7 @@ static const command_t s_commands[] = {
     { "uart", cmd_io, "uart: external I/O (use io help for commands)" },
     { "bt", cmd_bt, "BLE HID host: bt on | scan | devices | connect | status" },
     { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
-    { "sshd", cmd_sshd, "sshd start USER PASSWORD [PORT] | status | stop" },
+    { "sshd", cmd_sshd, "sshd start USER PASSWORD [PORT] | status | stop | storage ro|rw|off" },
     { "ssh",       cmd_ssh,       "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },
     { "tailscale", cmd_tailscale, "tailscale [up|status|ip|ping|down|gui]          Tailscale Mesh VPN" },
     { "ts",        cmd_tailscale, "ts [up|status|ip|ping|down|gui]                 alias for tailscale" },
