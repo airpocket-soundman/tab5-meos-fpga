@@ -7,26 +7,29 @@
  *  - Sensor SCCB : System I2C bus (SCL = GPIO 32, SDA = GPIO 31), 7-bit address 0x36
  *  - Video link  : MIPI-CSI 1 data lane, 576 Mbps -> ISP -> CSI bridge DW-GDMA -> PSRAM
  */
+#include "sc202cs_tab5_init.h"
 #include <m5os/camera.h>
-#include <m5os/hal_i2c.h>
 #include <m5os/hal_gpio.h>
+#include <m5os/hal_i2c.h>
 #include <m5os/kmalloc.h>
 #include <m5os/kprintf.h>
-#include "sc202cs_tab5_init.h"
 
 #include "esp_attr.h"
-#include "driver/ledc.h"
-#include "driver/isp.h"
-#include "esp_cam_ctlr.h"
-#include "esp_cam_ctlr_csi.h"
 #include "esp_cache.h"
+#include "hal/isp_hal.h"
+#include "hal/isp_ll.h"
+#include <m5os/arch.h>
+#include <m5os/hal_time.h>
+#include <m5os/mutex.h>
+#include <m5os/task.h>
+#include <string.h>
 
-#define CAM_XCLK_PIN       36
-#define CAM_XCLK_FREQ_HZ   24000000u
-#define CAM_LANE_MBPS      576
-#define CAM_ISP_CLK_HZ     (120u * 1000u * 1000u)
-#define FB_BYTES           (CAMERA_WIDTH * CAMERA_HEIGHT * 2u)
-#define CACHE_ALIGN        128u
+#define CAM_XCLK_PIN 36
+#define CAM_XCLK_FREQ_HZ 24000000u
+#define CAM_LANE_MBPS 576
+#define CAM_ISP_CLK_HZ (120u * 1000u * 1000u)
+#define FB_BYTES (CAMERA_WIDTH * CAMERA_HEIGHT * 2u)
+#define CACHE_ALIGN 128u
 
 typedef struct {
     uint8_t again;
@@ -35,38 +38,44 @@ typedef struct {
 } gain_entry_t;
 
 static const gain_entry_t s_gains[] = {
-    { 0x00, 0x00, 0x80 }, /*  0:  1.0x */
-    { 0x00, 0x00, 0xB4 }, /*  1:  1.4x */
-    { 0x01, 0x00, 0x80 }, /*  2:  2.0x */
-    { 0x01, 0x00, 0xB4 }, /*  3:  2.8x */
-    { 0x03, 0x00, 0x80 }, /*  4:  4.0x */
-    { 0x03, 0x00, 0xB4 }, /*  5:  5.6x */
-    { 0x07, 0x00, 0x80 }, /*  6:  8.0x */
-    { 0x07, 0x00, 0xB4 }, /*  7: 11.3x */
-    { 0x0F, 0x00, 0x80 }, /*  8: 16.0x */
-    { 0x0F, 0x00, 0xB4 }, /*  9: 22.5x */
-    { 0x0F, 0x01, 0x80 }, /* 10: 32.0x */
-    { 0x0F, 0x01, 0xB4 }, /* 11: 45.0x */
+    {0x00, 0x00, 0x80}, /*  0:  1.0x */
+    {0x00, 0x00, 0xB4}, /*  1:  1.4x */
+    {0x01, 0x00, 0x80}, /*  2:  2.0x */
+    {0x01, 0x00, 0xB4}, /*  3:  2.8x */
+    {0x03, 0x00, 0x80}, /*  4:  4.0x */
+    {0x03, 0x00, 0xB4}, /*  5:  5.6x */
+    {0x07, 0x00, 0x80}, /*  6:  8.0x */
+    {0x07, 0x00, 0xB4}, /*  7: 11.3x */
+    {0x0F, 0x00, 0x80}, /*  8: 16.0x */
+    {0x0F, 0x00, 0xB4}, /*  9: 22.5x */
+    {0x0F, 0x01, 0x80}, /* 10: 32.0x */
+    {0x0F, 0x01, 0xB4}, /* 11: 45.0x */
 };
 #define GAIN_COUNT (sizeof s_gains / sizeof s_gains[0])
 
-static bool                    s_inited;
-static bool                    s_streaming;
-static uint16_t                s_chip_id;
-static uint16_t               *s_fb[2];
-static volatile int            s_write_idx;
+static bool s_inited;
+static bool s_streaming;
+static uint16_t s_chip_id;
+static uint16_t *s_fb[2];
+static volatile int s_write_idx;
 static volatile const uint16_t *s_ready_fb;
-static volatile uint32_t       s_frames;
-static esp_cam_ctlr_handle_t   s_cam;
-static isp_proc_handle_t       s_isp;
+static volatile uint32_t s_frames;
+static isp_hal_context_t s_isp_context;
+static isp_hal_context_t *s_isp;
+static void *s_fb_raw[2];
+static mutex_t s_camera_lock = MUTEX_INIT;
+static bool s_poisoned;
+static uint32_t s_owner;
+static uint32_t s_dma_errors;
+static char s_error[80];
 
 static uint32_t s_exposure = SC202CS_EXP_DEFAULT;
 static uint32_t s_gain_idx = 8; /* start at 16x so indoor scenes settle immediately */
-static bool     s_mirror   = false;
-static bool     s_vflip    = false;
-static bool     s_auto_exp = true;
-static float    s_wb_r     = 1.42f;
-static float    s_wb_b     = 1.48f;
+static bool s_mirror = false;
+static bool s_vflip = false;
+static bool s_auto_exp = true;
+static float s_wb_r = 1.42f;
+static float s_wb_b = 1.48f;
 
 /*
  * Base color correction matrix (row sums = 1.0).
@@ -75,48 +84,27 @@ static float    s_wb_b     = 1.48f;
  * matching Espressif's esp_video_isp_device implementation.
  */
 static const float s_base_ccm[3][3] = {
-    {  1.22f, -0.14f, -0.08f },
-    { -0.08f,  1.16f, -0.08f },
-    { -0.06f, -0.16f,  1.22f },
+    {1.22f, -0.14f, -0.08f},
+    {-0.08f, 1.16f, -0.08f},
+    {-0.06f, -0.16f, 1.22f},
 };
 
-static void delay_ms(uint32_t ms) { while (ms--) hal_delay_us(1000); }
+static void delay_ms(uint32_t ms) {
+    while (ms--)
+        hal_delay_us(1000);
+}
 
-static bool sccb_write(uint16_t reg, uint8_t val)
-{
+static bool sccb_write(uint16_t reg, uint8_t val) {
     return hal_i2c_write_reg16(SC202CS_SCCB_ADDR, reg, val);
 }
 
-static bool sccb_read(uint16_t reg, uint8_t *val)
-{
+static bool sccb_read(uint16_t reg, uint8_t *val) {
     return hal_i2c_read_reg16(SC202CS_SCCB_ADDR, reg, val, 1);
 }
 
-static bool xclk_start(void)
-{
-    ledc_timer_config_t tcfg = {
-        .speed_mode      = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = LEDC_TIMER_1_BIT,
-        .timer_num       = LEDC_TIMER_0,
-        .freq_hz         = CAM_XCLK_FREQ_HZ,
-        .clk_cfg         = LEDC_AUTO_CLK,
-    };
-    if (ledc_timer_config(&tcfg) != ESP_OK) return false;
+#include "camera_native_tab5.inc"
 
-    ledc_channel_config_t ccfg = {
-        .gpio_num   = CAM_XCLK_PIN,
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .channel    = LEDC_CHANNEL_0,
-        .intr_type  = LEDC_INTR_DISABLE,
-        .timer_sel  = LEDC_TIMER_0,
-        .duty       = 1,
-        .hpoint     = 0,
-    };
-    return ledc_channel_config(&ccfg) == ESP_OK;
-}
-
-static bool sensor_init_regs(void)
-{
+static bool sensor_init_regs(void) {
     uint8_t id_h = 0, id_l = 0;
     if (!sccb_read(SC202CS_REG_CHIP_H, &id_h) || !sccb_read(SC202CS_REG_CHIP_L, &id_l)) {
         kprintf("camera: SC202CS (0x%02x) did not respond on system I2C\n", SC202CS_SCCB_ADDR);
@@ -125,266 +113,335 @@ static bool sensor_init_regs(void)
     s_chip_id = (uint16_t)(((uint16_t)id_h << 8) | id_l);
     kprintf("camera: sensor at 0x%02x chip_id=0x%04x\n", SC202CS_SCCB_ADDR, s_chip_id);
 
-    for (size_t i = 0; i < sizeof sc202cs_init_1280x720_raw8_30fps / sizeof sc202cs_init_1280x720_raw8_30fps[0]; i++) {
+    for (size_t i = 0;
+         i < sizeof sc202cs_init_1280x720_raw8_30fps / sizeof sc202cs_init_1280x720_raw8_30fps[0];
+         i++) {
         uint16_t reg = sc202cs_init_1280x720_raw8_30fps[i].reg;
-        uint8_t  val = sc202cs_init_1280x720_raw8_30fps[i].val;
+        uint8_t val = sc202cs_init_1280x720_raw8_30fps[i].val;
         if (!sccb_write(reg, val)) {
             kprintf("camera: failed writing reg 0x%04x\n", reg);
             return false;
         }
-        if (reg == SC202CS_REG_RESET) delay_ms(10);
+        if (reg == SC202CS_REG_RESET)
+            delay_ms(10);
     }
     return true;
 }
 
-static bool IRAM_ATTR on_get_new_trans(esp_cam_ctlr_handle_t handle, esp_cam_ctlr_trans_t *trans, void *user_data)
-{
-    (void)handle; (void)user_data;
-    int next = s_write_idx ^ 1;
-    s_write_idx = next;
-    trans->buffer        = s_fb[next];
-    trans->buflen        = FB_BYTES;
-    trans->received_size = FB_BYTES;
-    return false;
-}
+static void apply_wb_ccm(isp_hal_context_t *isp, float r_gain, float b_gain) {
+    if (r_gain < 0.90f)
+        r_gain = 0.90f;
+    if (r_gain > 2.50f)
+        r_gain = 2.50f;
+    if (b_gain < 0.90f)
+        b_gain = 0.90f;
+    if (b_gain > 2.50f)
+        b_gain = 2.50f;
 
-static bool IRAM_ATTR on_trans_finished(esp_cam_ctlr_handle_t handle, esp_cam_ctlr_trans_t *trans, void *user_data)
-{
-    (void)handle; (void)user_data;
-    if (trans && trans->buffer) {
-        s_ready_fb = (const uint16_t *)trans->buffer;
-        s_frames++;
-    }
-    return false;
-}
-
-static void apply_wb_ccm(isp_proc_handle_t isp, float r_gain, float b_gain)
-{
-    if (r_gain < 0.90f) r_gain = 0.90f;
-    if (r_gain > 2.50f) r_gain = 2.50f;
-    if (b_gain < 0.90f) b_gain = 0.90f;
-    if (b_gain > 2.50f) b_gain = 2.50f;
-
-    esp_isp_ccm_config_t ccm_cfg = {
-        .saturation = true,
-    };
+    float matrix[3][3];
     for (int i = 0; i < 3; i++) {
-        ccm_cfg.matrix[i][0] = s_base_ccm[i][0] * r_gain;
-        ccm_cfg.matrix[i][1] = s_base_ccm[i][1];
-        ccm_cfg.matrix[i][2] = s_base_ccm[i][2] * b_gain;
+        matrix[i][0] = s_base_ccm[i][0] * r_gain;
+        matrix[i][1] = s_base_ccm[i][1];
+        matrix[i][2] = s_base_ccm[i][2] * b_gain;
     }
-    esp_isp_ccm_configure(isp, &ccm_cfg);
+    isp_ll_ccm_set_clk_ctrl_mode(isp->hw, ISP_LL_PIPELINE_CLK_CTRL_AUTO);
+    isp_hal_ccm_set_matrix(isp, true, matrix);
+    isp_ll_shadow_update_ccm(isp->hw, false);
 }
 
-static void configure_isp_pipeline(isp_proc_handle_t isp)
-{
+static void configure_isp_pipeline(isp_hal_context_t *isp) {
     /* 1. Demosaic */
-    esp_isp_demosaic_config_t demosaic_cfg = {
-        .grad_ratio = { .integer = 1, .decimal = 8 }, /* 1.5 (4-bit fractional) */
+    isp_hal_demosaic_cfg_t demosaic_cfg = {
+        .grad_ratio = {.integer = 1, .decimal = 8}, /* 1.5 (4-bit fractional) */
         .padding_mode = ISP_DEMOSAIC_EDGE_PADDING_MODE_SRND_DATA,
     };
-    if (esp_isp_demosaic_configure(isp, &demosaic_cfg) == ESP_OK) {
-        esp_isp_demosaic_enable(isp);
-    }
+    isp_hal_demosaic_config(isp, &demosaic_cfg);
+    isp_ll_demosaic_enable(isp->hw, true);
 
     /* 2. Color Correction Matrix + White Balance gains */
     apply_wb_ccm(isp, s_wb_r, s_wb_b);
-    esp_isp_ccm_enable(isp);
+    isp_ll_ccm_enable(isp->hw, true);
 
-    /* 3. Per-channel Gamma curves (R/B shadow toe compensates for sensor BLC pedestal after WB gain) */
+    /* 3. Per-channel Gamma curves (R/B shadow toe compensates for sensor BLC pedestal after WB
+     * gain) */
     isp_gamma_curve_points_t gamma_g = {
-        .pt = {
-            {   4,  14 }, {   8,  26 }, {  12,  37 }, {  16,  47 },
-            {  20,  56 }, {  24,  64 }, {  32,  78 }, {  40,  90 },
-            {  48, 101 }, {  64, 122 }, {  80, 140 }, {  96, 157 },
-            { 128, 186 }, { 160, 212 }, { 192, 236 }, { 255, 255 },
-        },
+        .pt =
+            {
+                {4, 14},
+                {8, 26},
+                {12, 37},
+                {16, 47},
+                {20, 56},
+                {24, 64},
+                {32, 78},
+                {40, 90},
+                {48, 101},
+                {64, 122},
+                {80, 140},
+                {96, 157},
+                {128, 186},
+                {160, 212},
+                {192, 236},
+                {255, 255},
+            },
     };
     isp_gamma_curve_points_t gamma_rb = {
-        .pt = {
-            {   4,   6 }, {   8,  14 }, {  12,  24 }, {  16,  34 },
-            {  20,  44 }, {  24,  54 }, {  32,  71 }, {  40,  85 },
-            {  48,  98 }, {  64, 120 }, {  80, 139 }, {  96, 156 },
-            { 128, 186 }, { 160, 212 }, { 192, 236 }, { 255, 255 },
-        },
+        .pt =
+            {
+                {4, 6},
+                {8, 14},
+                {12, 24},
+                {16, 34},
+                {20, 44},
+                {24, 54},
+                {32, 71},
+                {40, 85},
+                {48, 98},
+                {64, 120},
+                {80, 139},
+                {96, 156},
+                {128, 186},
+                {160, 212},
+                {192, 236},
+                {255, 255},
+            },
     };
-    if (esp_isp_gamma_configure(isp, COLOR_COMPONENT_R, &gamma_rb) == ESP_OK &&
-        esp_isp_gamma_configure(isp, COLOR_COMPONENT_G, &gamma_g) == ESP_OK &&
-        esp_isp_gamma_configure(isp, COLOR_COMPONENT_B, &gamma_rb) == ESP_OK) {
-        esp_isp_gamma_enable(isp);
-    }
+    isp_ll_gamma_set_correction_curve(isp->hw, COLOR_COMPONENT_R, &gamma_rb);
+    isp_ll_gamma_set_correction_curve(isp->hw, COLOR_COMPONENT_G, &gamma_g);
+    isp_ll_gamma_set_correction_curve(isp->hw, COLOR_COMPONENT_B, &gamma_rb);
+    isp_ll_gamma_enable(isp->hw, true);
 
     /* 4. Color (contrast / saturation / brightness) */
-    esp_isp_color_config_t color_cfg = {
-        .color_contrast   = { .integer = 1, .decimal = 8 },
-        .color_saturation = { .integer = 1, .decimal = 16 },
-        .color_hue        = 0,
+    isp_hal_color_cfg_t color_cfg = {
+        .color_contrast = {.integer = 1, .decimal = 8},
+        .color_saturation = {.integer = 1, .decimal = 16},
+        .color_hue = 0,
         .color_brightness = 0,
     };
-    if (esp_isp_color_configure(isp, &color_cfg) == ESP_OK) {
-        esp_isp_color_enable(isp);
-    }
+    isp_hal_color_config(isp, &color_cfg);
+    isp_ll_color_set_clk_ctrl_mode(isp->hw, ISP_LL_PIPELINE_CLK_CTRL_AUTO);
+    isp_ll_shadow_update_color(isp->hw, false);
+    isp_ll_color_enable(isp->hw, true);
 }
 
-bool camera_init(void)
-{
-    if (s_inited) return true;
-
+static void free_frames(void) {
+    if (s_poisoned)
+        return; /* DMA still owns memory until a hardware reset. */
     for (int i = 0; i < 2; i++) {
-        if (!s_fb[i]) {
-            void *raw = kmalloc_psram(FB_BYTES + CACHE_ALIGN);
-            if (!raw) {
-                kprintf("camera: failed to allocate PSRAM framebuffer %d\n", i);
-                return false;
+        kfree(s_fb_raw[i]);
+        s_fb_raw[i] = NULL;
+        s_fb[i] = NULL;
+    }
+}
+static bool camera_init_locked(void) {
+    if (s_poisoned)
+        return false;
+    if (s_inited)
+        return true;
+    s_ready_fb = NULL;
+    s_frames = 0;
+    if (!xclk_start())
+        return false;
+    delay_ms(10);
+    uint8_t hi, lo;
+    if (!sccb_read(SC202CS_REG_CHIP_H, &hi) || !sccb_read(SC202CS_REG_CHIP_L, &lo)) {
+        ksnprintf(s_error, sizeof(s_error), "No sensor at SCCB 0x36");
+        goto fail;
+    }
+    s_chip_id = ((uint16_t)hi << 8) | lo;
+    if (s_chip_id != SC202CS_CHIP_ID) {
+        ksnprintf(s_error, sizeof(s_error), "Unsupported sensor ID 0x%04x", s_chip_id);
+        goto fail;
+    }
+    if (!sensor_init_regs()) {
+        ksnprintf(s_error, sizeof(s_error), "Sensor register setup failed");
+        goto fail;
+    }
+    for (int i = 0; i < 2; i++) {
+        s_fb_raw[i] = kmalloc_psram(FB_BYTES + CACHE_ALIGN - 1);
+        if (!s_fb_raw[i]) {
+            ksnprintf(s_error, sizeof(s_error), "No PSRAM for camera frames");
+            goto fail;
+        }
+        s_fb[i] =
+            (void *)(((uintptr_t)s_fb_raw[i] + CACHE_ALIGN - 1) & ~(uintptr_t)(CACHE_ALIGN - 1));
+        memset(s_fb[i], 0, FB_BYTES);
+        esp_cache_msync(s_fb[i], FB_BYTES, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+    }
+    if (!native_camera_init())
+        goto fail;
+    s_isp = &s_isp_context;
+    configure_isp_pipeline(s_isp);
+    s_inited = true;
+    if (!camera_set_exposure(s_exposure) || !camera_set_gain_index(s_gain_idx)) {
+        s_inited = false;
+        ksnprintf(s_error, sizeof(s_error), "Initial exposure/gain write failed");
+        goto fail;
+    }
+    ksnprintf(s_error, sizeof(s_error), "Native CSI/ISP polling; first frame not verified");
+    return true;
+fail:
+    kprintf("camera: %s\n", s_error);
+    native_camera_deinit();
+    s_isp = NULL;
+    free_frames();
+    xclk_stop();
+    return false;
+}
+bool camera_init(void) {
+    mutex_lock(&s_camera_lock);
+    bool ok = camera_init_locked();
+    mutex_unlock(&s_camera_lock);
+    return ok;
+}
+bool camera_probe(void) {
+    mutex_lock(&s_camera_lock);
+    bool clock = s_inited || xclk_start();
+    if (clock)
+        delay_ms(10);
+    uint8_t hi = 0, lo = 0;
+    bool ok = clock && sccb_read(SC202CS_REG_CHIP_H, &hi) && sccb_read(SC202CS_REG_CHIP_L, &lo);
+    s_chip_id = ok ? ((uint16_t)hi << 8) | lo : 0;
+    if (!s_inited)
+        xclk_stop();
+    kprintf("camera: probe addr=36 sensor=%04x supported=%s backend=native-poll\n", s_chip_id,
+            ok && s_chip_id == SC202CS_CHIP_ID ? "yes" : "no");
+    mutex_unlock(&s_camera_lock);
+    return ok;
+}
+bool camera_start(void) {
+    mutex_lock(&s_camera_lock);
+    bool ok = camera_init_locked();
+    uint32_t caller = task_current() ? task_current()->id : 0;
+    if (s_streaming && s_owner != caller)
+        ok = false;
+    if (ok && !s_streaming) {
+        s_frames = 0;
+        s_ready_fb = NULL;
+        s_write_idx = 0;
+        ok = native_camera_start(s_fb[0]) && sccb_write(SC202CS_REG_STREAM, 1);
+        if (!ok) {
+            if (!native_camera_stop())
+                s_poisoned = true;
+        }
+        s_streaming = ok;
+        s_owner = ok ? caller : 0;
+    }
+    mutex_unlock(&s_camera_lock);
+    return ok;
+}
+void camera_stop(void) {
+    mutex_lock(&s_camera_lock);
+    if (s_streaming && s_owner && task_current() && s_owner != task_current()->id) {
+        mutex_unlock(&s_camera_lock);
+        return;
+    }
+    if (s_streaming) {
+        sccb_write(SC202CS_REG_STREAM, 0);
+        if (!native_camera_stop()) {
+            s_poisoned = true;
+            ksnprintf(s_error, sizeof(s_error), "DMA halt timeout; reset required");
+        }
+        s_streaming = false;
+        s_owner = 0;
+    }
+    mutex_unlock(&s_camera_lock);
+}
+void camera_deinit(void) {
+    camera_stop();
+    mutex_lock(&s_camera_lock);
+    if (s_streaming) {
+        mutex_unlock(&s_camera_lock);
+        return;
+    }
+    if (s_inited && !s_poisoned) {
+        native_camera_deinit();
+        s_isp = NULL;
+        s_inited = false;
+        free_frames();
+        xclk_stop();
+    }
+    s_ready_fb = NULL;
+    mutex_unlock(&s_camera_lock);
+}
+const uint16_t *camera_frame(uint32_t *seq_out) {
+    mutex_lock(&s_camera_lock);
+    if (s_streaming && s_owner && task_current() && s_owner != task_current()->id) {
+        if (seq_out)
+            *seq_out = 0;
+        mutex_unlock(&s_camera_lock);
+        return NULL;
+    }
+    if (s_streaming) {
+        int status = native_camera_poll();
+        if (status > 0) {
+            s_ready_fb = s_fb[s_write_idx];
+            s_frames++;
+            if (s_frames == 1)
+                ksnprintf(s_error, sizeof(s_error), "Native CSI/ISP RGB565 frame received");
+            esp_cache_msync((void *)s_ready_fb, FB_BYTES, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
+            s_write_idx ^= 1;
+            if (!native_camera_start(s_fb[s_write_idx])) {
+                sccb_write(SC202CS_REG_STREAM, 0);
+                if (!native_camera_stop())
+                    s_poisoned = true;
+                s_streaming = false;
+                ksnprintf(s_error, sizeof(s_error), "Could not rearm CSI DMA");
             }
-            uintptr_t aligned = ((uintptr_t)raw + (CACHE_ALIGN - 1u)) & ~(uintptr_t)(CACHE_ALIGN - 1u);
-            s_fb[i] = (uint16_t *)aligned;
-            for (size_t k = 0; k < FB_BYTES / 2u; k++) s_fb[i][k] = 0;
-            esp_cache_msync(s_fb[i], FB_BYTES, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+        } else if (status < 0) {
+            s_dma_errors++;
+            sccb_write(SC202CS_REG_STREAM, 0);
+            if (!native_camera_stop())
+                s_poisoned = true;
+            s_streaming = false;
+            s_ready_fb = NULL;
+            ksnprintf(s_error, sizeof(s_error), "CSI DMA error or frame timeout");
         }
     }
-
-    if (!xclk_start()) {
-        kprintf("camera: failed to start 24 MHz XCLK on GPIO %d\n", CAM_XCLK_PIN);
-        return false;
-    }
-    delay_ms(10);
-
-    if (!sensor_init_regs()) {
-        return false;
-    }
-
-    esp_cam_ctlr_csi_config_t csi_cfg = {
-        .ctlr_id                = 0,
-        .h_res                  = CAMERA_WIDTH,
-        .v_res                  = CAMERA_HEIGHT,
-        .lane_bit_rate_mbps     = CAM_LANE_MBPS,
-        .input_data_color_type  = CAM_CTLR_COLOR_RAW8,
-        .output_data_color_type = CAM_CTLR_COLOR_RGB565,
-        .data_lane_num          = 1,
-        .byte_swap_en           = false,
-        .queue_items            = 1,
-        .bk_buffer_dis          = 1,
-    };
-    if (esp_cam_new_csi_ctlr(&csi_cfg, &s_cam) != ESP_OK) {
-        kprintf("camera: esp_cam_new_csi_ctlr failed\n");
-        return false;
-    }
-
-    esp_cam_ctlr_evt_cbs_t cbs = {
-        .on_get_new_trans  = on_get_new_trans,
-        .on_trans_finished = on_trans_finished,
-    };
-    if (esp_cam_ctlr_register_event_callbacks(s_cam, &cbs, NULL) != ESP_OK ||
-        esp_cam_ctlr_enable(s_cam) != ESP_OK) {
-        kprintf("camera: CSI enable failed\n");
-        return false;
-    }
-
-    esp_isp_processor_cfg_t isp_cfg = {
-        .clk_src                = ISP_CLK_SRC_DEFAULT,
-        .clk_hz                 = CAM_ISP_CLK_HZ,
-        .input_data_source      = ISP_INPUT_DATA_SOURCE_CSI,
-        .input_data_color_type  = ISP_COLOR_RAW8,
-        .output_data_color_type = ISP_COLOR_RGB565,
-        .yuv_range              = ISP_COLOR_RANGE_FULL,
-        .yuv_std                = ISP_YUV_CONV_STD_BT601,
-        .has_line_start_packet  = false,
-        .has_line_end_packet    = false,
-        .h_res                  = CAMERA_WIDTH,
-        .v_res                  = CAMERA_HEIGHT,
-        .bayer_order            = COLOR_RAW_ELEMENT_ORDER_BGGR,
-    };
-    if (esp_isp_new_processor(&isp_cfg, &s_isp) != ESP_OK ||
-        esp_isp_enable(s_isp) != ESP_OK) {
-        kprintf("camera: ISP init failed\n");
-        return false;
-    }
-    configure_isp_pipeline(s_isp);
-
-    camera_set_exposure(s_exposure);
-    camera_set_gain_index(s_gain_idx);
-
-    s_inited = true;
-    kprintf("camera: initialized SC202CS 1280x720@30fps RGB565 via MIPI-CSI + ISP\n");
-    return true;
+    if (seq_out)
+        *seq_out = s_frames;
+    const uint16_t *result = (const uint16_t *)s_ready_fb;
+    mutex_unlock(&s_camera_lock);
+    return result;
 }
 
-bool camera_start(void)
-{
-    if (!s_inited && !camera_init()) return false;
-    if (s_streaming) return true;
-
-    if (esp_cam_ctlr_start(s_cam) != ESP_OK) {
-        kprintf("camera: esp_cam_ctlr_start failed\n");
-        return false;
-    }
-    sccb_write(SC202CS_REG_STREAM, 0x01);
-    s_streaming = true;
-    return true;
-}
-
-void camera_stop(void)
-{
-    if (!s_streaming) return;
-    sccb_write(SC202CS_REG_STREAM, 0x00);
-    delay_ms(40);
-    esp_cam_ctlr_stop(s_cam);
-    s_streaming = false;
-}
-
-const uint16_t *camera_frame(uint32_t *seq_out)
-{
-    static uint32_t s_last_synced_seq;
-    uint32_t seq = s_frames;
-    const uint16_t *fb = (const uint16_t *)s_ready_fb;
-    if (fb && seq != s_last_synced_seq) {
-        esp_cache_msync((void *)fb, FB_BYTES, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
-        s_last_synced_seq = seq;
-    }
-    if (seq_out) *seq_out = seq;
-    return fb;
-}
-
-bool camera_set_mirror(bool mirror, bool vflip)
-{
+bool camera_set_mirror(bool mirror, bool vflip) {
     s_mirror = mirror;
-    s_vflip  = vflip;
+    s_vflip = vflip;
     return true;
 }
 
-bool camera_set_exposure(uint32_t exp_lines)
-{
-    if (exp_lines < SC202CS_EXP_MIN) exp_lines = SC202CS_EXP_MIN;
-    if (exp_lines > SC202CS_EXP_MAX) exp_lines = SC202CS_EXP_MAX;
+bool camera_set_exposure(uint32_t exp_lines) {
+    if (exp_lines < SC202CS_EXP_MIN)
+        exp_lines = SC202CS_EXP_MIN;
+    if (exp_lines > SC202CS_EXP_MAX)
+        exp_lines = SC202CS_EXP_MAX;
     s_exposure = exp_lines;
-    if (!s_inited && !s_chip_id) return true;
+    if (!s_inited)
+        return true;
     bool ok = sccb_write(SC202CS_REG_EXP_H, (uint8_t)((exp_lines >> 12) & 0x0Fu)) &&
-              sccb_write(SC202CS_REG_EXP_M, (uint8_t)((exp_lines >> 4)  & 0xFFu)) &&
+              sccb_write(SC202CS_REG_EXP_M, (uint8_t)((exp_lines >> 4) & 0xFFu)) &&
               sccb_write(SC202CS_REG_EXP_L, (uint8_t)((exp_lines & 0x0Fu) << 4));
     return ok;
 }
 
-bool camera_set_gain_index(uint32_t idx)
-{
-    if (idx >= GAIN_COUNT) idx = GAIN_COUNT - 1;
+bool camera_set_gain_index(uint32_t idx) {
+    if (idx >= GAIN_COUNT)
+        idx = GAIN_COUNT - 1;
     s_gain_idx = idx;
-    if (!s_inited && !s_chip_id) return true;
+    if (!s_inited)
+        return true;
     return sccb_write(SC202CS_REG_AGAIN, s_gains[idx].again) &&
            sccb_write(SC202CS_REG_DGAIN, s_gains[idx].dgain) &&
            sccb_write(SC202CS_REG_DFINE, s_gains[idx].dfine);
 }
 
-void camera_set_auto_exposure(bool enable)
-{
-    s_auto_exp = enable;
-}
+void camera_set_auto_exposure(bool enable) { s_auto_exp = enable; }
 
 /* Lightweight AE + AWB: updates exposure/gain and ISP CCM white-balance gains. */
-void camera_auto_exposure_step(const uint16_t *frame)
-{
-    if (!s_auto_exp || !frame) return;
-    esp_cache_msync((void *)frame, FB_BYTES, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
+void camera_auto_exposure_step(const uint16_t *frame) {
+    if (!s_auto_exp || !frame)
+        return;
     uint32_t sum_y = 0, samples = 0;
     uint32_t sum_r = 0, sum_g = 0, sum_b = 0, wb_samples = 0;
 
@@ -393,8 +450,8 @@ void camera_auto_exposure_step(const uint16_t *frame)
         for (int x = 128; x < CAMERA_WIDTH - 128; x += 32) {
             uint16_t p = row[x];
             uint32_t r = ((p >> 11) & 0x1Fu) * 255u / 31u;
-            uint32_t g = ((p >> 5)  & 0x3Fu) * 255u / 63u;
-            uint32_t b = (p         & 0x1Fu) * 255u / 31u;
+            uint32_t g = ((p >> 5) & 0x3Fu) * 255u / 63u;
+            uint32_t b = (p & 0x1Fu) * 255u / 31u;
             uint32_t luma = (r * 2u + g * 5u + b) >> 3;
             sum_y += luma;
             samples++;
@@ -408,26 +465,35 @@ void camera_auto_exposure_step(const uint16_t *frame)
             }
         }
     }
-    if (!samples) return;
+    if (!samples)
+        return;
     uint32_t avg = sum_y / samples;
 
     /* 1. Closed-loop Auto White Balance on well-exposed midtone/white pixels */
     if (s_isp && avg >= 85u && wb_samples >= 16u && sum_r > 0u && sum_b > 0u) {
         float post_r = (float)sum_g / (float)sum_r;
         float post_b = (float)sum_g / (float)sum_b;
-        if (post_r < 0.85f) post_r = 0.85f;
-        if (post_r > 1.18f) post_r = 1.18f;
-        if (post_b < 0.85f) post_b = 0.85f;
-        if (post_b > 1.18f) post_b = 1.18f;
+        if (post_r < 0.85f)
+            post_r = 0.85f;
+        if (post_r > 1.18f)
+            post_r = 1.18f;
+        if (post_b < 0.85f)
+            post_b = 0.85f;
+        if (post_b > 1.18f)
+            post_b = 1.18f;
         float diff_r = post_r - 1.0f;
         float diff_b = post_b - 1.0f;
         if (diff_r > 0.015f || diff_r < -0.015f || diff_b > 0.015f || diff_b < -0.015f) {
             s_wb_r *= (1.0f + 0.30f * diff_r);
             s_wb_b *= (1.0f + 0.30f * diff_b);
-            if (s_wb_r < 1.25f) s_wb_r = 1.25f;
-            if (s_wb_r > 2.35f) s_wb_r = 2.35f;
-            if (s_wb_b < 1.25f) s_wb_b = 1.25f;
-            if (s_wb_b > 2.35f) s_wb_b = 2.35f;
+            if (s_wb_r < 1.25f)
+                s_wb_r = 1.25f;
+            if (s_wb_r > 2.35f)
+                s_wb_r = 2.35f;
+            if (s_wb_b < 1.25f)
+                s_wb_b = 1.25f;
+            if (s_wb_b > 2.35f)
+                s_wb_b = 2.35f;
             apply_wb_ccm(s_isp, s_wb_r, s_wb_b);
         }
     }
@@ -453,7 +519,8 @@ void camera_auto_exposure_step(const uint16_t *frame)
             s_ae_cooldown = 1;
         } else if (s_exposure > SC202CS_EXP_MIN + 32u) {
             uint32_t step = (avg > 190) ? 160u : 64u;
-            camera_set_exposure(s_exposure > step + SC202CS_EXP_MIN ? s_exposure - step : SC202CS_EXP_MIN);
+            camera_set_exposure(s_exposure > step + SC202CS_EXP_MIN ? s_exposure - step
+                                                                    : SC202CS_EXP_MIN);
             s_ae_cooldown = 1;
         } else if (s_gain_idx > 0) {
             camera_set_gain_index(s_gain_idx - 1);
@@ -462,16 +529,22 @@ void camera_auto_exposure_step(const uint16_t *frame)
     }
 }
 
-void camera_get_status(camera_status_t *out)
-{
-    if (!out) return;
+void camera_get_status(camera_status_t *out) {
+    if (!out)
+        return;
+    memset(out, 0, sizeof(*out));
+    out->sensor_present = s_chip_id != 0;
+    out->supported = s_chip_id == SC202CS_CHIP_ID;
+    out->dma_errors = s_dma_errors;
+    out->owner_task = s_owner;
+    ksnprintf(out->message, sizeof(out->message), "%s", s_error);
     out->initialized = s_inited;
-    out->streaming   = s_streaming;
-    out->chip_id     = s_chip_id;
-    out->frames      = s_frames;
-    out->exposure    = s_exposure;
-    out->gain_idx    = s_gain_idx;
-    out->mirror      = s_mirror;
-    out->vflip       = s_vflip;
-    out->auto_exp    = s_auto_exp;
+    out->streaming = s_streaming;
+    out->chip_id = s_chip_id;
+    out->frames = s_frames;
+    out->exposure = s_exposure;
+    out->gain_idx = s_gain_idx;
+    out->mirror = s_mirror;
+    out->vflip = s_vflip;
+    out->auto_exp = s_auto_exp;
 }

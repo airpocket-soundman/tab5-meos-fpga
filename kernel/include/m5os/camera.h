@@ -1,26 +1,35 @@
 #pragma once
 #include <m5os/types.h>
 
-#define CAMERA_WIDTH   1280
-#define CAMERA_HEIGHT  720
+#define CAMERA_WIDTH 1280
+#define CAMERA_HEIGHT 720
 
 typedef struct {
-    bool     initialized;
-    bool     streaming;
+    bool sensor_present;
+    bool supported;
+    uint32_t dma_errors;
+    uint32_t owner_task;
+    char message[80];
+    bool initialized;
+    bool streaming;
     uint16_t chip_id;
     uint32_t frames;
     uint32_t exposure;
     uint32_t gain_idx;
-    bool     mirror;
-    bool     vflip;
-    bool     auto_exp;
+    bool mirror;
+    bool vflip;
+    bool auto_exp;
 } camera_status_t;
 
+/* ID-register read only; starts/stops XCLK if capture is not initialized. */
+bool camera_probe(void);
 bool camera_init(void);
 bool camera_start(void);
 void camera_stop(void);
+void camera_deinit(void);
 
-/* Returns a pointer to the latest completed 1280x720 RGB565 frame in PSRAM (or NULL if none yet). */
+/* Returns a pointer to the latest completed 1280x720 RGB565 frame in PSRAM (or NULL if none yet).
+ */
 const uint16_t *camera_frame(uint32_t *seq_out);
 
 bool camera_set_mirror(bool mirror, bool vflip);

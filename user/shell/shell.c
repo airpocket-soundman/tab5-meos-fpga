@@ -41,6 +41,7 @@
 #include <m5os/msg.h>
 #include <m5os/gui.h>
 #include <m5os/wifi.h>
+#include <m5os/camera.h>
 #include <m5os/display.h>
 #include <m5os/fp_context_test.h>
 #include <m5os/board_config.h>
@@ -611,6 +612,19 @@ static int cmd_edit(int argc, char **argv)
 
 static int cmd_camera(int argc, char **argv)
 {
+    if(argc>1 && (sh_streq(argv[1],"probe")||sh_streq(argv[1],"status"))) {
+        bool ok=!sh_streq(argv[1],"probe")||camera_probe();
+        camera_status_t st;camera_get_status(&st);
+        SH_PRINTF("camera: supported=%u initialized=%u streaming=%u sensor=%04x frames=%u DMA_errors=%u\n",st.supported,st.initialized,st.streaming,st.chip_id,st.frames,st.dma_errors);
+        SH_PRINTF("camera: %s\n",st.message);return ok?0:1;
+    }
+    if(argc>1 && sh_streq(argv[1],"test")) {
+        if(!camera_init()||!camera_start()){sh_puts("camera: init/start failed\n");return 1;}
+        uint64_t end=hal_time_now_us()+5000000u;uint32_t seq=0;bool ok=false;
+        while(hal_time_now_us()<end){const uint16_t *frame=camera_frame(&seq);if(frame&&seq){ok=true;break;}task_sleep(10);}
+        camera_stop();camera_status_t st;camera_get_status(&st);
+        SH_PRINTF("camera: test %s sequence=%u DMA_errors=%u %s\n",ok?"PASS":"FAIL",seq,st.dma_errors,st.message);return ok?0:1;
+    }
     char path[VFS_PATH_MAX];
     const char *dir = (argc > 1) ? argv[1] : ((s_cwd[0] == '/' && s_cwd[1] == 0) ? "/home" : s_cwd);
     if (!resolve(dir, path)) return fail("camera", "bad path", ERR_INVAL);
