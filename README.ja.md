@@ -19,7 +19,7 @@ USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSH
 - USB UVCカメラ対応。Tab5内蔵カメラの既存ドライバを実機検証し、不足を修正。
 - USBマウス、ST7123を含むタッチ統合、実現性を調査した上でのBLEキーボード・マウス。
 - Tab5のmicroSD、USBメモリ、FAT対応。exFATは条件を評価。
-- サーバー側FUSEヘルパーを使う、SSH接続先LinuxからのTab5ストレージマウント。ファイル転送とリモート画像表示。
+- SD／USBのSFTP公開とLinux持ち込み用ヘルパー。既存SSHFS／FUSEによるマウントを試し、利用できなければファイル転送へ切り替えます。[検証範囲と制限](docs/STORAGE_HELPER.md)を参照してください。
 - MicroPythonのREPL・スクリプト・VFS連携。共通のピン管理によるMicroPythonとネイティブシェルからのGPIO操作。
 - CPythonとPyxel本体の移植を検討し、既存ゲームをソース・素材の事前変換なしで実行。互換性とメモリを検証後、FPGAによる描画高速化を追加。
 - 小規模TUIアプリの移植。nano／Vimは依存関係を調査。Linux実行ファイルの直接実行には非対応。
