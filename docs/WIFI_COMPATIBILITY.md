@@ -102,3 +102,13 @@ embedded. It writes the inactive OTA application in acknowledged chunks, never
 retries a failed chunk, and only sends OTA_END after all bytes are acknowledged.
 It leaves the existing bootloader and partition table in place. A failed END
 requires inspection because the response may have been lost after boot selection.
+
+## Wi-Fi traffic validation
+
+After the user configured an access point, MeOS reported WPA2 association and
+a DHCP address. With only the hub's Ethernet cable disconnected, Ethernet
+reported `link=down active=0`. `web --dump http://example.com/` then resolved
+the hostname and received HTTP 200 (577 bytes) over Wi-Fi. This confirms
+association, DHCP, DNS and a TCP/HTTP exchange. Long-duration traffic,
+Wi-Fi reconnect and automatic saved-credential reconnect remain untested.
+Access-point names and credentials are omitted from this record.

@@ -69,8 +69,8 @@
         "en": "3b. Wi-Fi validation"
       },
       "detail": {
-        "ja": "C6をSDIO経由で公式MCUアプリへ更新。全転送ACK・自然再起動・C6リセットとP4再起動後の維持を確認。通常ビルドでWi-Fi初期化・MAC取得・AP3件検索に成功。保存済みAPなし。認証・DHCP・IP通信は未確認。",
-        "en": "Updated C6 over SDIO to the official MCU application. All transfers were acknowledged; natural reboot, C6 reset and P4 restart retained MCU. The normal build passed Wi-Fi initialization, MAC retrieval and a scan finding three APs. No AP is saved; association, DHCP and IP traffic remain pending."
+        "ja": "C6を公式MCUアプリへSDIO更新。再起動後の維持、Wi-Fi初期化・検索・WPA2接続・DHCPを確認。LANケーブルを抜きEthernet非アクティブの状態で、Wi-FiによるDNS名前解決とHTTP 200受信を実機確認。長時間通信と再接続試験は未実施。",
+        "en": "Updated C6 over SDIO to the official MCU application. Reset persistence, Wi-Fi initialization, scanning, WPA2 association and DHCP passed. With Ethernet unplugged and inactive, Wi-Fi DNS resolution and HTTP 200 retrieval passed on hardware. Long-duration traffic and reconnect tests remain pending."
       }
     },
     {
