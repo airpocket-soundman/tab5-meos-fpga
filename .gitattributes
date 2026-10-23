@@ -2,3 +2,4 @@
 third_party/nimble/** -text -whitespace
 third_party/micropython/** -text -whitespace
 third_party/sl/** -text -whitespace
+docs/resources/sdkconfig.measurement -text

@@ -263,10 +263,21 @@ static void print_heap(const char *name, const kmem_stats_t *st)
 
 static int cmd_mem(int argc, char **argv)
 {
-    (void)argc; (void)argv;
+    if(argc>2 || (argc==2 && !sh_streq(argv[1],"--json"))){sh_puts("usage: mem [--json]\n");return 1;}
     kmem_stats_t mi, mp;
     kmem_internal_stats(&mi);
     kmem_psram_stats(&mp);
+    if(argc==2){
+        /* One write keeps ordinary concurrent console messages outside JSON.
+         * Values are bytes, except cumulative allocation/failure counters. */
+        char output[512];
+        int n=ksnprintf(output,sizeof output,
+            "{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":%u,\"used\":%u,\"free\":%u,\"largest\":%u,\"peak\":%u,\"alloc_count\":%u,\"fail_count\":%u},"
+            "\"psram\":{\"total\":%u,\"used\":%u,\"free\":%u,\"largest\":%u,\"peak\":%u,\"alloc_count\":%u,\"fail_count\":%u}}\n",
+            (uint32_t)mi.total,(uint32_t)mi.used,(uint32_t)mi.free,(uint32_t)mi.largest_free,(uint32_t)mi.peak_used,mi.alloc_count,mi.fail_count,
+            (uint32_t)mp.total,(uint32_t)mp.used,(uint32_t)mp.free,(uint32_t)mp.largest_free,(uint32_t)mp.peak_used,mp.alloc_count,mp.fail_count);
+        sh_write(output,(size_t)n);return 0;
+    }
     print_heap("internal", &mi);
     print_heap("psram", &mp);
     return 0;
@@ -1044,7 +1055,7 @@ static const command_t s_commands[] = {
     { "ls",      cmd_ls,      "ls [PATH]       list a directory (/dev lists devices)" },
     { "cat",     cmd_cat,     "cat FILE...     print files" },
     { "echo",    cmd_echo,    "echo TEXT [> FILE | >> FILE]" },
-    { "mem",     cmd_mem,     "heap usage" },
+    { "mem",     cmd_mem,     "mem [--json]   heap usage (JSON uses exact bytes)" },
     { "uptime",  cmd_uptime,  "time since boot" },
     { "run",     cmd_run,     "run [APP]       start an application (no argument: list them)" },
     { "put",     cmd_put,     "put PATH        receive a file as base64 (see tools/m5ex_push.py)" },
