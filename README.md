@@ -18,6 +18,7 @@ Planning and source inspection. No fork-specific firmware build, hardware boot, 
 - Tab5 microSD, USB mass storage and FAT support; evaluate exFAT.
 - Mount Tab5 storage on an SSH-connected Linux server through a server-side FUSE helper, plus file transfer and remote image display.
 - MicroPython REPL, scripts and VFS integration; GPIO access from MicroPython and the native shell through shared pin management.
+- Investigate porting CPython and Pyxel to run existing games without source or asset preprocessing; validate compatibility and memory first, then FPGA rendering acceleration.
 - Small TUI application ports; investigate nano/Vim dependencies. Linux executables do not run directly on MeOS.
 
 ## Development

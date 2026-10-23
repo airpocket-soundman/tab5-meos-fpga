@@ -21,6 +21,7 @@ EN_STATUS = [
     ('Storage over SSH', 'Not implemented', 'Mount Tab5 SD / USB on the connected Linux server using FUSE.'),
     ('Local applications', 'MeOS apps; no Linux binary compatibility', 'Start with small TUI ports such as sl; audit nano / Vim dependencies.'),
     ('MicroPython', 'Integration / dependencies not audited', 'Embed REPL, scripts, interruption, cleanup and VFS access.'),
+    ('CPython / Pyxel', 'Not implemented; feasibility unverified', 'Prioritize porting CPython and Pyxel to run existing source/assets without preprocessing; add FPGA rendering after compatibility is established.'),
     ('Python GPIO', 'Planned; not audited', 'Basic machine.Pin-compatible digital I/O and pull settings.'),
     ('Shell GPIO', 'User commands planned; not audited', 'List roles / owners; configure, read, write and release pins.'),
     ('FPGA / DDR3', 'Not implemented in this fork', 'Transport, buffers, drawing primitives and GUI integration.'),
@@ -90,6 +91,16 @@ Share a MeOS pin-management API between Python and the shell. Begin with digital
 - Proposed commands: `gpio list`, `gpio mode`, `gpio read`, `gpio write`, `gpio release` (not available yet).
 - Aim for basic `machine.Pin` compatibility. Define output state and ownership on exit, exception and interruption; define shell pin lifetime.
 - Verify valid/invalid pins, modes, pulls, ownership conflicts and repeated execution. Check wiring and voltage conditions before connecting hardware.
+## CPython and Pyxel: existing games without preprocessing
+The goal is to run published Pyxel Python source and assets without per-game C/C++ or WASM conversion or asset preprocessing. Porting CPython and Pyxel itself is the primary candidate, separate from the MicroPython/GPIO work. Full compatibility and smooth performance remain unverified.
+- Pin CPython and Pyxel versions. Audit Python bindings, Rust standard-library/target support, SDL2/OpenGL and other dependencies. Investigate native execution on MeOS; existing browser WASM is not directly usable.
+- Connect CPython memory, files and time to MeOS; adapt Pyxel display, input, audio and file interfaces. Distinguish interpreted game logic from native engine work.
+- Start with the official Jump Game, then Platformer, using original Python and .pyxres files. Check held/pressed keys, transparency, flips, camera, tilemaps, mutable image banks, text, random numbers, music and effects.
+- Measure startup/runtime peak memory for CPython, Pyxel, assets, frames and audio against 32 MB PSRAM and internal RAM limits. FPGA DDR3 remains explicit-transfer storage, not an automatic extension of the Python heap.
+- Establish compatibility with CPU rendering before adding FPGA support. Preserve the original logical resolution and evaluate scaling, copies and compositing.
+- Compare frames and game state against the PC version using the same inputs; check audio/input and measure frame time, latency and memory. Target each game's original update rate and report compatibility and acceleration separately.
+- Record external Python/OS dependencies, Pyxel version differences, and game/asset usage and redistribution terms per title.
+References: [Pyxel](https://github.com/kitao/pyxel), [Jump Game](https://github.com/kitao/pyxel/blob/main/python/pyxel/examples/02_jump_game.py), [Platformer](https://github.com/kitao/pyxel/blob/main/python/pyxel/examples/10_platformer.py).
 ## Validation and priorities
 Measure command transfer, FPGA execution, image readback and LCD presentation together. Record FPS, input latency, CPU load, internal RAM/PSRAM use and traffic. Align inputs, precision and transfer conditions with the separate Linux repository; Linux drivers cannot simply be reused.
 Prepare ESP-IDF v5.4.4 and reproduce `sh tools/build.sh tab5 build`; record artifact hashes. Before flashing, check existing firmware/C6 state and recovery. Check carrier pin conflicts, PARLIO, DMA, interrupts, cache synchronization and scheduler cooperation.

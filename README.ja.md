@@ -18,6 +18,7 @@ FPGAによる描画支援を組み込んだ、M5Stack Tab5向けMeOSのGUI環境
 - Tab5のmicroSD、USBメモリ、FAT対応。exFATは条件を評価。
 - サーバー側FUSEヘルパーを使う、SSH接続先LinuxからのTab5ストレージマウント。ファイル転送とリモート画像表示。
 - MicroPythonのREPL・スクリプト・VFS連携。共通のピン管理によるMicroPythonとネイティブシェルからのGPIO操作。
+- CPythonとPyxel本体の移植を検討し、既存ゲームをソース・素材の事前変換なしで実行。互換性とメモリを検証後、FPGAによる描画高速化を追加。
 - 小規模TUIアプリの移植。nano／Vimは依存関係を調査。Linux実行ファイルの直接実行には非対応。
 
 ## 開発資料
