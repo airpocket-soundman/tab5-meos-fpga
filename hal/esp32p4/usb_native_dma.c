@@ -5,6 +5,8 @@
  *  - the PHY (UTMI) power-up and clock gating: IDF's usb_new_phy(), which is plain register code;
  *  - register access and the DMA descriptor format: IDF's hal/usb_dwc_hal.h (HAL = no RTOS inside);
  *  - NOT used: IDF's USB host stack (usb_host, hcd_dwc, hub, enum) - tasks, queues, mutexes.
+ * The default transfer engine is usb_buffer_dma.inc, including mixed-speed hub splits.
+ * The legacy descriptor engine remains selectable for development.
  * The sequencing (power, FIFO sizes, control stages with PID toggling) follows components/usb/hcd_dwc.c
  * of ESP-IDF v5.4.4, minus everything about queues, multiple pipes and hubs.
  *
@@ -18,11 +20,16 @@
 #include <m5os/kprintf.h>
 #include <string.h>
 #include <m5os/kmalloc.h>
+#include <m5os/arch.h>
 
 #include "esp_idf_version.h"
 #include "hal/usb_dwc_hal.h"
 #include "esp_private/usb_phy.h"
 #include "esp_cache.h"
+
+#ifndef M5OS_USB_BUFFER_DMA
+#define M5OS_USB_BUFFER_DMA 1
+#endif
 
 #define USB_PORT            0           /* ESP32-P4: port 0 is the high-speed core with the UTMI PHY */
 #define MAX_CHANNELS        16          /* DWC2 has up to 16 host channels */
@@ -97,6 +104,10 @@ static usb_dwc_hal_chan_event_t decode_channel(usb_dwc_hal_chan_t *c)
 static void cache_write_back(void *p, size_t n) { esp_cache_msync(p, n, ESP_CACHE_MSYNC_FLAG_DIR_C2M); }
 static void cache_invalidate(void *p, size_t n) { esp_cache_msync(p, n, ESP_CACHE_MSYNC_FLAG_DIR_M2C); }
 
+#if M5OS_USB_BUFFER_DMA
+#include "usb_buffer_dma.inc"
+#endif
+
 bool hal_usbh_init(void)
 {
     if (s_inited) return true;
@@ -152,6 +163,9 @@ bool hal_usbh_init(void)
 
     usb_dwc_hal_port_init(&s_hal);                     /* unmask port/channel interrupt status */
     usb_dwc_hal_port_toggle_power(&s_hal, true);       /* VBUS comes from the expander (board_init); this powers the port logic */
+#if M5OS_USB_BUFFER_DMA
+    if (!bdm_init()) return false;
+#endif
     s_inited = true;
     return true;
 }
@@ -164,10 +178,14 @@ usbh_event_t hal_usbh_poll(void)
     case USB_DWC_HAL_PORT_EVENT_DISCONN:  return USBH_EVENT_DISCONNECT;
     case USB_DWC_HAL_PORT_EVENT_ENABLED:
         usb_dwc_hal_port_enable(&s_hal);
+#if M5OS_USB_BUFFER_DMA
+        s_hal.dev->hcfg_reg.val &= ~(1u<<23); /* Global buffer DMA; split needs this mode. */
+#else
         memset(s_frames, 0, sizeof s_frames);
         cache_write_back(s_frames, sizeof s_frames);
         usb_dwc_hal_port_set_frame_list(&s_hal, s_frames, USB_HAL_FRAME_LIST_LEN_32);
         usb_dwc_hal_port_periodic_enable(&s_hal);
+#endif
         return USBH_EVENT_ENABLED;
     case USB_DWC_HAL_PORT_EVENT_DISABLED: return USBH_EVENT_DISABLED;
     case USB_DWC_HAL_PORT_EVENT_OVRCUR:   return USBH_EVENT_OVERCURRENT;
@@ -190,6 +208,9 @@ usbh_speed_t hal_usbh_speed(void)
 
 bool hal_usbh_open_control(uint8_t dev_addr, uint16_t max_packet)
 {
+#if M5OS_USB_BUFFER_DMA
+    return bdm_open(0,dev_addr,0,max_packet,0,0);
+#endif
     if (!s_inited) return false;
     if (dev_addr >= 16) return false;
     if (dev_addr == 0) memset(s_ep_pid[0], 0, sizeof s_ep_pid[0]);
@@ -249,6 +270,9 @@ static int run_stage(int idx, bool dir_in, int pid)
 
 int hal_usbh_control(const uint8_t setup[8], void *data, size_t len)
 {
+#if M5OS_USB_BUFFER_DMA
+    return bdm_control(setup,data,len);
+#endif
     if (!s_chan_open) return USBH_ERR_XFER;
     bool in = setup[0] & 0x80;
     bool has_data = len > 0;
@@ -303,6 +327,9 @@ void hal_usbh_dump(void)
 
 void hal_usbh_data_close(void)
 {
+#if M5OS_USB_BUFFER_DMA
+    bdm_close(1); return;
+#endif
     if (!s_io_open) return;
     if (s_io_active) {
         usb_dwc_hal_chan_request_halt(&s_io);
@@ -323,6 +350,9 @@ void hal_usbh_data_close(void)
 bool hal_usbh_data_open(uint8_t address, uint8_t endpoint, uint16_t mps,
                         bool interrupt, uint8_t interval)
 {
+#if M5OS_USB_BUFFER_DMA
+    return bdm_open(1,address,endpoint,mps,interrupt?3:2,interval);
+#endif
     hal_usbh_data_close();
     if (s_io_open || address >= 16 || !mps || mps > 1024 || !(endpoint & 15)) return false;
     memset(&s_io, 0, sizeof s_io);
@@ -344,6 +374,9 @@ bool hal_usbh_data_open(uint8_t address, uint8_t endpoint, uint16_t mps,
 
 int hal_usbh_data_start(void *buf, size_t len)
 {
+#if M5OS_USB_BUFFER_DMA
+    return bdm_start(1,buf,len,-1)?0:USBH_ERR_XFER;
+#endif
     if (!s_io_open || s_io_active || !buf || !len) return USBH_ERR_XFER;
     size_t span = s_io_in ? ((len + s_io_mps - 1) / s_io_mps) * s_io_mps : len;
     if (span > sizeof s_io_data) return USBH_ERR_SIZE;
@@ -363,6 +396,9 @@ int hal_usbh_data_start(void *buf, size_t len)
 
 int hal_usbh_data_poll(void)
 {
+#if M5OS_USB_BUFFER_DMA
+    return bdm_poll(1);
+#endif
     if (!s_io_active) return USBH_ERR_XFER;
     usb_dwc_hal_decode_intr(&s_hal);
     usb_dwc_hal_chan_t *c;
@@ -389,6 +425,9 @@ int hal_usbh_data_poll(void)
 
 void hal_usbh_keyboard_close(void)
 {
+#if M5OS_USB_BUFFER_DMA
+    bdm_close(2); return;
+#endif
     if (!s_kbd_open) return;
     if (s_kbd.flags.active) {
         usb_dwc_hal_chan_request_halt(&s_kbd);
@@ -407,6 +446,9 @@ void hal_usbh_keyboard_close(void)
 }
 bool hal_usbh_keyboard_open(uint8_t address,uint8_t endpoint,uint16_t mps,uint8_t interval)
 {
+#if M5OS_USB_BUFFER_DMA
+    return bdm_open(2,address,endpoint,mps,3,interval);
+#endif
     hal_usbh_keyboard_close();
     if (s_kbd_open || address>=16 || !(endpoint&0x80) || !(endpoint&15) ||
         mps<8 || mps>sizeof s_kbd_data) return false;
@@ -427,6 +469,9 @@ bool hal_usbh_keyboard_open(uint8_t address,uint8_t endpoint,uint16_t mps,uint8_
 }
 bool hal_usbh_keyboard_start(void)
 {
+#if M5OS_USB_BUFFER_DMA
+    return bdm_start(2,NULL,bdm_pipes[2].mps,-1);
+#endif
     if (!s_kbd_open || s_kbd_active) return false;
     memset(s_kbd_qtd,0,sizeof s_kbd_qtd);
     memset(s_kbd_data,0,sizeof s_kbd_data);
@@ -442,6 +487,9 @@ bool hal_usbh_keyboard_start(void)
 }
 int hal_usbh_keyboard_poll(uint8_t report[8])
 {
+#if M5OS_USB_BUFFER_DMA
+    return bdm_keyboard_poll(report);
+#endif
     if (!s_kbd_active) return USBH_ERR_XFER;
     usb_dwc_hal_decode_intr(&s_hal);
     usb_dwc_hal_chan_t *c;
@@ -467,6 +515,10 @@ int hal_usbh_keyboard_poll(uint8_t report[8])
 
 void hal_usbh_net_close(unsigned id)
 {
+#if M5OS_USB_BUFFER_DMA
+    if (id<3) bdm_close(3+id);
+    return;
+#endif
     if (id>=3) return;
     net_pipe_t *p=&net_pipes[id];
     if (!p->open) return;
@@ -487,6 +539,9 @@ void hal_usbh_net_close(unsigned id)
 bool hal_usbh_net_open(unsigned id,uint8_t address,uint8_t endpoint,uint16_t mps,
                        bool interrupt,uint8_t interval)
 {
+#if M5OS_USB_BUFFER_DMA
+    return id<3 && bdm_open(3+id,address,endpoint,mps,interrupt?3:2,interval);
+#endif
     if (id>=3 || address>=16 || !mps || mps>1024 || !(endpoint&15)) return false;
     if (!net_qtd) {
         void *allocation=kmalloc_internal(3*512+3*2048+511);
@@ -515,6 +570,9 @@ bool hal_usbh_net_open(unsigned id,uint8_t address,uint8_t endpoint,uint16_t mps
 }
 bool hal_usbh_net_start(unsigned id,void *buffer,size_t length)
 {
+#if M5OS_USB_BUFFER_DMA
+    return id<3 && bdm_start(3+id,buffer,length,-1);
+#endif
     if (id>=3 || !buffer) return false;
     net_pipe_t *p=&net_pipes[id];
     if (!p->open || p->active) return false;
@@ -536,6 +594,9 @@ bool hal_usbh_net_start(unsigned id,void *buffer,size_t length)
 }
 int hal_usbh_net_poll(unsigned id)
 {
+#if M5OS_USB_BUFFER_DMA
+    return id<3?bdm_poll(3+id):USBH_ERR_XFER;
+#endif
     if (id>=3) return USBH_ERR_XFER;
     net_pipe_t *p=&net_pipes[id];
     if (!p->active) return USBH_ERR_XFER;
@@ -555,4 +616,13 @@ int hal_usbh_net_poll(unsigned id)
     if (got>p->length) got=p->length;
     if (p->in) { cache_invalidate(net_data[id],sizeof net_data[id]);memcpy(p->user,net_data[id],got); }
     return got;
+}
+
+void hal_usbh_set_route(uint8_t address,usbh_speed_t speed,uint8_t hub,uint8_t port)
+{
+#if M5OS_USB_BUFFER_DMA
+    bdm_route(address,speed,hub,port);
+#else
+    (void)address;(void)speed;(void)hub;(void)port;
+#endif
 }

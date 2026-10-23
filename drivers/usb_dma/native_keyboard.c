@@ -169,11 +169,13 @@ static bool wait_enabled(void)
 }
 
 /* Returns the HID boot keyboard's interface number, or -1. Sets *config to the configuration value. */
-static int enumerate(usbh_speed_t speed, uint8_t address, int *config)
+static int enumerate(usbh_speed_t speed, uint8_t address, int *config, uint8_t hub, uint8_t port)
 {
     uint8_t d[64];
     uint16_t mps0 = speed == USBH_SPEED_LOW ? EP0_MPS_LOW : EP0_MPS_FULL;
     bool low_via_hub = speed == USBH_SPEED_LOW && hal_usbh_speed() == USBH_SPEED_FULL;
+    hal_usbh_set_route(0,speed,hub,port);
+    hal_usbh_set_route(address,speed,hub,port);
     hal_usbh_prepare_device(0, low_via_hub);
     hal_usbh_prepare_device(address, low_via_hub);
     if (!hal_usbh_open_control(0, mps0)) { kprintf("usbkbd: no control channel\n"); return -1; }
@@ -380,15 +382,10 @@ static void hub_session(void)
             task_sleep(RESET_RECOVERY_MS);
             usbh_speed_t speed=(status&0x400)?USBH_SPEED_HIGH:
                                (status&0x200)?USBH_SPEED_LOW:USBH_SPEED_FULL;
-            if (hal_usbh_speed()==USBH_SPEED_HIGH && speed!=USBH_SPEED_HIGH) {
-                kprintf("usbhub: port %u requires split transfers (not enabled)\n",port);
-                hub_request(hub_mps,0x23,1,1,port,NULL,0);
-                continue;
-            }
             uint8_t address=port+1;
             int config=0;
             mutex_lock(&usb_native_bus_lock);
-            int iface=enumerate(speed,address,&config);
+            int iface=enumerate(speed,address,&config,1,port);
             bool configured=iface!=-1 && ctrl(0,REQ_SET_CONFIG,config,0,NULL,0)>=0;
             info_configured(address,configured);
             bool keyboard_ready=false;
@@ -505,7 +502,7 @@ static void keyboard_session(int iface)
 static void usbkbd_task(void *arg)
 {
     (void)arg;
-    kprintf("usb: native host, descriptor DMA, wait for host mode before FIFO setup\n");
+    kprintf("usb: native host, DMA, wait for host mode before FIFO setup\n");
     if (!hal_usbh_init()) { kprintf("usbkbd: USB host init failed\n"); return; }
     kprintf("usbkbd: waiting for a USB keyboard on the USB-A port\n");
 
@@ -533,7 +530,7 @@ static void usbkbd_task(void *arg)
         task_sleep(RESET_RECOVERY_MS);
 
         int config = 0;
-        int iface = enumerate(hal_usbh_speed(), KBD_ADDRESS, &config);
+        int iface = enumerate(hal_usbh_speed(), KBD_ADDRESS, &config,0,0);
         if (iface == -2 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             info_configured(1,true);
             if (usbmsc_attach(s_msc_iface,s_msc_in,s_msc_imps,s_msc_out,s_msc_omps))

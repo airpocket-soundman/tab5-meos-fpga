@@ -20,6 +20,8 @@ void         hal_usbh_reset(bool assert_reset);      /* drive / release bus rese
 usbh_speed_t hal_usbh_speed(void);                   /* valid once the port is enabled (after a reset) */
 bool         hal_usbh_open_control(uint8_t dev_addr, uint16_t max_packet);   /* (re)configure the control pipe; false if no pipe */
 void hal_usbh_prepare_device(uint8_t address, bool low_speed_via_full_speed_hub);
+/* Route a device through the translator in a high-speed hub, or hub=port=0 at root. */
+void hal_usbh_set_route(uint8_t address, usbh_speed_t speed, uint8_t hub, uint8_t port);
 
 #define USBH_ERR_TIMEOUT   (-1)
 #define USBH_ERR_STALL     (-2)
