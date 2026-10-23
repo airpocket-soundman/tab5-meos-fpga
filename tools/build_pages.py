@@ -105,6 +105,13 @@ References: [Pyxel](https://github.com/kitao/pyxel), [Jump Game](https://github.
 Measure command transfer, FPGA execution, image readback and LCD presentation together. Record FPS, input latency, CPU load, internal RAM/PSRAM use and traffic. Align inputs, precision and transfer conditions with the separate Linux repository; Linux drivers cannot simply be reused.
 Prepare ESP-IDF v5.4.4 and reproduce `sh tools/build.sh tab5 build`; record artifact hashes. Before flashing, check existing firmware/C6 state and recovery. Check carrier pin conflicts, PARLIO, DMA, interrupts, cache synchronization and scheduler cooperation.
 Advance input and microSD/FAT alongside GUI/FPGA work. Build common GPIO management before Python GPIO; expand storage mounting from SD reads to writes and USB. Stage mouse, terminals, BLE and app ports around dependencies. Set dates and performance targets after baseline measurements.
+## Proposal: external Japanese font storage
+Store Japanese fonts on microSD and load them into FPGA DDR3 during startup. This is a proposal, not an implemented or finalized design; Tab5 microSD, FPGA transport and DDR3 support are prerequisites.
+- The current embedded font array is 467,155 bytes (about 456 KiB). Removing it mainly saves flash, not an equal amount of internal RAM.
+- For CPU rendering, fetch required glyphs and cache them on Tab5; evaluate the existing roughly 9 KiB cache, indexing, compression access and transfer latency.
+- For FPGA rendering, investigate direct glyph access in DDR3. A dedicated memory region does not require a RAM-disk filesystem; choose based on the common storage design.
+- Keep a small built-in Latin font for startup/errors and provide fallback diagnostics for missing SD, invalid fonts or FPGA initialization failure.
+- Preserve font attribution/licenses; check format, version, size and integrity. Measure startup time, cache hit rate, glyph latency and flash/RAM savings.
 ## Attribution and sources
 Fork starting commit: `a6a9f234e509737f9fe84fe13468a8ec78b60fc9` from [shi3z/MeOS](https://github.com/shi3z/MeOS). Preserve upstream history, attribution and third-party licenses. Upstream redistribution terms need confirmation; no new license is assigned to upstream code.
 Reference: [shi3z — MeOS article](https://note.com/shi3zblog/n/n15e659e90a23). Article and upstream hardware reports are not this fork's verification results.

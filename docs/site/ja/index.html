@@ -67,6 +67,15 @@
 <p>参考実装：<a href="https://github.com/kitao/pyxel">Pyxel</a>、<a href="https://github.com/kitao/pyxel/blob/main/python/pyxel/examples/02_jump_game.py">Jump Game</a>、<a href="https://github.com/kitao/pyxel/blob/main/python/pyxel/examples/10_platformer.py">Platformer</a>。</p>
 <h4>優先順</h4>
 <p>基準ビルド・実機確認の後、入力統合とmicroSD・FAT対応をGUI・FPGA通信の研究と並行して進める。ストレージマウントはmicroSDで読み取りから検証し、書き込みとUSBメモリへ広げる。GPIOの共通管理とシェル操作を整えた上で、MicroPythonのREPL・スクリプト実行とGPIO APIを統合する。USBマウス、端末共通化、Bluetooth入力、追加アプリ移植は依存機能の成立に合わせて進める。具体的な性能目標と日程は測定・実機確認後に定める。</p>
+<h3>メモリ削減の検討案：日本語フォントの外部化</h3>
+<p>日本語フォントをmicroSDへ保存し、起動時にFPGA側DDR3のフォント用領域へ読み込む案を検討する。現時点では採用・実装済みではなく、Tab5のmicroSD対応とFPGA通信・DDR3利用の成立が前提となる。</p>
+<ul>
+<li>現在の埋め込みフォント配列は467,155 bytes（約456KiB）で、フラッシュから外すことによる容量削減を見込む。フラッシュ配置のため、外部化だけで同量の内部RAMが空くわけではない。</li>
+<li>CPU描画では、必要な字形をFPGAから取得し、Tab5側へキャッシュする。既存の約9KiBの字形キャッシュを活用・調整し、文字ごとの転送待ち、索引、圧縮データへのアクセス方法を評価する。</li>
+<li>FPGA描画ではDDR3上のフォントを直接参照する構成を検討する。データ領域として管理するだけならRAMディスクのファイルシステムは必須ではない。RAMディスク方式との選択は共通ストレージ設計に合わせて判断する。</li>
+<li>起動メッセージとエラー表示用の小さな英数字フォントは本体に残す。SD未挿入、フォント不正、FPGA初期化失敗時の代替表示と診断を用意する。</li>
+<li>元のフォントとライセンス表示を保持し、データ形式・版・長さ・整合性を確認して読み込む。起動時間、キャッシュヒット率、文字描画時間、フラッシュ・RAM削減量を測定する。</li>
+</ul>
 <h3>次の作業</h3>
 <ol>
 <li><code>tools/build.sh</code>、<code>tools/env.sh</code>、Tab5固有ドライバを調べ、再現可能なビルド環境を準備する。上流のTab5向け環境指定はESP-IDF v5.4.4。実際に使用した版と成功結果を別途記録する。</li>
