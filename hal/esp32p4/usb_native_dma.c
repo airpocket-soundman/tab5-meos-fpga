@@ -319,6 +319,12 @@ int hal_usbh_control(const uint8_t setup[8], void *data, size_t len)
 
 void hal_usbh_dump(void)
 {
+#if M5OS_USB_BUFFER_DMA
+    for(unsigned id=0;id<BDM_PIPES;id++){
+        bdm_pipe_t *p=&bdm_pipes[id];usb_dwc_host_chan_regs_t *r=bdm_regs(id);
+        kprintf("pipe%u open=%u active=%u running=%u type=%u addr=%u mps=%u mult=%u cap=%u result=%d HC=%08x INT=%08x SIZE=%08x SPLIT=%08x\n",id,p->open,p->active,p->running,p->type,p->address,p->mps,p->transactions,p->dma_capacity,p->result,r->hcchar_reg.val,r->hcint_reg.val,r->hctsiz_reg.val,r->hcsplt_reg.val);
+    }
+#endif
     usb_dwc_dev_t *d = s_hal.dev;
     kprintf("usbh: hprt=%08x gintsts=%08x gotgctl=%08x gusbcfg=%08x hcfg=%08x\n",
             (unsigned)d->hprt_reg.val, (unsigned)d->gintsts_reg.val, (unsigned)d->gotgctl_reg.val,
@@ -624,5 +630,36 @@ void hal_usbh_set_route(uint8_t address,usbh_speed_t speed,uint8_t hub,uint8_t p
     bdm_route(address,speed,hub,port);
 #else
     (void)address;(void)speed;(void)hub;(void)port;
+#endif
+}
+
+bool hal_usbh_video_open(uint8_t address,uint8_t endpoint,uint16_t raw_mps,uint8_t interval)
+{
+#if M5OS_USB_BUFFER_DMA
+    return (endpoint&0x80) && bdm_open(6,address,endpoint,raw_mps,1,interval);
+#else
+    return false;
+#endif
+}
+bool hal_usbh_video_start(void *buffer,size_t length)
+{
+#if M5OS_USB_BUFFER_DMA
+    return bdm_start(6,buffer,length,-1);
+#else
+    return false;
+#endif
+}
+int hal_usbh_video_poll(void)
+{
+#if M5OS_USB_BUFFER_DMA
+    return bdm_poll(6);
+#else
+    return USBH_ERR_XFER;
+#endif
+}
+void hal_usbh_video_close(void)
+{
+#if M5OS_USB_BUFFER_DMA
+    bdm_close(6);
 #endif
 }

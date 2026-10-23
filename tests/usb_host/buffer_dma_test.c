@@ -105,4 +105,24 @@ static void periodic_window(void) {
  assert(!bdm_pipes[2].running&&!bdm_pipes[2].complete_split);
  assert(bdm_pipes[2].next_us==bdm_pipes[2].period_due_us);
 }
-int main(void) {periodic_window();split_in();split_out_and_retry();bulk_short_and_error();late_start_and_quarantine();nak_and_ping();puts("buffer DMA hardware-state traces PASS");return 0;}
+static void high_bandwidth_iso(void) {
+ for(unsigned mult=1;mult<=3;mult++) {
+  reset();uint8_t out[3072]={0};unsigned bytes=1024*mult;
+  assert(bdm_open(6,1,0x81,1024|((mult-1)<<11),1,1));
+  assert(bdm_pipes[6].dma_capacity==3072&&bdm_pipes[6].transactions==mult);
+  assert(bdm_start(6,out,bytes,-1));
+  assert(bdm_regs(6)->hcchar_reg.ec==mult);
+  assert(bdm_regs(6)->hctsiz_reg.pktcnt==mult);
+  assert(bdm_regs(6)->hctsiz_reg.pid==(mult==1?0:mult==2?2:1));
+  memset(bdm_pipes[6].dma,0x5a,bytes);
+  event(6,BDM_XFRC,0,100);
+  assert(bdm_pipes[6].result==(int)bytes&&out[bytes-1]==0x5a);
+ }
+ reset();assert(!bdm_open(6,1,0x81,1024|(3<<11),1,1));
+ assert(!bdm_open(5,1,0x81,512,1,1));
+ speed=USBH_SPEED_FULL;assert(!bdm_open(6,1,0x81,512,1,1));
+ reset();uint8_t out[1024]={0};assert(bdm_open(6,1,0x81,1024,1,1));
+ assert(bdm_start(6,out,sizeof out,-1));event(6,BDM_FRAME,1024,100);
+ assert(!bdm_pipes[6].active&&bdm_pipes[6].result<0);
+}
+int main(void) {high_bandwidth_iso();periodic_window();split_in();split_out_and_retry();bulk_short_and_error();late_start_and_quarantine();nak_and_ping();puts("buffer DMA hardware-state traces PASS");return 0;}

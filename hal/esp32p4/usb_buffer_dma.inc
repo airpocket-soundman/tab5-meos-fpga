@@ -6,7 +6,7 @@
  * One hardware packet is armed at a time, so short packets and split retries do
  * not advance the user buffer or DATA PID until a completed transaction.
  */
-#define BDM_PIPES 6u
+#define BDM_PIPES 7u
 #define BDM_BYTES 1024u
 #define BDM_CHENA (1u << 31)
 #define BDM_CHDIS (1u << 30)
@@ -35,7 +35,8 @@ typedef struct {
     bool open, active, running, closing, quarantined, in, periodic, split;
     bool complete_split, ping, ping_phase;
     uint8_t address, endpoint, type, pid, errors, nyets;
-    uint16_t mps, split_frame;
+    uint16_t mps, split_frame, dma_capacity;
+    uint8_t transactions;
     uint32_t period_us;
     uint64_t next_us, started_us, packet_us, period_due_us;
     void *user;
@@ -49,12 +50,13 @@ static bool bdm_ready;
 
 static usb_dwc_host_chan_regs_t *bdm_regs(unsigned id) { return &s_hal.dev->host_chans[id]; }
 static bool bdm_hardware_idle(unsigned id) { return !(bdm_regs(id)->hcchar_reg.val & BDM_CHENA); }
-static bool bdm_alloc(bdm_pipe_t *p) {
+static bool bdm_alloc(bdm_pipe_t *p, size_t capacity) {
     if (!p->dma) {
-        void *raw = kmalloc_internal(BDM_BYTES + CACHE_LINE - 1);
+        void *raw = kmalloc_internal(capacity + CACHE_LINE - 1);
         if (!raw)
             return false;
         p->dma = (uint8_t *)(((uintptr_t)raw + CACHE_LINE - 1) & ~(uintptr_t)(CACHE_LINE - 1));
+        p->dma_capacity=capacity;
     }
     return true;
 }
@@ -86,30 +88,34 @@ static void bdm_finish(unsigned id, int result) {
 }
 static bool bdm_open(unsigned id, uint8_t address, uint8_t endpoint, uint16_t mps, unsigned type,
                      uint8_t interval) {
-    if (!bdm_ready || id >= BDM_PIPES || address >= 16 || !mps || mps > BDM_BYTES || type == 1 ||
-        type > 3)
+    if (!bdm_ready || id >= BDM_PIPES || address >= 16 || !mps || (type!=1 && mps > BDM_BYTES) ||
+        type > 3 || (type==1 && id!=6))
         return false;
     bdm_pipe_t *p = &bdm_pipes[id];
     if (p->active || !bdm_hardware_idle(id))
         return false;
-    if (!bdm_alloc(p))
+    if (!bdm_alloc(p,id==6?3072:BDM_BYTES))
         return false;
     bdm_route_t route = bdm_routes[address];
     if (!route.valid)
         route.speed = hal_usbh_speed();
+    uint8_t transactions=type==1?1+((mps>>11)&3):1;
+    if(type==1) { mps &= 0x7ff; if(route.speed!=USBH_SPEED_HIGH || transactions>3 || !mps || mps>1024) return false; }
     bool split = route.hub && hal_usbh_speed() == USBH_SPEED_HIGH && route.speed != USBH_SPEED_HIGH;
     if (split && (!route.port || route.hub > 127 || route.port > 127 || mps > 64))
         return false;
     uint8_t *dma = p->dma;
+    uint16_t capacity=p->dma_capacity;
     memset(p, 0, sizeof *p);
     p->dma = dma;
+    p->dma_capacity=capacity; p->transactions=transactions;
     p->open = true;
     p->address = address;
     p->endpoint = endpoint;
     p->mps = mps;
     p->type = (uint8_t)type;
     p->in = (endpoint & 0x80u) != 0;
-    p->periodic = type == 3;
+    p->periodic = type == 3 || type == 1;
     p->split = split;
     p->result = USBH_PENDING;
     if (p->periodic) {
@@ -127,12 +133,13 @@ static bool bdm_open(unsigned id, uint8_t address, uint8_t endpoint, uint16_t mp
 }
 static void bdm_packet_prepare(bdm_pipe_t *p) {
     size_t remain = p->length - p->done;
-    p->packet_len = remain < p->mps ? remain : p->mps;
-    p->programmed = p->in ? p->mps : p->packet_len;
+    size_t quantum=(size_t)p->mps*p->transactions;
+    p->packet_len = remain < quantum ? remain : quantum;
+    p->programmed = p->in ? quantum : p->packet_len;
     if (!p->in && p->packet_len)
         memcpy(p->dma, (const uint8_t *)p->user + p->done, p->packet_len);
     /* Discard stale dirty CPU cache lines before the device can write an IN. */
-    cache_write_back(p->dma, BDM_BYTES);
+    cache_write_back(p->dma, p->dma_capacity);
     p->complete_split = false;
     p->nyets = 0;
 }
@@ -163,7 +170,7 @@ static void bdm_arm(unsigned id, uint64_t now) {
     ch.epdir = p->in;
     ch.lspddev = route.speed == USBH_SPEED_LOW;
     ch.eptype = p->type;
-    ch.ec = 1;
+    ch.ec = p->transactions;
     ch.devaddr = p->address;
     ch.oddfrm = p->periodic ? ((frame & 1u) ^ 1u) : 0;
     r->hcchar_reg.val = ch.val;
@@ -178,7 +185,7 @@ static void bdm_arm(unsigned id, uint64_t now) {
     p->seen = 0;
     if (!p->complete_split) {
         usb_dwc_hctsiz_reg_t size = {.val = 0};
-        size.pktcnt = 1;
+        size.pktcnt = p->type==1?p->transactions:1;
         size.pid = p->pid;
         size.xfersize = p->programmed;
         p->ping_phase = p->ping && !p->split && !p->in && p->pid != 3;
@@ -233,7 +240,8 @@ static bool bdm_start(unsigned id, void *user, size_t length, int pid) {
     p->length = length;
     p->done = 0;
     p->pid = pid < 0 ? (s_ep_pid[p->address][bdm_ep_index(p->endpoint)] ? 2 : 0) : (uint8_t)pid;
-    if (p->pid != 0 && p->pid != 2 && p->pid != 3)
+    if(p->type==1) p->pid=p->transactions==3?1:p->transactions==2?2:0;
+    if (p->pid != 0 && p->pid != 2 && p->pid != 3 && !(p->type==1 && p->pid==1))
         return false;
     p->started_us = hal_time_now_us();
     p->next_us =
@@ -278,6 +286,7 @@ static void bdm_step(unsigned id, uint64_t now) {
             bdm_finish(id, USBH_ERR_XFER);
             return;
         }
+        if(p->type==1 && !(intr&BDM_XFRC)) { bdm_finish(id,USBH_ERR_XFER); return; }
         /* A high-speed OUT NYET acknowledges this data packet and asks the
          * host to PING before the next. Only count it without XFRC when the
          * hardware packet counter confirms acceptance; an ambiguous halt must
@@ -318,19 +327,19 @@ static void bdm_step(unsigned id, uint64_t now) {
                         bdm_finish(id, USBH_ERR_SIZE);
                         return;
                     }
-                    cache_invalidate(p->dma, BDM_BYTES);
+                    cache_invalidate(p->dma, p->dma_capacity);
                     if (actual && p->user)
                         memcpy((uint8_t *)p->user + p->done, p->dma, actual);
                 }
                 p->done += actual;
-                if (p->pid != 3)
+                if (p->pid != 3 && p->type!=1)
                     p->pid ^= 2u;
-                if (p->endpoint & 15u)
+                if ((p->endpoint & 15u) && p->type!=1)
                     s_ep_pid[p->address][bdm_ep_index(p->endpoint)] = p->pid == 2;
                 p->errors = 0;
                 if (!p->split && !p->in && (intr & BDM_NYET))
                     p->ping = true;
-                if (p->done >= p->length || (p->in && actual < p->mps)) {
+                if (p->done >= p->length || (p->in && actual < p->programmed)) {
                     bdm_finish(id, (int)p->done);
                     return;
                 }

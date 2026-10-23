@@ -122,3 +122,8 @@ void board_backlight(uint8_t level)
 {
     hal_gpio_config_output(BACKLIGHT_PIN, level ? 1 : 0);
 }
+
+/* Only the USB-A 5V switch; preserve Wi-Fi and charger outputs. */
+bool tab5_usb_host_power(bool enabled) {
+    return hal_i2c_system_update_reg(EXP2_ADDR, REG_OUT_SET, 1u << 3, enabled);
+}

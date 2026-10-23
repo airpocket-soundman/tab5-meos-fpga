@@ -83,6 +83,7 @@ if(M5OS_C6_OTA_IMAGE)
 endif()
 
 if("$ENV{M5OS_BOARD}" STREQUAL "tab5" AND M5OS_USB_BACKEND STREQUAL "native_dma")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE M5OS_USB_NATIVE_DMA=1)
     set_source_files_properties(${M5OS_ROOT}/user/shell/shell.c PROPERTIES
         COMPILE_DEFINITIONS M5OS_USB_NATIVE_DMA=1)
 endif()

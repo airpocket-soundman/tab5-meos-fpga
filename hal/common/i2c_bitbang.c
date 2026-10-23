@@ -130,8 +130,7 @@ static uint8_t read_byte_pin(int scl, int sda, bool ack) {
     return v;
 }
 
-static bool write_reg_locked(uint8_t addr7, uint8_t reg, uint8_t val) {
-    int scl = s_scl, sda = s_sda;
+static bool write_reg_pins(int scl, int sda, uint8_t addr7, uint8_t reg, uint8_t val) {
     start_pin(scl, sda);
     bool ok = write_byte_pin(scl, sda, (uint8_t)(addr7 << 1)) && write_byte_pin(scl, sda, reg) &&
               write_byte_pin(scl, sda, val);
@@ -139,8 +138,7 @@ static bool write_reg_locked(uint8_t addr7, uint8_t reg, uint8_t val) {
     return ok;
 }
 
-static bool read_reg_locked(uint8_t addr7, uint8_t reg, uint8_t *val) {
-    int scl = s_scl, sda = s_sda;
+static bool read_reg_pins(int scl, int sda, uint8_t addr7, uint8_t reg, uint8_t *val) {
     start_pin(scl, sda);
     bool ok = write_byte_pin(scl, sda, (uint8_t)(addr7 << 1)) && write_byte_pin(scl, sda, reg);
     if (ok) {
@@ -150,6 +148,23 @@ static bool read_reg_locked(uint8_t addr7, uint8_t reg, uint8_t *val) {
             *val = read_byte_pin(scl, sda, false); /* NACK the last byte */
     }
     stop_pin(scl, sda);
+    return ok;
+}
+
+static bool write_reg_locked(uint8_t addr, uint8_t reg, uint8_t val) {
+    return write_reg_pins(s_scl, s_sda, addr, reg, val);
+}
+static bool read_reg_locked(uint8_t addr, uint8_t reg, uint8_t *val) {
+    return read_reg_pins(s_scl, s_sda, addr, reg, val);
+}
+bool hal_i2c_system_update_reg(uint8_t addr, uint8_t reg, uint8_t mask, bool set) {
+    if (addr > 0x7f) return false;
+    bool held = bus_lock();
+    uint8_t value;
+    bool ok = read_reg_pins(PIN_I2C_SCL, PIN_I2C_SDA, addr, reg, &value);
+    if (ok) ok = write_reg_pins(PIN_I2C_SCL, PIN_I2C_SDA, addr, reg,
+                               set ? value | mask : value & (uint8_t)~mask);
+    bus_unlock(held);
     return ok;
 }
 

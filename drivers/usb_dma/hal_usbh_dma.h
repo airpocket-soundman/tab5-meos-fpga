@@ -55,3 +55,9 @@ bool hal_usbh_net_open(unsigned pipe,uint8_t address,uint8_t endpoint,uint16_t m
 void hal_usbh_net_close(unsigned pipe);
 bool hal_usbh_net_start(unsigned pipe,void *buffer,size_t length);
 int hal_usbh_net_poll(unsigned pipe);
+
+/* Dedicated high-speed isochronous IN pipe; raw MPS includes transactions bits. */
+bool hal_usbh_video_open(uint8_t address,uint8_t endpoint,uint16_t raw_mps,uint8_t interval);
+bool hal_usbh_video_start(void *buffer,size_t length);
+int hal_usbh_video_poll(void);
+void hal_usbh_video_close(void);

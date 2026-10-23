@@ -1,5 +1,6 @@
 #if M5OS_USB_NATIVE_DMA
 #include <m5os/ethernet.h>
+#include "../uvc/uvc_app.h"
 #endif
 /*
  * M5OS shell on /dev/uart.
@@ -414,8 +415,10 @@ static int cmd_eth(int argc,char **argv)
     SH_PRINTF("Service max gap %u us, USB wait %u us, network poll %u us\n",e.max_service_gap_us,e.max_bus_wait_us,e.max_network_poll_us);
     return 0;
 }
+static int cmd_usbreset(int argc,char **argv){(void)argc;(void)argv;usb_native_rescan();sh_puts("USB rescan requested\n");return 0;}
 static int cmd_lsusb(int argc,char **argv)
 {
+    if(argc>1 && sh_streq(argv[1],"-d")){usb_native_dump();return 0;}
     (void)argc;(void)argv;
     usb_info_t devices[USB_INFO_MAX];
     size_t n=usb_native_snapshot(devices,USB_INFO_MAX);
@@ -425,6 +428,7 @@ static int cmd_lsusb(int argc,char **argv)
         const char *speed=d->speed==2?"HS":d->speed==1?"FS":"LS";
         const char *type=(d->kinds&USB_INFO_HUB)?"hub":
             (d->kinds&USB_INFO_ETHERNET)?"ethernet":
+            (d->kinds&USB_INFO_CAMERA)?"camera":
             (d->kinds&(USB_INFO_KEYBOARD|USB_INFO_STORAGE))==(USB_INFO_KEYBOARD|USB_INFO_STORAGE)?"HID+MSC":
             (d->kinds&USB_INFO_KEYBOARD)?"keyboard":(d->kinds&USB_INFO_STORAGE)?"storage":"unsupported";
         const char *mount=d->storage_slot==0?"/usb":d->storage_slot==1?"/usb1":
@@ -433,6 +437,20 @@ static int cmd_lsusb(int argc,char **argv)
                   d->address,d->parent,d->port,d->vid,d->pid,speed,d->device_class,type,
                   d->configured?"configured":"addressed",mount,
                   d->storage_slot>=0 && !d->mounted?" (unmounted)":"");
+    }
+    if (argc>1 && sh_streq(argv[1],"-v")) {
+        uint8_t *cfg=kmalloc_psram(2048);
+        if(!cfg) { sh_puts("lsusb: out of memory\n"); return 1; }
+        for(size_t i=0;i<n;i++) {
+            int count=usb_native_read_config(devices[i].address,0,cfg,2048);
+            SH_PRINTF("Config address=%u bytes=%d\n",devices[i].address,count);
+            for(int off=0;off<count;off+=16) {
+                SH_PRINTF("%04x:",off);
+                for(int j=off;j<count && j<off+16;j++) SH_PRINTF(" %02x",cfg[j]);
+                sh_puts("\n");
+            }
+        }
+        kfree(cfg);
     }
     if (!n) sh_puts("No enumerated USB devices.\n");
     sh_puts("HS=480 Mbit/s FS=12 Mbit/s LS=1.5 Mbit/s; 0:0 is the root port.\n");
@@ -987,6 +1005,8 @@ static const command_t s_commands[] = {
     { "help",    cmd_help,    "list commands" },
 #if M5OS_USB_NATIVE_DMA
     { "eth", cmd_eth, "show USB Ethernet link, IP and packet counters" },
+    { "usbreset", cmd_usbreset, "restart USB enumeration" },
+    { "uvc", uvc_cmd_main, "uvc [status|preview|capture PATH]  USB camera" },
     { "lsusb",   cmd_lsusb,   "show cached USB devices, topology, speed and mounts" },
 #endif
     { "history", cmd_history, "show command history (or use Up/Down arrows)" },

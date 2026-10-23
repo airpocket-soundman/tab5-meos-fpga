@@ -20,3 +20,6 @@ bool hal_i2c_read_reg16(
     uint8_t addr7, uint16_t reg, uint8_t *buf,
     size_t len); /* devices with 16-bit register numbers (ST7123 touch, SC202CS camera) */
 bool hal_i2c_write_reg16(uint8_t addr7, uint16_t reg, uint8_t val);
+
+/* Atomic RMW on the fixed board system bus, independent of external keyboard pins. */
+bool hal_i2c_system_update_reg(uint8_t addr, uint8_t reg, uint8_t mask, bool set);

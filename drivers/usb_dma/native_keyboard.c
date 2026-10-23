@@ -13,6 +13,7 @@
 #include "../usbkbd/usbkbd.h"
 #include "native_msc.h"
 #include "native_ecm.h"
+#include "native_uvc.h"
 #include "../../fs/fat/usb_fat.h"
 #include "../usbkbd/hid_keys.h"
 #include <m5os/ime.h>
@@ -21,6 +22,7 @@
 #include <m5os/task.h>
 #include <m5os/hal_time.h>
 #include <m5os/usb_info.h>
+#include <m5os/tab5.h>
 #include <string.h>
 
 #define TASK_STACK        8192       /* the input method converts on this stack */
@@ -65,6 +67,10 @@ static uint16_t s_msc_imps,s_msc_omps;
 static bool s_hub;
 static uint16_t s_ep0_mps;
 static usb_info_t device_info[USB_INFO_MAX];
+static uint16_t control_mps[USB_INFO_MAX];
+static volatile bool rescan_requested;
+void usb_native_rescan(void){rescan_requested=true;}
+void usb_native_dump(void){mutex_lock(&usb_native_bus_lock);hal_usbh_dump();mutex_unlock(&usb_native_bus_lock);}
 static mutex_t info_lock=MUTEX_INIT;
 
 size_t usb_native_snapshot(usb_info_t *out,size_t capacity)
@@ -114,6 +120,29 @@ static int ctrl(uint8_t type, uint8_t req, uint16_t value, uint16_t index, void 
     uint8_t s[8];
     setup_packet(s, type, req, value, index, len);
     return hal_usbh_control(s, data, len);
+}
+
+int usb_native_read_config(uint8_t address,uint8_t index,void *buffer,size_t capacity)
+{
+    if(!buffer || capacity<9 || capacity>4096 || !address || address>=USB_INFO_MAX) return -1;
+    mutex_lock(&info_lock);
+    bool present=device_info[address].present;
+    uint16_t mps=control_mps[address];
+    mutex_unlock(&info_lock);
+    if(!present || !mps) return -1;
+    mutex_lock(&usb_native_bus_lock);
+    int n=-1;
+    if(hal_usbh_open_control(address,mps)) {
+        uint8_t head[9];
+        n=ctrl(0x80,REQ_GET_DESCRIPTOR,(DESC_CONFIG<<8)|index,0,head,sizeof head);
+        if(n==9 && head[1]==DESC_CONFIG) {
+            size_t total=head[2]|((size_t)head[3]<<8);
+            if(total<9) n=-1;
+            else n=ctrl(0x80,REQ_GET_DESCRIPTOR,(DESC_CONFIG<<8)|index,0,buffer,total<capacity?total:capacity);
+        } else n=-1;
+    }
+    mutex_unlock(&usb_native_bus_lock);
+    return n;
 }
 
 /* ---- key decoding --------------------------------------------------------------- */
@@ -196,6 +225,7 @@ static int enumerate(usbh_speed_t speed, uint8_t address, int *config, uint8_t h
             speed == USBH_SPEED_LOW ? "low" : speed == USBH_SPEED_FULL ? "full" : "high");
 
     s_ep0_mps = mps0;
+    control_mps[address]=mps0;
     if (ctrl(0x00, REQ_SET_ADDRESS, address, 0, NULL, 0) < 0) { kprintf("usbkbd: SET_ADDRESS failed\n"); return -1; }
     task_sleep(ADDR_RECOVERY_MS);
     if (!hal_usbh_open_control(address, mps0)) return -1;
@@ -215,6 +245,7 @@ static int enumerate(usbh_speed_t speed, uint8_t address, int *config, uint8_t h
     *config = cfg[5];
 
     int iface = -1, kind = 0, current = -1;
+    bool video_class=false;
     s_kbd_ep = s_msc_in = s_msc_out = 0;
     s_hub = false;
     for (int i = 0; i + 2 <= n;) {
@@ -222,6 +253,7 @@ static int enumerate(usbh_speed_t speed, uint8_t address, int *config, uint8_t h
         if (len < 2 || i + len > n) break;
         if (cfg[i+1] == DESC_INTERFACE && len >= 9) {
             current = cfg[i+2]; kind = 0;
+            if(cfg[i+5]==14)video_class=true;
             if (cfg[i+3] == 0 && cfg[i+5] == 9) s_hub = true;
             if (cfg[i+3] == 0 && cfg[i+5] == 3 && cfg[i+6] == 1 && cfg[i+7] == 1) {kind=1;}
             if (cfg[i+3] == 0 && cfg[i+5] == 8 && cfg[i+6] == 6 && cfg[i+7] == 0x50) {kind=2;s_msc_iface=current;}
@@ -254,7 +286,11 @@ static int enumerate(usbh_speed_t speed, uint8_t address, int *config, uint8_t h
         mutex_unlock(&info_lock);
         return -4;
     }
-    kprintf("usbkbd: device has no HID boot keyboard interface\n");
+    if(video_class && native_uvc_probe(address,mps0,cfg,n,config)) {
+        mutex_lock(&info_lock);device_info[address].kinds=USB_INFO_CAMERA;mutex_unlock(&info_lock);
+        return -5;
+    }
+    kprintf("usbkbd: device has no supported interface\n");
     return -1;
 }
 
@@ -310,12 +346,12 @@ static void hub_session(void)
     int slots[7];
     bool seen[7]={0}, used[NATIVE_MSC_SLOTS]={0};
     unsigned keyboard_port=0,keyboard_fails=0;
-    unsigned ethernet_port=0;
+    unsigned ethernet_port=0,camera_port=0;
     bool keyboard_pending=false;
     uint64_t status_at=0;
     memset(&hub_keys,0,sizeof hub_keys);
     for (unsigned i=0;i<ports;i++) slots[i]=-1;
-    while (hal_usbh_connected()) {
+    while (hal_usbh_connected() && !rescan_requested) {
         mutex_lock(&usb_native_bus_lock);
         hal_usbh_poll();
         uint8_t report[8];
@@ -346,6 +382,7 @@ static void hub_session(void)
             bool connected=(status&1)!=0;
             if (!connected || (status&(1u<<16))) {
                 info_clear(port+1);
+                if(camera_port==port){native_uvc_detach();camera_port=0;}
                 if (ethernet_port==port) { native_ecm_detach();ethernet_port=0; }
                 if (keyboard_port==port) {
                     mutex_lock(&usb_native_bus_lock);
@@ -401,6 +438,7 @@ static void hub_session(void)
                 hub_request(hub_mps,0x23,1,1,port,NULL,0);
                 continue;
             }
+            if(iface==-5){native_uvc_configured();camera_port=port;continue;}
             if (iface==-4) {
                 if (native_ecm_attach()) ethernet_port=port;
                 continue;
@@ -426,6 +464,7 @@ static void hub_session(void)
         }
         task_sleep(5);
     }
+    if(camera_port)native_uvc_detach();
     for (unsigned i=0;i<NATIVE_MSC_SLOTS;i++) if (used[i]) {
         usb_fat_detach_slot(i);
         usbmsc_detach_slot(i);
@@ -450,6 +489,7 @@ static void keyboard_session(int iface)
 
     for (;;) {
         task_sleep(POLL_MS);
+        if(rescan_requested){hal_usbh_data_close();return;}
         usbh_event_t ev = hal_usbh_poll();
         if (ev == USBH_EVENT_DISCONNECT || ev == USBH_EVENT_DISABLED) { hal_usbh_data_close(); return; }
 
@@ -507,6 +547,20 @@ static void usbkbd_task(void *arg)
     kprintf("usbkbd: waiting for a USB keyboard on the USB-A port\n");
 
     for (;;) {
+        if(rescan_requested) {
+            /* All class sessions have detached before cycling port power. */
+            mutex_lock(&usb_native_bus_lock);
+            bool off=tab5_usb_host_power(false);
+            mutex_unlock(&usb_native_bus_lock);
+            task_sleep(500);
+            mutex_lock(&usb_native_bus_lock);
+            hal_usbh_poll();
+            bool on=tab5_usb_host_power(true);
+            mutex_unlock(&usb_native_bus_lock);
+            task_sleep(250);
+            kprintf("usb: port power cycle %s\n",off&&on?"complete":"failed");
+        }
+        rescan_requested=false;
         s_type = "none";
         info_clear(USB_INFO_MAX);
         /* IDF also enables its debounce lock on disconnect. Release it before
@@ -535,7 +589,7 @@ static void usbkbd_task(void *arg)
             info_configured(1,true);
             if (usbmsc_attach(s_msc_iface,s_msc_in,s_msc_imps,s_msc_out,s_msc_omps))
                 info_mount(1,0,usb_fat_mount(usbmsc_device()));
-            while (hal_usbh_connected()) {
+            while (hal_usbh_connected() && !rescan_requested) {
                 mutex_lock(&usb_native_bus_lock);
                 hal_usbh_poll();
                 mutex_unlock(&usb_native_bus_lock);
@@ -549,10 +603,14 @@ static void usbkbd_task(void *arg)
         } else if (iface == -3 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             info_configured(1,true);
             hub_session();
+        } else if(iface == -5 && ctrl(0x00,REQ_SET_CONFIG,config,0,NULL,0)>=0) {
+            info_configured(1,true);native_uvc_configured();
+            while(hal_usbh_connected() && !rescan_requested){mutex_lock(&usb_native_bus_lock);hal_usbh_poll();mutex_unlock(&usb_native_bus_lock);task_sleep(20);}
+            native_uvc_detach();
         } else if (iface == -4 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             info_configured(1,true);
             if (native_ecm_attach())
-                while (hal_usbh_connected()) { native_ecm_service();task_sleep(5); }
+                while (hal_usbh_connected() && !rescan_requested) { native_ecm_service();task_sleep(5); }
             native_ecm_detach();
         } else if (iface >= 0 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             info_configured(1,true);
@@ -565,7 +623,7 @@ static void usbkbd_task(void *arg)
             kprintf("usbkbd: keyboard gone\n");
         }
         /* wait for the cable to be unplugged (or the port to drop) before trying again */
-        while (hal_usbh_connected()) { hal_usbh_poll(); task_sleep(CONNECT_POLL_MS); }
+        while (hal_usbh_connected() && !rescan_requested) { hal_usbh_poll(); task_sleep(CONNECT_POLL_MS); }
     }
 }
 
