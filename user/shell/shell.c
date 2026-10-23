@@ -670,6 +670,8 @@ static int cmd_wifi(int argc, char **argv)
         return 0;
     }
 #endif
+    if (sh_streq(argv[1], "c6-info")) return wifi_c6_info()?0:1;
+    if (sh_streq(argv[1], "c6-update")) return wifi_c6_update()?0:1;
     if (sh_streq(argv[1], "status") || sh_streq(argv[1], "st")) {
         wifi_init();
         print_wifi_status();

@@ -20,6 +20,7 @@
 #include <m5os/errno.h>
 #include "hosted_wire.h"
 #include <m5os/net_external.h>
+#include <m5os/sha256.h>
 #include <string.h>
 
 #include "soc/sdmmc_struct.h"
@@ -602,10 +603,10 @@ static void c6_hardware_reset(void)
     task_sleep(350); /* allow ESP32-C6 ROM + ESP-Hosted slave app to initialize SDIO slave */
 }
 
-static bool sdio_init_hardware(void)
+static bool sdio_init_hardware(bool reset_c6)
 {
     /* 1. Reset ESP32-C6 co-processor over GPIO 15 */
-    c6_hardware_reset();
+    if (reset_c6) c6_hardware_reset();
 
     /* 2. Enable SDMMC peripheral clock and reset controller */
     sdmmc_ll_enable_bus_clock(&SDMMC, true);
@@ -864,6 +865,8 @@ static void handle_sta_rx_frame(const uint8_t *frame, size_t len);
 static void dhcp_send_discover(void);
 static void sdio_poll_rx_locked(void);
 
+#include "ng_updater.inc"
+
 static void sdio_poll_rx_transport_locked(void)
 {
     static bool s_in_sdio_poll = false;
@@ -905,8 +908,13 @@ static void sdio_poll_rx_transport_locked(void)
         /* Reject an incompatible C6 control protocol before sending MCU RPCs. */
         if (!s_priv_init_done && hosted_wire_is_ng_boot(s_rx_packet_buf,len_from_slave)) {
             s_hosted_ng_detected=true;
+            ng_capture_boot(s_rx_packet_buf);
             kprintf("wifi: ESP-Hosted-NG detected; this driver requires MCU firmware\n");
-            return;
+            continue;
+        }
+        if (s_hosted_ng_detected) {
+            ng_receive_frames(s_rx_packet_buf, len_from_slave);
+            continue;
         }
         size_t pos = 0;
         while (pos + 12u <= len_from_slave) {
@@ -2118,7 +2126,7 @@ bool wifi_init(void)
     }
 
     set_msg("Initializing ESP32-C6 SDIO link...");
-    if (!sdio_init_hardware()) {
+    if (!sdio_init_hardware(true)) {
         s_status.state = WIFI_STATE_ERROR;
         set_msg("ESP32-C6 SDIO init failed");
         mutex_unlock(&s_wifi_lock);
@@ -2137,7 +2145,7 @@ bool wifi_init(void)
 
     if (s_hosted_ng_detected) {
         s_status.state=WIFI_STATE_ERROR;
-        s_sdio_ready=false;
+        /* Keep SDIO available for explicit read-only NG inspection/updating. */
         set_msg("ESP-Hosted-NG: MCU firmware required");
         mutex_unlock(&s_wifi_lock);
         return false;
@@ -3328,4 +3336,120 @@ void wifi_boot_start(void)
     if (s_daemon_started) return;
     s_daemon_started = true;
     task_create_stack("wifid", wifi_daemon_task, NULL, TASK_PRIO_DEFAULT, 16384);
+}
+
+/* Inspect cached NG startup metadata and issue only a read-only GET_MAC probe. */
+bool wifi_c6_info(void)
+{
+    if (!s_sdio_ready || (!s_ng.valid && !s_wifi_inited)) (void)wifi_init();
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    if (!s_ng.valid) {
+        kprintf("C6: %s\n", s_wifi_inited ? "MCU control protocol active" : "No validated NG startup");
+        bool ok = s_wifi_inited;
+        mutex_unlock(&s_wifi_lock);
+        return ok;
+    }
+    kprintf("C6: ESP-Hosted-NG chip=%02x capabilities=%02x checksum=%u\n",
+            s_ng.chip, s_ng.capabilities, (unsigned)!!(s_ng.capabilities & 0x80u));
+    if (s_ng.version_valid) {
+        kprintf("C6: project=%s version=%u.%u.%u.%u.%u reset_reason=%u\n",
+                s_ng.project, s_ng.version[0], s_ng.version[1], s_ng.version[2],
+                s_ng.version[3], s_ng.version[4], (unsigned)s_ng.reset_reason);
+    }
+    if (s_ng.rx_buffer_size) kprintf("C6: RX buffer=%u bytes\n", (unsigned)s_ng.rx_buffer_size);
+    kprintf("C6: inspection only; no flash commands\n");
+    bool ok = ng_probe_get_mac_locked();
+    mutex_unlock(&s_wifi_lock);
+    return ok;
+}
+
+#if defined(M5OS_C6_OTA_IMAGE) && M5OS_C6_OTA_IMAGE
+#include "c6_mcu_image.h"
+extern const uint8_t c6_mcu_app_start[] asm("_binary_c6_mcu_app_bin_start");
+extern const uint8_t c6_mcu_app_end[] asm("_binary_c6_mcu_app_bin_end");
+
+/* Deliberately do not reset C6 after committing OTA: allow its own reboot, then
+ * re-open SDIO. A bootloader with rollback enabled must be tested separately. */
+static bool c6_post_update_probe_locked(void)
+{
+    kprintf("C6: waiting for natural reboot (no C6 reset)\n");
+    task_sleep(7000);
+    s_wifi_inited = false;
+    s_sdio_ready = false;
+    s_priv_init_done = false;
+    s_hosted_ng_detected = false;
+    s_ng.valid = false;
+    if (!sdio_init_hardware(false)) {
+        kprintf("C6: update committed; SDIO re-enumeration failed\n");
+        return false;
+    }
+    uint64_t end = hal_time_now_us() + 5000000ULL;
+    while (hal_time_now_us() < end && !s_priv_init_done && !s_hosted_ng_detected) {
+        sdio_poll_rx_locked();
+        task_sleep(10);
+    }
+    if (s_priv_init_done) {
+        kprintf("C6: MCU startup verified after natural reboot; persistence test remains\n");
+        return true;
+    }
+    kprintf("C6: update committed; expected MCU startup missing (NG=%u)\n",
+            (unsigned)s_hosted_ng_detected);
+    return false;
+}
+#endif
+
+bool wifi_c6_update(void)
+{
+#if defined(M5OS_C6_OTA_IMAGE) && M5OS_C6_OTA_IMAGE
+    const uint8_t *image = c6_mcu_app_start;
+    size_t size = (size_t)(c6_mcu_app_end - c6_mcu_app_start);
+    if (!c6_mcu_image_valid(image, size)) {
+        kprintf("C6: embedded MCU application validation failed; no flash commands\n");
+        return false;
+    }
+    if (!wifi_c6_info()) return false; /* Includes successful read-only GET_MAC. */
+    mutex_lock(&s_wifi_lock);
+    if (!s_ng.valid || !s_hosted_ng_detected || !ng_ota_version_supported()) {
+        kprintf("C6: validated NG OTA-capable firmware required; no flash commands\n");
+        mutex_unlock(&s_wifi_lock);
+        return false;
+    }
+    kprintf("C6: OTA_START, inactive application only, %u verified bytes\n", (unsigned)size);
+    if (!ng_command_locked(29, NULL, 0, 10000)) {
+        kprintf("C6: OTA_START unavailable/failed; active application not changed\n");
+        mutex_unlock(&s_wifi_lock);
+        return false;
+    }
+    uint8_t body[1018];
+    for (size_t at = 0; at < size;) {
+        size_t count = size - at;
+        if (count > 1016) count = 1016;
+        body[0] = (uint8_t)count;
+        body[1] = (uint8_t)(count >> 8);
+        mem_copy(body + 2, image + at, count);
+        if (!ng_command_locked(30, body, count + 2, 5000)) {
+            kprintf("C6: OTA_WRITE failed at %u; not retrying or selecting new boot app\n",
+                    (unsigned)at);
+            mutex_unlock(&s_wifi_lock);
+            return false;
+        }
+        at += count;
+        if (at == size || at / 65536u != (at - count) / 65536u)
+            kprintf("C6: OTA bytes %u/%u\n", (unsigned)at, (unsigned)size);
+    }
+    /* END is sent only after every chunk was acknowledged. The C6 validates its
+     * inactive image before selecting it and scheduling its own reboot. */
+    if (!ng_command_locked(31, NULL, 0, 10000)) {
+        kprintf("C6: OTA_END failed; boot selection requires inspection\n");
+        mutex_unlock(&s_wifi_lock);
+        return false;
+    }
+    bool ok = c6_post_update_probe_locked();
+    mutex_unlock(&s_wifi_lock);
+    return ok;
+#else
+    kprintf("C6: no MCU OTA application embedded in this firmware\n");
+    return false;
+#endif
 }

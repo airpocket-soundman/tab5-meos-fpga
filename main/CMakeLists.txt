@@ -63,6 +63,25 @@ idf_component_register(
     PRIV_REQUIRES soc hal esp_rom esp_hw_support ${M5OS_ARCH_REQUIRES})
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE ${M5OS_BOARD_DEF} ${M5OS_DEFS})
+
+# Optional maintenance build only. Normal builds carry no C6 application image.
+set(M5OS_C6_OTA_IMAGE "" CACHE FILEPATH "Pinned Tab5 C6 MCU application for explicit SDIO OTA")
+if(M5OS_C6_OTA_IMAGE)
+    if(NOT "$ENV{M5OS_BOARD}" STREQUAL "tab5")
+        message(FATAL_ERROR "C6 maintenance image requires the Tab5 board")
+    endif()
+    if(NOT EXISTS "${M5OS_C6_OTA_IMAGE}")
+        message(FATAL_ERROR "C6 MCU application does not exist: ${M5OS_C6_OTA_IMAGE}")
+    endif()
+    file(SHA256 "${M5OS_C6_OTA_IMAGE}" M5OS_C6_IMAGE_HASH)
+    if(NOT M5OS_C6_IMAGE_HASH STREQUAL "cb169b09a890037af4250bd93c33c394037a55b801ba1cc0a4c1210e60c68902")
+        message(FATAL_ERROR "C6 application differs from the verified official Tab5 image")
+    endif()
+    configure_file("${M5OS_C6_OTA_IMAGE}" "${CMAKE_CURRENT_BINARY_DIR}/c6_mcu_app.bin" COPYONLY)
+    target_add_binary_data(${COMPONENT_LIB} "${CMAKE_CURRENT_BINARY_DIR}/c6_mcu_app.bin" BINARY)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE M5OS_C6_OTA_IMAGE=1)
+endif()
+
 if("$ENV{M5OS_BOARD}" STREQUAL "tab5" AND M5OS_USB_BACKEND STREQUAL "native_dma")
     set_source_files_properties(${M5OS_ROOT}/user/shell/shell.c PROPERTIES
         COMPILE_DEFINITIONS M5OS_USB_NATIVE_DMA=1)

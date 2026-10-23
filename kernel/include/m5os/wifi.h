@@ -119,3 +119,9 @@ void wifi_set_udp_rx_callback(uint16_t port, wifi_udp_rx_cb_t cb);
 void wifi_set_tun_callbacks(const uint8_t tun_ip[4], wifi_tun_tx_cb_t tx_cb,
                             wifi_tun_resolve_cb_t resolve_cb);
 void wifi_tun_inject_rx_ipv4(const uint8_t *ipv4_pkt, size_t len);
+
+/* Read-only C6 firmware metadata and NG control-path probe (no flash). */
+bool wifi_c6_info(void);
+
+/* Explicit SDIO C6 updater; available only with a pinned application embedded. */
+bool wifi_c6_update(void);

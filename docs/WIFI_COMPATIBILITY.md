@@ -25,7 +25,7 @@ The new recognition helper checks the complete startup structure and bounded
 TLVs. On a match, Wi-Fi initialization stops with an explicit compatibility
 message before sending MCU RPCs. Normal MCU traffic retains the original path.
 The host test covers the observed length layout, truncated frames, invalid TLVs
-and ordinary MCU headers. Wi-Fi IP traffic has not been verified on this C6. The firmware TLV reports
+and ordinary MCU headers. Before the update, Wi-Fi IP traffic had not been verified on this C6. The firmware TLV reports
 project `NG`, version `1.0.6.0.1`. This identifies the protocol family, not the
 complete flash contents or how this particular unit was provisioned.
 
@@ -42,14 +42,26 @@ M5Stack publishes an ESP32-C6 MCU image for Tab5:
 
 The documented recovery route uses C6's dedicated connector and a USB-TTL
 programmer such as the M5Stack ESP32 Downloader. A direct P4-USB-to-C6 UART
-update path has not been established. This task has not written the C6.
-Compatibility of this candidate with MeOS still needs a device test after an
-authorized update; the firmware filename is not proof of working Wi-Fi.
+update path has not been established. The SDIO route described below was
+subsequently tested successfully.
+The subsequent device test verified MCU startup, Wi-Fi initialization, MAC
+retrieval and scanning. Association, DHCP and Wi-Fi IP traffic remain pending;
+the firmware filename alone is not proof of those functions.
 
-NG contains OTA commands, but support and partition layout on the current device
-have not been established. A merged `0x0` image is not an OTA application image.
-An experimental, optional SDIO updater is being prepared. Read-only command
-communication must pass before enabling writes; no C6 update has been performed.
+The installed NG firmware accepted OTA commands and the application fitted its
+update slot. The actual partition table was not dumped. A merged `0x0` image
+is not an OTA application image.
+An optional SDIO maintenance updater was implemented and used after a read-only
+NG GET_MAC command completed successfully. It validates the exact application
+hash and ESP image structure before issuing OTA commands. The default build
+embeds no C6 application; a maintenance build requires `M5OS_C6_OTA_IMAGE`.
+
+On 2026-10-23 all 1,078,896 application bytes were acknowledged, OTA_END
+succeeded, and MCU private startup was received after C6's natural reboot.
+No manual C6 reset was used between OTA_END and that startup check. A subsequent
+explicit C6 hardware reset retained MCU firmware. MeOS WifiInit
+and GetMAC succeeded, and scanning returned three access points. Wi-Fi
+association, DHCP and IP tests remain pending.
 
 ## Primary references
 
@@ -74,3 +86,19 @@ version is compatible. After updating, verify MeOS initialization, scanning,
 association, DHCP and IP traffic. Switching to thinclient or the official P4
 firmware also needs a device check. The observed NG version alone does not
 establish the unit's factory state or its firmware update history.
+
+## SDIO maintenance image
+
+`tools/prepare_c6_mcu_image.py` extracts the application at offset `0x10000`
+from the pinned official merged image. The application is 1,078,896 bytes,
+SHA-256 `cb169b09a890037af4250bd93c33c394037a55b801ba1cc0a4c1210e60c68902`.
+Both configure-time and runtime checks pin that hash; runtime checks also
+validate chip ID, segment bounds, segment checksum and embedded SHA-256.
+
+`wifi c6-info` only inspects NG metadata and requests a MAC response. A zero
+MAC before NG interface initialization is not a physical MAC verification.
+`wifi c6-update` performs the explicit maintenance update when an image is
+embedded. It writes the inactive OTA application in acknowledged chunks, never
+retries a failed chunk, and only sends OTA_END after all bytes are acknowledged.
+It leaves the existing bootloader and partition table in place. A failed END
+requires inspection because the response may have been lost after boot selection.
