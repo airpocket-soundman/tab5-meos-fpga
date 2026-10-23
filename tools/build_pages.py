@@ -12,7 +12,7 @@ PROGRESS_BY_ID = {item['id']: item for item in progress['items']}
 EN_STATUS = [
     ('OS / apps', 'Tasks, memory, IPC, M5EX and WASM exist; ESP32-P4 FP context isolation passed hardware and host tests', 'Integrate GUI / FPGA completion and continue regression tests.'),
     ('Local terminal', '256-line colored history; ANSI/DEC colors, margins, cursor and alternate-screen controls implemented; host tests passed', 'Verify Vim/sl on hardware; continue documenting unsupported VT220/xterm features.'),
-    ('SSH', 'Shared-console server and client ran concurrently over Ethernet; login, commands, reconnect and stop verified', 'Independent PTYs, exec, SFTP and storage channels remain to be implemented.'),
+    ('SSH', PROGRESS_BY_ID['ssh']['detail']['en'], 'Independent PTYs, exec and network SFTP validation remain pending.'),
     ('Wi-Fi / Tailscale', 'C6 updated to official MCU application; WPA2, DHCP, DNS and HTTP verified over Wi-Fi', 'Verify long-duration traffic and reconnect; Tailscale scope remains unaudited.'),
     ('Wired keyboards', 'I2C accessory or USB boot keyboard', 'Add coexistence, hotplug and GUI key events.'),
     ('USB mouse', 'Not implemented', 'Add HID input, pointer, buttons, wheel and GUI events.'),
@@ -25,7 +25,7 @@ EN_STATUS = [
     ('USB diagnostics / card reader', 'Native lsusb verified with a hub and three storage devices; USB microSD reader mounted and listed before/after reset without card writes', 'Add stable device identification; verify card-only replacement, multiple LUNs and reader writes. USB block nodes are not exposed under /dev.'),
     ('Built-in camera', PROGRESS_BY_ID['builtin-camera']['detail']['en'], 'Assess visual quality, sustained frame rate, long-duration operation and cleanup.'),
     ('Filesystems', 'M5FS, VFS, RAM disk, FAT/exFAT and selected flash persistence', 'Continue hot-plug/error and coexistence validation.'),
-    ('Storage over SSH', 'Not implemented', 'Mount Tab5 SD / USB on the connected Linux server using FUSE.'),
+    ('Storage over SSH', PROGRESS_BY_ID['storage-sftp']['detail']['en'], 'Validate network SFTP and Linux FUSE; add reverse export and multiple incoming sessions.'),
     ('Local applications', 'MeOS apps; no Linux binary compatibility', 'Start with small TUI ports such as sl; audit nano / Vim dependencies.'),
     ('MicroPython', 'Integration / dependencies not audited', 'Embed REPL, scripts, interruption, cleanup and VFS access.'),
     ('CPython / Pyxel', 'Not implemented; feasibility unverified', 'Prioritize porting CPython and Pyxel to run existing source/assets without preprocessing; add FPGA rendering after compatibility is established.'),
@@ -104,12 +104,14 @@ Reference: [XTerm Control Sequences](https://invisible-island.net/xterm/ctlseqs/
 Native UVC supports uncompressed YUY2 using High-Speed isochronous Buffer DMA with one to three transactions per service interval. One 160×120 frame from 056e:700a was saved as BMP and read back. Continuous video, hot-plug and other devices are unverified; MJPEG, audio and bulk video are unsupported.
 The native SC202CS CSI/ISP path passed capture, microSD BMP save, readback and restart. The USB UVC path passed one-frame capture and BMP readback but takes about 8–10 seconds per complete frame. Nonuniform stored pixels were verified; visual quality and sustained video operation remain unverified. The paths share BMP handling but retain separate capture transports. See the [native camera record](docs/CAMERA_IMPLEMENTATION.md) and [USB camera record](docs/USB_CAMERA_IMPLEMENTATION.md).
 Keep the existing USB, microSD, hub, SSH, touch and Bluetooth priorities. Terminal compatibility belongs alongside SSH; camera work proceeds in parallel where dependencies allow. Set performance, format support and dates after measurement.
-## Storage mounted from the SSH server
-Use Tab5_thinclient as a reference. A FUSE helper on the connected Linux server mounts Tab5 microSD and USB storage as ~/sd and ~/usb. A separate SSH channel connects the helper to MeOS VFS. Linux and FUSE stay on the server. Audit Python/FUSE prerequisites, helper compatibility and reuse terms.
-- Start with read-only SD access, then writes, attributes, create/truncate/rename/delete, directories and USB storage.
-- Restrict exported roots and offer read-only/read-write access. Coordinate local/remote access and caches; define write completion and synchronization.
-- Handle media absence/removal, SSH disconnect/reconnect, helper exit and unmount. Never report unfinished writes as successful.
-- Verify file contents and interrupted transfers. Add SCP-style file transfer and remote image display.
+## Storage over SSH and Linux mounting
+MeOS now provides a standard SFTP v3 subsystem restricted to /sd, /usb and /usb1–/usb3. Storage export defaults to read-only; change policy with sshd storage ro|rw|off only while the server is stopped. FAT exclusive creation is atomic and takes precedence over truncation; unsupported EXCL on M5FS/devfs is rejected.
+The standalone Python standard-library/OpenSSH helper uses connect HOST ROOT MOUNTPOINT to try existing SSHFS/FUSE and falls back to interactive file transfer. Separate ls/get/put/mkdir/rm commands are also available. Mounts default to read-only and require --rw for writes. Normal SSH host-key checks and authentication remain in force; no automatic installation or sudo is used. See the [helper specification](docs/STORAGE_HELPER.md).
+- Actual-engine, FAT-adapter, fragmented-wire, exclusive-create and partial/failure cleanup host tests passed, as did the complete target build. A local-engine SD hardware self-test passed a fresh 8192-byte write/read at /sd/sftp_00ddb817.bin, existing-file EXCL refusal and unchanged contents on reread. This test excludes SSH transport/authentication. Network SFTP and actual Linux FUSE mounting remain unverified.
+- Linux must initially reach the Tab5 SSH server. Reverse export through an SSH connection initiated by Tab5 is not implemented.
+- The SSH server currently accepts one inbound connection. A mount occupies it, preventing another remote Shell/transfer; the device local console remains usable. Independent channels and simultaneous access require further work.
+- Rename, arbitrary truncation and unsupported attributes fail explicitly. Even write-enabled mounts may not support editor temporary-file replacement. put requires --overwrite for an existing destination and only succeeds when the server supports the requested operation.
+- Validate media absence/removal, disconnect/reconnect, unmount, concurrent access and sustained transfers on hardware. Remote image transfer/display remains planned.
 ## MicroPython and GPIO
 Integrate MicroPython with MeOS tasks, memory, console and VFS. Audit FreeRTOS dependencies before adapting ESP32 ports or Tab5_thinclient code. Provide REPL, scripts, Ctrl-C, exceptions and cleanup; measure GC heap and task stack use.
 Shared owner/pin-management and shell services now cover GPIO, uncalibrated ADC, PWM, SoftI2C, SoftSPI and UART1. Actual-code host tests and the whole target build passed. MicroPython and its bindings remain unintegrated. Device reserved-pin refusal, GPIO16 input/release/reset, raw ADC16/53 acquisition and UART internal loopback passed; ADC35 was rejected. Floating ADC inputs do not establish voltage accuracy. External electrical timing and fixture tests remain unverified; hardware bus acceleration and interrupt-driven GPIO are future work. General-purpose DAC is excluded because the SoC has none. See the [IO implementation plan](docs/IO_IMPLEMENTATION_PLAN.md), [shared API and shell](docs/IO_API.md), and [software protocol specification](docs/IO_PROTOCOLS.md).
@@ -171,7 +173,9 @@ def implementation_records(lang):
     audit = '<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/VALIDATION_2026_10_23.md">'+audit_label+'</a>'
     api_label = '外部I/O共通APIとシェル仕様' if lang == 'ja' else 'Shared external IO API and shell specification'
     api = '<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/IO_API.md">'+api_label+'</a>'
-    return '<section><h2>'+title+'</h2><p>'+note+'</p><p>'+links+'</p><p>'+audit+' · '+api+'</p></section>'
+    storage_label = 'SFTP・Linuxヘルパー仕様' if lang == 'ja' else 'SFTP and Linux helper specification'
+    storage = '<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/STORAGE_HELPER.md">'+storage_label+'</a>'
+    return '<section><h2>'+title+'</h2><p>'+note+'</p><p>'+links+'</p><p>'+audit+' · '+api+' · '+storage+'</p></section>'
 
 for ja in (False, True):
     lang='ja' if ja else 'en'

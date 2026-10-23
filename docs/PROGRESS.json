@@ -93,8 +93,8 @@
         "en": "4. Concurrent SSH server and client"
       },
       "detail": {
-        "ja": "共有コンソールへ接続するSSHサーバーを実装。実機で認証・コマンド実行・再接続・停止と、接続維持中のSSHクライアント実行を確認。Web/TailscaleとはTCP枠を分離。独立PTY・exec・SFTPは未実装。",
-        "en": "Shared-console SSH server implemented. Hardware authentication, commands, reconnect, stop and outbound SSH while keeping inbound SSH active passed. TCP slots are separate from Web/Tailscale. Independent PTYs, exec and SFTP are not implemented."
+        "ja": "共有コンソールへ接続するSSHサーバーを実装。実機で認証・コマンド実行・再接続・停止と、接続維持中のSSHクライアント実行を確認。Web/TailscaleとはTCP枠を分離。SFTP拡張を実装しホスト試験・全体ビルドに成功。独立PTY・execは未実装。SFTPの検証範囲は項目4bを参照。",
+        "en": "Shared-console SSH server implemented. Hardware authentication, commands, reconnect, stop and outbound SSH while keeping inbound SSH active passed. TCP slots are separate from Web/Tailscale. The SFTP extension passed host tests and the complete target build. Independent PTYs and exec are not implemented; see item 4b for SFTP validation scope."
       }
     },
     {
@@ -107,6 +107,18 @@
       "detail": {
         "ja": "LCD/SSHに256色・RGB、スクロール領域、行挿入削除、カーソル保存復元、代替画面等を実装。SSHは問い合わせ応答とDECCKM、Vimキー透過も追加。実parserのホスト検証済み。実機Vim/SLの通し確認と完全なVT220/xterm互換は未達。",
         "en": "LCD/SSH implement 256/RGB colors, scroll margins, line edits, cursor save/restore and alternate screens. SSH adds DSR, DECCKM and Vim key passthrough. Actual-parser host tests passed; device Vim/SL end-to-end checks and full VT220/xterm compatibility remain pending."
+      }
+    },
+    {
+      "id": "storage-sftp",
+      "status": "active",
+      "title": {
+        "ja": "4b. SFTP・Linuxストレージヘルパー",
+        "en": "4b. SFTP and Linux storage helper"
+      },
+      "detail": {
+        "ja": "SFTP v3エンジン、SD／USBの公開範囲制限、読み取り専用の既定方針、FATの排他的新規作成を実装。Python標準ライブラリ＋OpenSSHの単体ヘルパーはconnectで既存SSHFS／FUSEを試し、利用不可なら対話的ファイル転送へ切替。ホスト試験・全体ビルドは成功。実機のローカルSFTPエンジン試験でSDへ新規8192バイトを書き込み、読み戻し、既存EXCL拒否、その後の内容保持を確認。ネットワーク経由SFTPとLinux実FUSEマウントは未確認。現在1受信接続のみで、Tab5発SSHを使う逆方向公開は未実装。",
+        "en": "Implemented the SFTP v3 engine, SD/USB export boundaries, read-only default policy and atomic FAT exclusive creation. A standalone Python standard-library/OpenSSH helper uses connect to try existing SSHFS/FUSE, falling back to interactive file transfer. Host tests and the complete target build passed. The local SFTP engine passed an SD hardware self-test: fresh 8192-byte write/read, refusal of existing-file EXCL and unchanged contents on reread. Network SFTP and actual Linux FUSE mounting remain unverified. Only one inbound connection is supported; reverse export through Tab5-initiated SSH is not implemented."
       }
     },
     {
