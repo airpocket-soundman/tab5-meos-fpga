@@ -12,6 +12,8 @@ Baseline and size-optimized firmware built and flashed; boot and serial shell ve
 
 USB Ethernet (RTL8153 CDC-ECM) passed link, DHCP, ping and SSH tests. The SSH server and client ran concurrently on hardware. Console ANSI/DEC extensions passed host tests; touch is being rechecked after adding ST7123/ST7121 input. USB storage reads and writes now pass alongside Ethernet ping without packet loss in the tested runs. C6 was updated to the official MCU application. Wi-Fi initialization, scanning, WPA2 association, DHCP, DNS and HTTP traffic passed on hardware with Ethernet unplugged. See [Ethernet](docs/USB_ETHERNET_IMPLEMENTATION.md), [SSH server](docs/SSH_SERVER_IMPLEMENTATION.md) and [terminal](docs/TERMINAL_IMPLEMENTATION.md) implementation records.
 
+Native SL completed on hardware serial, including ANSI screen restoration and Ctrl-C/Escape reruns; visual quality and SSH animation remain unverified. Wi-Fi SFTP passed 102400-byte SD roundtrips, EXCL preservation and read-only denial with authenticated test clients. The actual helper/Windows OpenSSH 9 passed a 20480-byte SD transfer; actual Linux process/FUSE and USB network transfers remain unverified. See [SL](user/sl/README.md) and [storage helper](docs/STORAGE_HELPER.md).
+
 ## Planned work
 
 - FPGA communication, DDR3 buffers, rectangle fills, image copies and GUI integration.
@@ -20,7 +22,7 @@ USB Ethernet (RTL8153 CDC-ECM) passed link, DHCP, ping and SSH tests. The SSH se
 - USB mouse, touch integration including ST7123, and BLE keyboard/mouse support after feasibility checks.
 - Tab5 microSD, USB mass storage and FAT support; evaluate exFAT.
 - Access Tab5 SD/USB through SFTP and a portable Linux helper; use existing SSHFS/FUSE for mounting or fall back to file transfer. See [storage helper](docs/STORAGE_HELPER.md) for verification scope and limitations.
-- Initial native MicroPython v1.26.1 port with REPL/scripts/VFS and machine.Pin/ADC bindings implemented; complete build and hardware REPL, Pin/ADC input and GC pressure checks passed; SD file/import, exception cleanup, MemoryError recovery and Ctrl-C/restart also passed; sustained operation and external output fixtures remain unverified. See [MicroPython scope and limitations](docs/MICROPYTHON.md).
+- Initial native MicroPython v1.26.1 port with REPL/scripts/VFS and machine.Pin/ADC/PWM/UART/SoftI2C/SoftSPI and monotonic time bindings implemented; complete build and hardware REPL, Pin/ADC input and GC pressure checks passed; SD file/import, exception cleanup, MemoryError recovery and Ctrl-C/restart also passed; sustained operation and external output fixtures remain unverified. See [MicroPython scope and limitations](docs/MICROPYTHON.md).
 - Investigate porting CPython and Pyxel to run existing games without source or asset preprocessing; validate compatibility and memory first, then FPGA rendering acceleration.
 - Small TUI application ports; investigate nano/Vim dependencies. Linux executables do not run directly on MeOS.
 

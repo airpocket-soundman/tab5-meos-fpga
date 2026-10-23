@@ -105,20 +105,20 @@
         "en": "4a. Shared terminal: VT100 / VT220 / xterm"
       },
       "detail": {
-        "ja": "LCD/SSHに256色・RGB、スクロール領域、行挿入削除、カーソル保存復元、代替画面等を実装。SSHは問い合わせ応答とDECCKM、Vimキー透過も追加。実parserのホスト検証済み。実機Vim/SLの通し確認と完全なVT220/xterm互換は未達。",
-        "en": "LCD/SSH implement 256/RGB colors, scroll margins, line edits, cursor save/restore and alternate screens. SSH adds DSR, DECCKM and Vim key passthrough. Actual-parser host tests passed; device Vim/SL end-to-end checks and full VT220/xterm compatibility remain pending."
+        "ja": "LCD/SSHに256色・RGB、スクロール領域、行挿入削除、カーソル保存復元、代替画面等を実装。SSHは問い合わせ応答とDECCKM、Vimキー透過も追加。実parserのホスト検証済み。SLは実機シリアルのANSI出力・正常完走・中断復帰を確認。Vim通し確認、SL表示の目視評価と完全なVT220/xterm互換は未達。",
+        "en": "LCD/SSH implement 256/RGB colors, scroll margins, line edits, cursor save/restore and alternate screens. SSH adds DSR, DECCKM and Vim key passthrough. Actual-parser host tests passed; SL passed hardware serial ANSI completion and interrupted return. Device Vim checks, visual SL assessment and full VT220/xterm compatibility remain pending."
       }
     },
     {
       "id": "storage-sftp",
-      "status": "active",
+      "status": "verified",
       "title": {
         "ja": "4b. SFTP・Linuxストレージヘルパー",
         "en": "4b. SFTP and Linux storage helper"
       },
       "detail": {
-        "ja": "SFTP v3エンジン、SD／USBの公開範囲制限、読み取り専用の既定方針、FATの排他的新規作成を実装。Python標準ライブラリ＋OpenSSHの単体ヘルパーはconnectで既存SSHFS／FUSEを試し、利用不可なら対話的ファイル転送へ切替。ホスト試験・全体ビルドは成功。実機のローカルSFTPエンジン試験でSDへ新規8192バイトを書き込み、読み戻し、既存EXCL拒否、その後の内容保持を確認。ネットワーク経由SFTPとLinux実FUSEマウントは未確認。現在1受信接続のみで、Tab5発SSHを使う逆方向公開は未実装。",
-        "en": "Implemented the SFTP v3 engine, SD/USB export boundaries, read-only default policy and atomic FAT exclusive creation. A standalone Python standard-library/OpenSSH helper uses connect to try existing SSHFS/FUSE, falling back to interactive file transfer. Host tests and the complete target build passed. The local SFTP engine passed an SD hardware self-test: fresh 8192-byte write/read, refusal of existing-file EXCL and unchanged contents on reread. Network SFTP and actual Linux FUSE mounting remain unverified. Only one inbound connection is supported; reverse export through Tab5-initiated SSH is not implemented."
+        "ja": "SFTP v3エンジン、SD／USBの公開範囲制限、読み取り専用の既定方針、FATの排他的新規作成を実装。Python標準ライブラリ＋OpenSSHの単体ヘルパーはconnectで既存SSHFS／FUSEを試し、利用不可なら対話的ファイル転送へ切替。ホスト試験・全体ビルドは成功。実機のローカルSFTPエンジン試験でSDへ新規8192バイトを書き込み、読み戻し、既存EXCL拒否、その後の内容保持を確認。Wi-Fi実機へParamikoとヘルパーの実SFTPクライアントクラスでSDの102400バイト往復転送2回、既存EXCL拒否・内容保持・削除・再接続、RO一覧と書込み拒否が成功。認証前にシリアルのSHA256ホスト鍵指紋を照合。実ヘルパープロセス＋Windows OpenSSH 9でSD20480バイトput/get一致・ls/rmにも成功。ユーザーSSH設定は変更せず指紋照合済みの隔離known_hostsを使用。Linux実プロセス・FUSEとUSBのネットワーク転送は未確認。現在1受信接続のみで、Tab5発SSHを使う逆方向公開は未実装。",
+        "en": "Implemented the SFTP v3 engine, SD/USB export boundaries, read-only default policy and atomic FAT exclusive creation. A standalone Python standard-library/OpenSSH helper uses connect to try existing SSHFS/FUSE, falling back to interactive file transfer. Host tests and the complete target build passed. The local SFTP engine passed an SD hardware self-test: fresh 8192-byte write/read, refusal of existing-file EXCL and unchanged contents on reread. Over hardware Wi-Fi, Paramiko and the actual helper SFTP client class passed two 102400-byte SD roundtrips, existing-file EXCL/content preservation, delete/reconnect, and read-only listing/write rejection. The serial SHA256 host-key fingerprint was checked before authentication. The actual helper process with Windows OpenSSH 9 also passed an exact 20480-byte SD put/get and ls/rm using fingerprint-verified isolated known_hosts without changing user SSH settings. Actual Linux process/FUSE tests and USB network transfers remain unverified. Only one inbound connection is supported; reverse export through Tab5-initiated SSH is not implemented."
       }
     },
     {
@@ -177,8 +177,8 @@
         "en": "9. External GPIO, ADC, PWM, I2C, SPI and UART"
       },
       "detail": {
-        "ja": "共通C APIとGPIO／未校正ADC／PWM／SoftI2C／SoftSPI／UART1のシェル操作を実装。ホスト試験・全体ビルドに成功。実機で予約ピン拒否、GPIO16入力・解放・reset、ADC16／53生値取得、UART内部ループバックに成功。ADC35は非対応として拒否。外部機器・基準電圧・PWM波形・I2C／SPI／UART配線試験は未確認。Python側Pin／ADCは項目10を参照。汎用DACは対象外。",
-        "en": "Shared C services and shell control for GPIO, uncalibrated ADC, PWM, SoftI2C/SoftSPI and UART1 are implemented; host tests and the complete target build passed. Hardware checks passed reserved-pin rejection, GPIO16 input/release/reset, raw ADC16/53 sampling and internal UART loopback; ADC35 was rejected as unsupported. External devices, reference voltage, PWM waveforms and wired I2C/SPI/UART remain unverified. See item 10 for the Python Pin/ADC bindings. General-purpose DAC is excluded."
+        "ja": "共通C APIとGPIO／未校正ADC／PWM／SoftI2C／SoftSPI／UART1のシェル操作を実装。ホスト試験・全体ビルドに成功。実機で予約ピン拒否、GPIO16入力・解放・reset、ADC16／53生値取得、UART内部ループバックに成功。ADC35は非対応として拒否。外部機器・基準電圧・PWM波形・I2C／SPI／UART配線試験は未確認。Python側は項目10／10aを参照。汎用DACは対象外。",
+        "en": "Shared C services and shell control for GPIO, uncalibrated ADC, PWM, SoftI2C/SoftSPI and UART1 are implemented; host tests and the complete target build passed. Hardware checks passed reserved-pin rejection, GPIO16 input/release/reset, raw ADC16/53 sampling and internal UART loopback; ADC35 was rejected as unsupported. External devices, reference voltage, PWM waveforms and wired I2C/SPI/UART remain unverified. See items 10/10a for Python bindings. General-purpose DAC is excluded."
       }
     },
     {
@@ -189,8 +189,32 @@
         "en": "10. MicroPython and machine.Pin / ADC"
       },
       "detail": {
-        "ja": "MicroPython v1.26.1をMeOSへ直接組み込む初期ポート、REPL・スクリプト・VFS連携、machine.Pin／ADCを実装。GCヒープはPSRAM 512 KiB、タスクスタックは32 KiB。共通IO所有権を使用し、VM終了時にファイルとピンを回収する。全体ビルド・書込みに成功。実機REPLで2**80・math.sqrt(9)・GCを確認し、GPIO16入力・ADC16/53・予約/重複/解放済みオブジェクト拒否・40回GC負荷のsmoke.pyが成功。実機SDスクリプトで隣接モジュールimport、排他的1024バイト新規ファイルの読み書き・seek/tell・closeに成功。意図的例外後のPin再確保、MemoryError後のVM再起動、無限ループCtrl-C後のシェル復帰と次VM実行も確認。初期機能の限定検証であり、長時間動作は未評価。外部出力波形は未確認。Python側PWM／I2C／SPI／UART／IRQ、CPython・Pyxel互換は含まない。",
-        "en": "Implemented the initial native MeOS port of MicroPython v1.26.1, REPL/scripts/VFS integration and machine.Pin / ADC. The GC heap uses 512 KiB PSRAM with a 32 KiB task stack. Shared IO ownership and VM-exit file/pin cleanup are provided. The complete target build and flashing passed. Hardware REPL checks passed 2**80, math.sqrt(9) and GC; smoke.py passed GPIO16 input, ADC16/53, reserved/duplicate/released-object rejection and 40 GC pressure cycles. An SD script passed sibling-module import and exclusive 1024-byte file write/read, seek/tell and close. Pin reclaim after an intentional exception, VM restart after MemoryError and Ctrl-C interruption of an infinite loop followed by shell return/new VM execution also passed. These verify the initial feature scope; long-duration operation is unmeasured. External output waveforms remain unverified. Python PWM/I2C/SPI/UART/IRQ bindings and CPython/Pyxel compatibility are not included."
+        "ja": "MicroPython v1.26.1をMeOSへ直接組み込む初期ポート、REPL・スクリプト・VFS連携、machine.Pin／ADCを実装。GCヒープはPSRAM 512 KiB、タスクスタックは32 KiB。共通IO所有権を使用し、VM終了時にファイルとピンを回収する。全体ビルド・書込みに成功。実機REPLで2**80・math.sqrt(9)・GCを確認し、GPIO16入力・ADC16/53・予約/重複/解放済みオブジェクト拒否・40回GC負荷のsmoke.pyが成功。実機SDスクリプトで隣接モジュールimport、排他的1024バイト新規ファイルの読み書き・seek/tell・closeに成功。意図的例外後のPin再確保、MemoryError後のVM再起動、無限ループCtrl-C後のシェル復帰と次VM実行も確認。初期機能の限定検証であり、長時間動作は未評価。外部出力波形は未確認。PWM／UART／SoftI2C／SoftSPI／timeの拡張は項目10aを参照。IRQとCPython・Pyxel互換は含まない。",
+        "en": "Implemented the initial native MeOS port of MicroPython v1.26.1, REPL/scripts/VFS integration and machine.Pin / ADC. The GC heap uses 512 KiB PSRAM with a 32 KiB task stack. Shared IO ownership and VM-exit file/pin cleanup are provided. The complete target build and flashing passed. Hardware REPL checks passed 2**80, math.sqrt(9) and GC; smoke.py passed GPIO16 input, ADC16/53, reserved/duplicate/released-object rejection and 40 GC pressure cycles. An SD script passed sibling-module import and exclusive 1024-byte file write/read, seek/tell and close. Pin reclaim after an intentional exception, VM restart after MemoryError and Ctrl-C interruption of an infinite loop followed by shell return/new VM execution also passed. These verify the initial feature scope; long-duration operation is unmeasured. External output waveforms remain unverified. See item 10a for PWM/UART/SoftI2C/SoftSPI/time additions. IRQ and CPython/Pyxel compatibility are not included."
+      }
+    },
+    {
+      "id": "micropython-peripherals",
+      "status": "active",
+      "title": {
+        "ja": "10a. Python周辺IO・単調時刻API",
+        "en": "10a. Python peripheral IO and monotonic time"
+      },
+      "detail": {
+        "ja": "PWM、UART1、SoftI2C、SoftSPIとtimeを実装。実32ビットMicroPython VM＋IOモックで機能・例外後解放を検証（156サービス呼出し、UART受理8バイト）。実機では外部出力を行わないPWM拒否、UART設定拒否、バス23安全拒否試験とtimeの範囲・wrap・delayが成功。time.sleep(60)のCtrl-C復帰は約0.125秒。ファーム増加6464バイト。実PWM波形・UART配線通信・I2C/SPI機器通信は未確認。IRQは未実装。",
+        "en": "Implemented PWM, UART1, SoftI2C, SoftSPI and time. The actual 32-bit MicroPython VM with mocked IO passed functional and exception-cleanup tests (156 service calls, eight accepted UART bytes). Hardware passed no-output PWM rejection, UART configuration rejection,23 bus safety checks and time range/wrap/delay tests. Ctrl-C returned from time.sleep(60) in about 0.125 seconds. Firmware grew by 6464 bytes. Physical PWM waveforms, wired UART and real I2C/SPI device communication remain unverified; IRQ is not implemented."
+      }
+    },
+    {
+      "id": "native-sl",
+      "status": "verified",
+      "title": {
+        "ja": "11. ネイティブSL移植",
+        "en": "11. Native SL port"
+      },
+      "detail": {
+        "ja": "上流SL 5.03のコード・素材・ライセンスを保持し、MeOS用最小ANSI/curses互換層とPSRAM描画・煙状態へ移植。ホスト90回超反復と全体ビルド・書込みに成功。実機シリアルで標準slが15.30秒・95329バイト出力で完走し、代替画面の開始/終了とシェル復帰を確認。sl -aFのCtrl-C、sl -lcのEscはいずれも約0.86秒で復帰し再実行成功。目視画質・LCD見え方・SSH経由描画は未評価。",
+        "en": "Ported upstream SL 5.03 with original code/assets/license retained, a minimal MeOS ANSI/curses-shaped adapter and PSRAM canvas/smoke state. More than 90 host runs and full target build/flash passed. On hardware serial, default sl completed in 15.30 seconds with 95329 output bytes, alternate-screen enter/exit and shell return. Ctrl-C during sl -aF and Esc during sl -lc each returned in about 0.86 seconds and reruns passed. Visual quality, LCD appearance and SSH rendering remain unassessed."
       }
     }
   ]

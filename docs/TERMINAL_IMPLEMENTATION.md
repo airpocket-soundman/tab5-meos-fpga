@@ -75,3 +75,14 @@ Offscreen drawing targets are scoped to the calling task and its monotonic task 
 Target verification (2026-10-23): the ST7121 unit accepted touch scrolling, as confirmed by the operator. With two framebuffers enabled, runtime diagnostics recorded 12 submitted updates and 12 DMA-confirmed retirements, with zero queue errors/timeouts and the back buffer still available. The largest observed batch duration was 276156 microseconds; this includes scheduling delay and is not a frame-rate guarantee. Retirement continued after a camera preview. The operator was absent during the final display test, so subjective flicker reduction has not been confirmed.
 
 Follow-up under UVC capture load: 16 submitted updates and 16 DMA-confirmed retirements, zero errors/timeouts, and the back buffer stayed available. A final DMA source check after the wait deadline prevents a delayed rendering task from reporting a false retirement timeout. Maximum observed batch duration was 1642072 microseconds, so high-load response latency remains unresolved.
+
+
+## Native SL serial check, 2026-10-23
+
+The integrated original-SL port completed a default run on Tab5 serial in
+15.30 seconds (95329 output bytes), including alternate-screen enter/exit and
+shell restoration. Ctrl-C during `sl -aF` and Escape during `sl -lc` each
+returned in about 0.86 seconds, with successful reruns. This checks a real
+application's ANSI output/lifecycle; it is not full VT220/xterm compatibility,
+visual-quality assessment or proof of loss-free animation over shared SSH.
+See the [SL adaptation and host test record](../user/sl/README.md).

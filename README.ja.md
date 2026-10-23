@@ -12,6 +12,8 @@ FPGAによる描画支援を組み込んだ、M5Stack Tab5向けMeOSのGUI環境
 
 USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSHサーバー／クライアントの同時利用を実機確認しました。端末制御の拡張はホスト試験済み。タッチはST7123/ST7121入力を追加して再検証中です。USBストレージの読み書きとEthernet pingの併用試験ではパケット損失がなくなりました。C6は公式MCUアプリへ更新し、Wi-Fi初期化・検索・WPA2接続・DHCPを確認しました。Ethernetを外した状態でDNS・HTTP通信も実機確認済みです。[Ethernet](docs/USB_ETHERNET_IMPLEMENTATION.md)、[SSHサーバー](docs/SSH_SERVER_IMPLEMENTATION.md)、[端末機能](docs/TERMINAL_IMPLEMENTATION.md)の実装記録を参照してください。
 
+ネイティブSLは実機シリアルで完走・ANSI画面復帰・Ctrl-C/Esc後の再実行を確認。目視画質・SSH描画は未評価です。Wi-Fi SFTPは認証済み試験クライアントでSD102400バイト往復・既存EXCL保護・RO書込み拒否を確認。実ヘルパー＋Windows OpenSSH 9でもSD20480バイト転送が成功。Linux実プロセス/FUSEとUSBのネットワーク転送は未確認です。[SL移植](user/sl/README.md)・[ストレージヘルパー](docs/STORAGE_HELPER.md)を参照。
+
 ## 実装予定
 
 - FPGA通信、DDR3バッファ、矩形塗りつぶし・画像コピー、GUI統合。
@@ -20,7 +22,7 @@ USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSH
 - USBマウス、ST7123を含むタッチ統合、実現性を調査した上でのBLEキーボード・マウス。
 - Tab5のmicroSD、USBメモリ、FAT対応。exFATは条件を評価。
 - SD／USBのSFTP公開とLinux持ち込み用ヘルパー。既存SSHFS／FUSEによるマウントを試し、利用できなければファイル転送へ切り替えます。[検証範囲と制限](docs/STORAGE_HELPER.md)を参照してください。
-- MicroPython v1.26.1の初期ネイティブポートとREPL・スクリプト・VFS・machine.Pin／ADCを実装。全体ビルドと実機REPL・Pin/ADC入力・GC負荷試験に成功。SDファイル/import・例外後回収・MemoryError回復・Ctrl-Cと次VM起動も確認。長時間動作と外部出力実測は未確認。[仕様と制約](docs/MICROPYTHON.md)を参照。
+- MicroPython v1.26.1の初期ネイティブポートとREPL・スクリプト・VFS・machine.Pin／ADC／PWM／UART／SoftI2C／SoftSPIと単調時刻timeを実装。全体ビルドと実機REPL・Pin/ADC入力・GC負荷試験に成功。SDファイル/import・例外後回収・MemoryError回復・Ctrl-Cと次VM起動も確認。長時間動作と外部出力実測は未確認。[仕様と制約](docs/MICROPYTHON.md)を参照。
 - CPythonとPyxel本体の移植を検討し、既存ゲームをソース・素材の事前変換なしで実行。互換性とメモリを検証後、FPGAによる描画高速化を追加。
 - 小規模TUIアプリの移植。nano／Vimは依存関係を調査。Linux実行ファイルの直接実行には非対応。
 

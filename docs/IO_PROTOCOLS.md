@@ -1,7 +1,7 @@
 # Shared external I2C and SPI
 
 `io_i2c.h` and `io_spi.h` expose the same ownership-aware services to native
-shell commands and a future MicroPython binding. These are software-driven
+shell commands and the MicroPython `machine.SoftI2C` / `machine.SoftSPI` bindings. These are software-driven
 external buses, separate from the board's system I2C implementation and SD
 driver. They use the MeOS scheduler/mutexes and raw GPIO HAL; no FreeRTOS
 task, ESP-IDF bus driver or DMA engine is required.
@@ -118,7 +118,7 @@ python tests/io/i2c_spi_run_tests.py --cc D:/tmp/tab5-zig013/ziglang/zig.exe
 
 Host tests include the production drivers with GPIO/wire traces. They verify
 repeated START, read/write address directions, data ACK/final NACK, stretch
-and total timeouts, cancellation cleanup, SPI modes0–3, MSB/full-duplex data,
+and total timeouts, cancellation cleanup, SPI modes 0–3, MSB/full-duplex data,
 CS cleanup, owner checks, generation reuse, reserved-pin rejection and cleanup
 after an owner enters closing state. Fault injection also kills a closer exactly
 after pin release, then reclaims the same pins for another owner and verifies
@@ -126,3 +126,14 @@ that old cleanup makes no GPIO changes. A closing-owner/start race is tested
 before the first wire operation. These tests validate sequencing and API
 contracts; external wiring, electrical timing, sensor/device compatibility and
 interpreter integration require separate target tests.
+
+
+## Python binding validation scope
+
+The bindings use numeric GPIO IDs, the same pin claims and generation-safe
+handles, and VM-exit owner cleanup. The actual 32-bit MicroPython VM passed
+functional/exception tests with board IO mocked. On Tab5, 23 rejection tests
+passed without opening a valid external bus or performing external transfers.
+These results do not verify sensor compatibility, pull-ups, clock stretching,
+SPI edge timing or physical wiring. See [MicroPython APIs](MICROPYTHON.md) and
+[the actual-VM test scope](../tests/micropython/MACHINE_TESTS.md).
