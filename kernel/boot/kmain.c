@@ -416,7 +416,14 @@ void kernel_main(void)
     task_create("logA", log_task, (void *)'A', TASK_PRIO_DEFAULT);
     task_create("logB", log_task, (void *)'B', TASK_PRIO_DEFAULT);
 #else
+#if defined(M5OS_BOARD_TAB5)
+    /* Keep RAM root and mount the existing FAT card separately. */
+    rootfs_mount(NULL);
+    extern bool sd_fat_mount(blockdev_t *bd);
+    if (sd) sd_fat_mount(sd);
+#else
     rootfs_mount(sd);
+#endif
     wifi_boot_start();
 #if M5OS_HAS_TOUCH
     if (lcd_ok && gui_init() == ERR_OK) {            /* touch screen: windows and the launcher */
