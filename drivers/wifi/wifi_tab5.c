@@ -21,6 +21,12 @@
 #include "hosted_wire.h"
 #include <m5os/net_external.h>
 #include <m5os/sha256.h>
+#include <m5os/hosted_hci.h>
+static hosted_hci_receive_fn s_bt_receive;
+static hosted_hci_lost_fn s_bt_lost;
+static hosted_hci_status_t s_bt_stats;
+static void *s_bt_arg;
+static uint8_t s_bt_capabilities;
 #include <string.h>
 
 #include "soc/sdmmc_struct.h"
@@ -595,6 +601,8 @@ static bool sdio_reg_write(uint32_t reg, const void *src, size_t len)
 
 static void c6_hardware_reset(void)
 {
+    s_bt_capabilities=0;
+    if(s_bt_lost)s_bt_lost(s_bt_arg);
     gpio_ll_func_sel(&GPIO, PIN_C6_RESET, PIN_FUNC_GPIO);
     gpio_ll_output_enable(&GPIO, PIN_C6_RESET);
     gpio_ll_set_level(&GPIO, PIN_C6_RESET, 0);
@@ -800,7 +808,7 @@ static uint16_t compute_checksum(const uint8_t *buf, size_t len)
     return (uint16_t)(sum & 0xFFFFu);
 }
 
-static bool sdio_send_packet(uint8_t if_type, uint8_t if_num, const uint8_t *payload, size_t payload_len)
+static bool sdio_send_packet_ex(uint8_t if_type, uint8_t if_num, uint8_t subtype,const uint8_t *payload,size_t payload_len)
 {
     if (!s_sdio_ready || payload_len + 12u > sizeof(s_tx_packet_buf)) return false;
 
@@ -838,7 +846,7 @@ static bool sdio_send_packet(uint8_t if_type, uint8_t if_num, const uint8_t *pay
     s_tx_packet_buf[8] = (uint8_t)(s_seq_num & 0xFFu);
     s_tx_packet_buf[9] = (uint8_t)((s_seq_num >> 8) & 0xFFu);
     s_tx_packet_buf[10] = 0u;
-    s_tx_packet_buf[11] = (if_type == ESP_PRIV_IF) ? 0x33u : 0u; /* ESP_PACKET_TYPE_EVENT */
+    s_tx_packet_buf[11] = subtype; /* H4 type for HCI, private event type for PRIV. */
 
     if (payload && payload_len > 0) {
         mem_copy(&s_tx_packet_buf[12], payload, payload_len);
@@ -859,6 +867,11 @@ static bool sdio_send_packet(uint8_t if_type, uint8_t if_num, const uint8_t *pay
 }
 
 /* Forward declarations for packet handlers */
+static bool sdio_send_packet(uint8_t if_type,uint8_t if_num,const uint8_t *payload,size_t length)
+{
+    return sdio_send_packet_ex(if_type,if_num,if_type==ESP_PRIV_IF?0x33u:0u,payload,length);
+}
+
 static void handle_priv_packet(const uint8_t *payload, size_t len);
 static void handle_serial_packet(const uint8_t *payload, size_t len);
 static void handle_sta_rx_frame(const uint8_t *frame, size_t len);
@@ -923,7 +936,7 @@ static void sdio_poll_rx_transport_locked(void)
             uint16_t plen    = (uint16_t)hdr[2] | ((uint16_t)hdr[3] << 8);
             uint16_t offset  = (uint16_t)hdr[4] | ((uint16_t)hdr[5] << 8);
 
-            if (offset < 12u || plen == 0 || plen > 4096u || pos + offset + plen > block_len) {
+            if (offset < 12u || plen == 0 || plen > 4096u || pos + offset + plen > len_from_slave) {
                 break;
             }
 
@@ -932,6 +945,12 @@ static void sdio_poll_rx_transport_locked(void)
                 handle_priv_packet(payload, plen);
             } else if (if_type == ESP_SERIAL_IF) {
                 handle_serial_packet(payload, plen);
+            } else if(if_type==ESP_HCI_IF) {
+                /* C6->P4 SDIO retains the H4 byte in payload; TX is asymmetric. */
+                uint8_t h4=payload[0];
+                s_bt_stats.rx_packets++;s_bt_stats.last_type=h4;
+                if(h4==4&&plen>1)s_bt_stats.last_event=payload[1];
+                if(plen<2||!s_bt_receive||!s_bt_receive(s_bt_arg,h4,payload+1,plen-1))s_bt_stats.rx_rejected++;
             } else if (if_type == ESP_STA_IF) {
                 s_status.rx_packets++;
                 if (!s_external) handle_sta_rx_frame(payload, plen);
@@ -971,6 +990,13 @@ static void handle_priv_packet(const uint8_t *payload, size_t len)
     if (len < 2) return;
     uint8_t evt_type = payload[0];
     if (evt_type == 0x22u) { /* ESP_PRIV_EVENT_INIT */
+        s_bt_capabilities=0;
+        size_t end=2u+payload[1];
+        if(end>len)end=len; /* Optional BT metadata must not reject the Wi-Fi handshake. */
+        for(size_t at=2;at+2<=end;){uint8_t tag=payload[at++],count=payload[at++];if(count>end-at){s_bt_capabilities=0;break;}
+            if(tag==0x11u && count==1)s_bt_capabilities=payload[at];
+            at+=count;
+        }
         /* Reply with Host capabilities (ESP32-C6 = 0x0D, TX/RX prio) */
         static const uint8_t cap_pkt[] = {
             0x22u, 15u,
@@ -3326,7 +3352,7 @@ static void wifi_daemon_task(void *arg)
         }
 
         tick++;
-        task_sleep(100);
+        task_sleep(s_bt_receive?5:100);
     }
 }
 
@@ -3452,4 +3478,42 @@ bool wifi_c6_update(void)
     kprintf("C6: no MCU OTA application embedded in this firmware\n");
     return false;
 #endif
+}
+
+bool hosted_hci_available(void)
+{
+    ensure_lock();mutex_lock(&s_wifi_lock);
+    bool ok=s_sdio_ready&&s_priv_init_done&&(s_bt_capabilities&4);
+    mutex_unlock(&s_wifi_lock);return ok;
+}
+bool hosted_hci_claim(hosted_hci_receive_fn receive,hosted_hci_lost_fn lost,void *arg)
+{
+    if(!receive||!arg)return false;
+    ensure_lock();mutex_lock(&s_wifi_lock);
+    bool ok=s_sdio_ready&&s_priv_init_done&&(s_bt_capabilities&4)&&
+        (!s_bt_receive||(s_bt_receive==receive&&s_bt_arg==arg));
+    if(ok){s_bt_receive=receive;s_bt_lost=lost;s_bt_arg=arg;}
+    mutex_unlock(&s_wifi_lock);return ok;
+}
+void hosted_hci_release(void *arg)
+{
+    ensure_lock();mutex_lock(&s_wifi_lock);
+    if(s_bt_arg==arg){s_bt_receive=NULL;s_bt_lost=NULL;s_bt_arg=NULL;}
+    mutex_unlock(&s_wifi_lock);
+}
+bool hosted_hci_send(uint8_t type,const uint8_t *packet,size_t length)
+{
+    if(!packet||!((type==1&&length>=3&&length==(size_t)packet[2]+3)||
+       (type==2&&length>=4&&length==4u+packet[2]+((size_t)packet[3]<<8))))return false;
+    ensure_lock();mutex_lock(&s_wifi_lock);
+    bool ok=s_bt_receive&&s_sdio_ready&&s_priv_init_done&&(s_bt_capabilities&4)&&
+            sdio_send_packet_ex(ESP_HCI_IF,0,type,packet,length);
+    if(ok)s_bt_stats.tx_packets++;else s_bt_stats.tx_failed++;
+    if(type==1)s_bt_stats.last_opcode=packet[0]|((uint16_t)packet[1]<<8);
+    mutex_unlock(&s_wifi_lock);return ok;
+}
+
+void hosted_hci_status(hosted_hci_status_t *out) {
+    if(!out)return;
+    ensure_lock();mutex_lock(&s_wifi_lock);*out=s_bt_stats;mutex_unlock(&s_wifi_lock);
 }

@@ -16,6 +16,7 @@
 #include "../edit/edit.h"
 #include "../camera/camera_app.h"
 #include "../wifi/wifi_app.h"
+#include "../bluetooth/bt_app.h"
 #include "../ssh/ssh_app.h"
 #include "../tailscale/tailscale_app.h"
 #include "../web/web_app.h"
@@ -45,6 +46,7 @@
 #include <m5os/camera.h>
 #include <m5os/display.h>
 #include <m5os/fp_context_test.h>
+#include <m5os/hosted_hci.h>
 #include <m5os/board_config.h>
 #if M5OS_USB_NATIVE_DMA
 #include <m5os/usb_info.h>
@@ -628,6 +630,8 @@ static int cmd_edit(int argc, char **argv)
     return 0;
 }
 
+static int cmd_bt(int argc,char **argv){return bt_app_command(argc,argv,sh_puts);}
+
 static int cmd_camera(int argc, char **argv)
 {
     if(argc==3 && sh_streq(argv[1],"verify")) {
@@ -728,6 +732,9 @@ static int cmd_wifi(int argc, char **argv)
         print_wifi_status();
         return 0;
     }
+#endif
+#if M5OS_BOARD_TAB5
+    if(sh_streq(argv[1],"bt-status")){hosted_hci_status_t h;hosted_hci_status(&h);SH_PRINTF("Hosted HCI SDIO: %s TX=%u failed=%u RX=%u rejected=%u opcode=%04x type=%u event=%02x\n",hosted_hci_available()?"available":"not advertised or not ready",h.tx_packets,h.tx_failed,h.rx_packets,h.rx_rejected,h.last_opcode,h.last_type,h.last_event);return 0;}
 #endif
     if (sh_streq(argv[1], "c6-info")) return wifi_c6_info()?0:1;
     if (sh_streq(argv[1], "c6-update")) return wifi_c6_update()?0:1;
@@ -1044,6 +1051,7 @@ static const command_t s_commands[] = {
     { "osk",     cmd_osk,     "osk [on|off|map N|debug]  on-screen keyboard (touch); no argument: status" },
 #endif
 #endif
+    { "bt", cmd_bt, "BLE HID host: bt on | scan | devices | connect | status" },
     { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
     { "sshd", cmd_sshd, "sshd start USER PASSWORD [PORT] | status | stop" },
     { "ssh",       cmd_ssh,       "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },

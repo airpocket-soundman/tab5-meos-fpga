@@ -104,3 +104,6 @@ target_link_libraries(${COMPONENT_LIB} INTERFACE
 # quirc (third_party/quirc, ISC): QR-code reader for installing apps from the camera.  Vendored as is except for its allocator.
 file(GLOB M5OS_QUIRC_SRCS ${M5OS_ROOT}/third_party/quirc/*.c)
 set_source_files_properties(${M5OS_QUIRC_SRCS} PROPERTIES COMPILE_OPTIONS "-w;-O2")
+
+include(${M5OS_ROOT}/cmake/nimble_meos.cmake)
+m5os_add_nimble(${COMPONENT_LIB})
