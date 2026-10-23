@@ -21,8 +21,8 @@
         "en": "1. USB receivers and storage"
       },
       "detail": {
-        "ja": "TinyUSBのOSなし構成へ移行。USBメモリの37・512・8192バイト書き込み、全内容読み戻し、再起動後保持を実機確認。受信機は旧実装で83回・エラー0、新スタックでの再確認は必要。",
-        "en": "Migrated to TinyUSB with OS_NONE. Hardware verified USB writes, complete readback and persistence after reset for 37, 512 and 8192 bytes. Receiver verified on the previous driver (83 presses, zero errors); retest on the new stack is pending."
+        "ja": "独自ディスクリプタDMA版の初期化順序を修正。37・512・8192バイトの書き込み・全内容読み戻し・再起動後保持を確認。TinyUSB版は比較用に保持。抜き差しと受信機の再確認は継続。",
+        "en": "Corrected native descriptor DMA initialization order. Verified 37, 512 and 8192 byte writes, complete readback and persistence after reset. TinyUSB retained for comparison. Hot-plug and receiver regression tests continue."
       }
     },
     {
@@ -45,8 +45,8 @@
         "en": "3. USB hubs, multiple drives and keyboard coexistence"
       },
       "detail": {
-        "ja": "TinyUSBのハブ機能を有効化し、複数MSCと独立したマウント、入力との同時動作、個別抜き差しを実装・確認。",
-        "en": "Enable TinyUSB hubs; implement and verify multiple MSC volumes, concurrent input and independent removal/reconnection."
+        "ja": "独自DMAドライバにハブ管理、複数MSCと独立マウント、入力との同時動作、個別抜き差しを実装・確認。TinyUSBを参照・比較に使用。",
+        "en": "Extend the native DMA driver with hub management, multiple MSC volumes, concurrent input and independent removal/reconnection; use TinyUSB for reference and comparison."
       }
     },
     {
@@ -59,6 +59,18 @@
       "detail": {
         "ja": "SSHからシェル操作・ファイル転送・開発。接続を維持して既存SSHクライアントをテスト。",
         "en": "Remote shell, file transfer and development; test the existing client while keeping the server session connected."
+      }
+    },
+    {
+      "id": "terminal-spec",
+      "status": "planned",
+      "title": {
+        "ja": "4a. 共通端末・VT100／VT220／xterm対応",
+        "en": "4a. Shared terminal: VT100 / VT220 / xterm"
+      },
+      "detail": {
+        "ja": "ローカル／SSH表示を共通化。VT100を基礎にANSI制御・キー入力を整備し、必要なVT220機能とxterm拡張を段階追加。TERM通知を実装範囲と合わせ、TUIアプリで検証。",
+        "en": "Share local/SSH terminal processing. Start with VT100 and ANSI controls/key input; add required VT220 features and xterm extensions incrementally. Match TERM to actual support and verify with TUI apps."
       }
     },
     {
@@ -83,6 +95,30 @@
       "detail": {
         "ja": "C6経路を調査し、BLE HIDの探索・ペアリング・再接続・入力を実装。Classicは別途可否確認。",
         "en": "Audit C6 transport; implement BLE HID discovery, pairing, reconnect and input. Assess Classic separately."
+      }
+    },
+    {
+      "id": "usb-camera",
+      "status": "planned",
+      "title": {
+        "ja": "7. USBカメラ（UVC）",
+        "en": "7. USB cameras (UVC)"
+      },
+      "detail": {
+        "ja": "独自USB DMAドライバへUVC列挙・映像転送・バッファ管理を追加。機器に応じてバルク／アイソクロナス転送、MJPEG／非圧縮形式を調査。低解像度から表示・保存・抜き差しを検証。",
+        "en": "Add UVC enumeration, video transport and buffers to the native USB DMA driver. Audit bulk/isochronous transfers and MJPEG/uncompressed formats per device. Verify preview, capture and hot-plug at low resolution first."
+      }
+    },
+    {
+      "id": "builtin-camera",
+      "status": "planned",
+      "title": {
+        "ja": "8. Tab5内蔵カメラ",
+        "en": "8. Tab5 built-in camera"
+      },
+      "detail": {
+        "ja": "SC202CS／MIPI-CSI／ISPの既存ドライバと撮影アプリを実機検証。初期化・プレビュー・保存・終了時の資源解放を確認し、不足を修正。USBカメラとの共通アプリAPIも検討。",
+        "en": "Validate the existing SC202CS/MIPI-CSI/ISP driver and camera app on hardware. Check initialization, preview, capture and cleanup; fix gaps. Evaluate a common application API with USB cameras."
       }
     }
   ]

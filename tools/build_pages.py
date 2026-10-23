@@ -9,7 +9,7 @@ OUT = ROOT / 'docs/site'
 
 EN_STATUS = [
     ('OS / apps', 'Tasks, memory, IPC, M5EX and WASM exist', 'Validate Tab5 baseline and integrate GUI / FPGA completion.'),
-    ('Local terminal', 'Buffer, auto-scroll, partial ANSI', 'Add scrollback, colors and shared local / SSH processing.'),
+    ('Local terminal', 'Buffer, auto-scroll, partial ANSI', 'Share local/SSH processing; add VT100, required VT220 features, xterm extensions, key input and scrollback.'),
     ('SSH', 'Custom SSH, tabs, colors, 256 history lines per tab', 'Check compatibility, input, reconnect and storage channels.'),
     ('Wi-Fi / Tailscale', 'Networking exists; Tailscale scope not audited', 'Check stability, supported behavior and GUI settings.'),
     ('Wired keyboards', 'I2C accessory or USB boot keyboard', 'Add coexistence, hotplug and GUI key events.'),
@@ -17,7 +17,9 @@ EN_STATUS = [
     ('Bluetooth input', 'Not implemented', 'Audit C6 transport / firmware, then BLE HID pairing and reconnect. Assess Classic separately.'),
     ('Touch', 'GT911 single-point and screen keyboard; no ST7123', 'Add ST7123 and GUI press / move / release events.'),
     ('microSD', 'Tab5 SPI and /sd FAT verified: list, 38-byte write/read, persistence after reset; /usb concurrent', 'Optimize speed; verify hot-plug, sustained transfers and errors.'),
-    ('USB storage', 'TinyUSB OS_NONE MSC + FatFs: 37, 512 and 8192 byte writes, full readback and persistence after reset verified', 'Add hubs and multiple drives; validate independent removal and error recovery.'),
+    ('USB storage', 'Native descriptor DMA + FatFs: initialization corrected; 37, 512 and 8192 byte writes, full readback and persistence after reset verified; TinyUSB retained for comparison', 'Add hubs and multiple drives; validate independent removal and error recovery.'),
+    ('USB cameras', 'UVC not implemented', 'Add video transport to the native DMA driver; verify low-resolution preview, capture and hot-plug first.'),
+    ('Built-in camera', 'SC202CS / MIPI-CSI / ISP driver and camera app exist; hardware unverified in this fork', 'Verify initialization, preview, capture, repeated start/stop and cleanup; fix gaps.'),
     ('Filesystems', 'M5FS, VFS, RAM disk; dedicated flash persistence for some data', 'Add FAT and VFS storage integration; evaluate exFAT.'),
     ('Storage over SSH', 'Not implemented', 'Mount Tab5 SD / USB on the connected Linux server using FUSE.'),
     ('Local applications', 'MeOS apps; no Linux binary compatibility', 'Start with small TUI ports such as sl; audit nano / Vim dependencies.'),
@@ -79,11 +81,23 @@ DDR3 is an explicitly transferred external data region, not transparent CPU RAM.
 5. Expand to compositing, scaling and compute acceleration based on measurements.
 The first milestone is an interactive window and menu with at least one FPGA drawing operation. Speed improvement must be measured separately.
 ## USB implementation reference
-The official M5Stack Tab5 UserDemo uses ESP-IDF USB Host/HID drivers with FreeRTOS tasks. Tab5thinclient uses TinyUSB Host HID/MSC APIs. MeOS now uses TinyUSB 0.19.0 with OS_NONE, a MeOS mutex and polled processing. IDF initializes the PHY; TinyUSB owns enumeration, transfers, HID and BOT. The current DWC2 backend uses FIFO mode with DMA disabled. The original custom-driver timeout cause remains undetermined; this does not prove a DMA hardware defect.
+The official M5Stack Tab5 UserDemo uses ESP-IDF USB Host/HID drivers with FreeRTOS tasks. Tab5thinclient uses TinyUSB Host HID/MSC APIs. This fork is consolidating on its native descriptor DMA driver. Following TinyUSB 0.19.0, the native HAL now waits for host mode before configuring FIFOs. USB writes, complete readback and persistence after reset passed on the corrected driver. ESP-IDF provides PHY initialization and DWC2 HAL services; the FreeRTOS scheduler is not used. The TinyUSB OS_NONE/FIFO implementation remains available for comparison. See the [DMA investigation](docs/USB_DMA_INVESTIGATION.md).
 References: [official Tab5 USB implementation](https://github.com/m5stack/M5Tab5-UserDemo/blob/main/platforms/tab5/main/hal/components/hal_usb.cpp), [TinyUSB DWC2 host](https://github.com/hathach/tinyusb/blob/0.19.0/src/portable/synopsys/dwc2/hcd_dwc2.c).
 ## USB hubs and simultaneous devices
 Add hub port power, connection-change and reset handling, address allocation, per-device endpoints and DATA PID tracking, multiple MSC instances and independent mounts. Support multiple USB drives and keyboard input at the same time. High-speed hubs with full/low-speed devices require split transactions. This is planned; the current host supports one directly attached device. Verify independent removal/reconnection without disrupting other devices.
 Execution order: USB receiver/storage, microSD, USB write correction and hub/multiple devices, concurrent SSH server/client, touch scrolling, Bluetooth keyboard/mouse.
+## Shared terminal and compatibility
+Share terminal processing between the local console and SSH client. Implement VT100 as the baseline, then required VT220 features and selected xterm extensions. The SSH server must handle terminal type, PTY size, resize notifications and session I/O.
+- Verify cursor movement/save/restore, line/screen erase, text attributes/colors, scrolling regions, autowrap and DEC special graphics.
+- Implement arrows, editing/function/modifier keys and application cursor/keypad modes.
+- Add alternate screen, 256/RGB colors, bracketed paste and mouse reporting as needed. Full VT220 or xterm compatibility is not yet promised.
+- Integrate scrollback and touch input; test fragmented control sequences, UTF-8 and resizing. Match TERM and terminal replies to actual support; do not advertise xterm-256color prematurely.
+- Verify with vttest and remote Vim, nano, less and top. Remote applications are separate from native application ports.
+Reference: [XTerm Control Sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html). Develop the common terminal alongside concurrent SSH, before touch scrolling.
+## USB and built-in cameras
+Add UVC support to the native USB DMA driver. Inspect device descriptors and supported transport, formats, resolutions and frame rates. Implement bulk/isochronous video transfers as required; handle frame boundaries, loss, bandwidth, cache synchronization and removal. Evaluate MJPEG decoding and uncompressed conversion separately, starting with low-resolution, low-frame-rate preview and capture. Compatibility with all USB cameras is unverified.
+The existing Tab5 SC202CS/MIPI-CSI/ISP driver and camera app need hardware validation in this fork. Check initialization, preview, capture, repeated start/stop and cleanup; fix gaps. Validate the separate USB and built-in paths before considering a shared frame API and GUI integration.
+Keep the existing USB, microSD, hub, SSH, touch and Bluetooth priorities. Terminal compatibility belongs alongside SSH; the two camera milestones follow Bluetooth. Set performance, format support and dates after measurement.
 ## Storage mounted from the SSH server
 Use Tab5_thinclient as a reference. A FUSE helper on the connected Linux server mounts Tab5 microSD and USB storage as ~/sd and ~/usb. A separate SSH channel connects the helper to MeOS VFS. Linux and FUSE stay on the server. Audit Python/FUSE prerequisites, helper compatibility and reuse terms.
 - Start with read-only SD access, then writes, attributes, create/truncate/rename/delete, directories and USB storage.

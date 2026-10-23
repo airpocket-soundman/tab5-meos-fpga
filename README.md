@@ -13,7 +13,8 @@ Baseline and size-optimized firmware built and flashed; boot and serial shell ve
 ## Planned work
 
 - FPGA communication, DDR3 buffers, rectangle fills, image copies and GUI integration.
-- Shared local/SSH terminal features: ANSI colors, scrollback and compatibility checks.
+- Shared local/SSH terminal: VT100 baseline, required VT220 features and xterm extensions, key input and scrollback.
+- USB UVC cameras; hardware validation and fixes for the existing Tab5 built-in camera driver.
 - USB mouse, touch integration including ST7123, and BLE keyboard/mouse support after feasibility checks.
 - Tab5 microSD, USB mass storage and FAT support; evaluate exFAT.
 - Mount Tab5 storage on an SSH-connected Linux server through a server-side FUSE helper, plus file transfer and remote image display.
