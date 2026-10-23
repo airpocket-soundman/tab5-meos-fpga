@@ -14,7 +14,12 @@ list(FILTER M5OS_SRCS EXCLUDE REGEX "/apps/sdk/|/apps/m5ex/[^i]|/apps/wasm/[^w]"
 # keep images.c / images_none.c (generated / stub).  apps/wasm holds the sources of WebAssembly apps: only wasm_images.c is firmware.
 set(M5OS_NO_WASM_RE "/drivers/usbmsc/|/drivers/usbhost/|/fs/fat/|/third_party/fatfs/|/third_party/wasm3/|/third_party/quirc/|/kernel/app/wasm_|/apps/wasm/wasm_images\\.c$|/user/wasmapps/")      # WebAssembly runs on the Tab5 only
 
-if("$ENV{M5OS_BOARD}" STREQUAL "tab5")
+set(M5OS_USB_BACKEND "native_dma" CACHE STRING "USB backend: native_dma or tinyusb")
+set_property(CACHE M5OS_USB_BACKEND PROPERTY STRINGS native_dma tinyusb)
+if(NOT M5OS_USB_BACKEND MATCHES "^(native_dma|tinyusb)$")
+    message(FATAL_ERROR "Unknown USB backend: ${M5OS_USB_BACKEND}")
+endif()
+if("$ENV{M5OS_BOARD}" STREQUAL "tab5" AND M5OS_USB_BACKEND STREQUAL "tinyusb")
     list(APPEND M5OS_SRCS
         ${M5OS_ROOT}/third_party/tinyusb/src/tusb.c
         ${M5OS_ROOT}/third_party/tinyusb/src/common/tusb_fifo.c
@@ -24,6 +29,11 @@ if("$ENV{M5OS_BOARD}" STREQUAL "tab5")
         ${M5OS_ROOT}/third_party/tinyusb/src/class/msc/msc_host.c
         ${M5OS_ROOT}/third_party/tinyusb/src/portable/synopsys/dwc2/hcd_dwc2.c
         ${M5OS_ROOT}/third_party/tinyusb/src/portable/synopsys/dwc2/dwc2_common.c)
+endif()
+if("$ENV{M5OS_BOARD}" STREQUAL "tab5" AND M5OS_USB_BACKEND STREQUAL "native_dma")
+    list(FILTER M5OS_SRCS EXCLUDE REGEX "/drivers/usbkbd/usbkbd\\.c$|/drivers/usbmsc/|/drivers/usbhost/|/hal/esp32p4/usb_host\\.c$")
+else()
+    list(FILTER M5OS_SRCS EXCLUDE REGEX "/drivers/usb_dma/|/hal/esp32p4/usb_native_dma\\.c$")
 endif()
 # Board-specific sources: *_cores3.c / *_cardputer.c, the chip directories hal/esp32s3 (Xtensa) and
 # hal/esp32p4 (RISC-V), and the drivers that only some boards have.
