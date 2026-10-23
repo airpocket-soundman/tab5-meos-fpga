@@ -1,0 +1,6 @@
+MicroPython v1.26.1
+https://github.com/micropython/micropython
+Commit 647c8b96cae7e202c7a020395b7cfe65e5b8ce04
+Vendored py/, shared/runtime/, shared/readline/ unchanged.
+Also includes unchanged extmod/virtpin.h and extmod/modplatform.h.
+MIT license; see LICENSE.
