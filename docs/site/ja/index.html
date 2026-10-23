@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tab5 MeOS FPGA — 開発計画</title><meta name="description" content="目的、実装状況、これからの開発を公開します。"><link rel="stylesheet" href="../style.css"><link rel="alternate" hreflang="en" href="https://airpocket-soundman.github.io/tab5-meos-fpga/"><link rel="alternate" hreflang="ja" href="https://airpocket-soundman.github.io/tab5-meos-fpga/ja/"></head>
+<body><header><strong>Tab5 MeOS FPGA</strong><nav aria-label="ナビゲーション"><a href="#plan">開発計画</a><a href="../" lang="en" hreflang="en">English</a><a href="https://github.com/airpocket-soundman/tab5-meos-fpga">GitHub ↗</a></nav></header>
+<main><div class="hero"><div class="eyebrow">M5STACK TAB5 × TANG PRIMER 20K · RESEARCH LOG</div><h1>FPGAで広げる、MeOSのGUI。</h1><p class="lead">目的、実装状況、これからの開発を公開します。</p><div class="notice">計画・コード調査段階。本フォークのビルド・実機起動・FPGA通信は未検証です。予定機能は実装済みを意味しません。</div><p>更新日: <time datetime="2026-10-23">2026-10-23</time></p></div><article id="plan"><h2>Tab5 MeOS FPGA — 開発目的と開始記録</h2>
+<p>更新日：2026-10-23</p>
+<h3>目的と範囲</h3>
+<p>主目標を、FPGAによる描画支援を組み込んだMeOSのGUI化とする。Tab5上で、ウィンドウ、メニュー、文字、画像を扱うGUIを構築し、Tang Primer 20Kとその128MB DDR3を描画処理・画像資源の保持に活用する。文字中心の操作環境から、初期Windowsのようなウィンドウ操作環境への発展を目指す。Windows互換性は要件に含めない。</p>
+<p>MeOS側は入力、ウィンドウ管理、アプリの状態、描画命令の生成を担当し、FPGA側は矩形塗りつぶし、画像コピー、合成などを段階的に担当する。具体的な分担は転送時間を含む測定で決める。既存の上流GUI・コンソール・表示ドライバを調査し、利用できる部分を土台にする。</p>
+<p>大容量データの分割処理、明示的な退避・復元、演算アクセラレーションは、GUI基盤と共通する転送・バッファ管理を活用する副次的な研究対象とする。</p>
+<p>Linux版とMeOS版を別リポジトリで管理し、通信プロトコル、データ照合、評価条件を整合させる。OSごとのAPI・メモリ管理・スケジューラ・DMA対応は個別に調査する。Linux用ドライバをそのまま利用できるとは扱わない。</p>
+<p>FPGA側DDR3は明示的に転送する外部データ領域であり、通常のCPUポインタで参照できる主記憶や透過的なmalloc領域とは扱わない。GPU用と外部RAM用の同時搭載は初期の要件とせず、資源・帯域の評価後に判断する。</p>
+<h3>上流と開始状態</h3>
+<ul>
+<li>フォーク元：<a href="https://github.com/shi3z/MeOS">shi3z/MeOS</a>。開始コミット：<code>a6a9f234e509737f9fe84fe13468a8ec78b60fc9</code>。</li>
+<li>このフォーク：<a href="https://github.com/airpocket-soundman/tab5-meos-fpga">airpocket-soundman/tab5-meos-fpga</a>。</li>
+<li><code>origin</code> はこのフォーク、<code>upstream</code> は上流MeOS。</li>
+<li>フォーク作成、ローカル取得、リモート設定、資料とビルド入口の確認まで実施。独自機能の実装、ビルド、実機起動、FPGA通信、性能比較は未実施。</li>
+<li>既存READMEの動作確認は上流の報告であり、このフォークでの検証結果ではない。</li>
+</ul>
+<h3>関連リポジトリ</h3>
+<div class="table-wrap"><table><thead><tr><th scope="col">リポジトリ</th><th scope="col">役割</th></tr></thead><tbody><tr><td><a href="https://github.com/airpocket-soundman/tab5-linux-fpga">tab5-linux-fpga</a></td><td>Linux版OS・通信ドライバ。RAM活用とGPU構成の<a href="https://github.com/airpocket-soundman/tab5-linux-fpga/blob/main/docs/RAM_GPU_PLAN.md">検討資料</a>を参照</td></tr><tr><td><a href="https://github.com/airpocket-soundman/esp32p4-linux-fpga-memory">esp32p4-linux-fpga-memory</a></td><td>既存の外部メモリ研究計画・FPGA回路・評価側の起点</td></tr><tr><td><a href="https://github.com/airpocket-soundman/tab5-tang-primer20k-carrier">tab5-tang-primer20k-carrier</a></td><td>共通キャリア・配線・電源仕様の起点</td></tr><tr><td><a href="https://github.com/airpocket-soundman/tab5-fpga-gpu">tab5-fpga-gpu</a></td><td>GPU回路・描画仕様・参照実装と評価</td></tr></tbody></table></div>
+<h3>GUI化の段階と評価</h3>
+<ol>
+<li><strong>基準環境</strong>：MeOSのTab5向けビルドと表示経路を確認し、CPU描画の所要時間と内部RAM・PSRAM使用量を記録する。</li>
+<li><strong>通信とDDR3</strong>：小さなデータの往復照合から開始し、転送の安定性・実効帯域・DDR3のデータ保持を確認する。</li>
+<li><strong>最小描画支援</strong>：FPGA側バッファへの矩形塗りつぶしと画像コピーを実装し、Tab5画面に結果を表示する。命令送信・実行・画像回収・表示を含む所要時間をCPU描画と比較する。</li>
+<li><strong>GUI統合</strong>：MeOSの描画APIにCPU実装とFPGA実装の切替を設け、ウィンドウの表示・移動、メニュー、文字・画像表示を検証する。画像資源の常駐と変更領域の転送を評価する。</li>
+<li><strong>拡張</strong>：測定結果に応じて合成、拡大縮小、追加の計算処理へ進む。</li>
+</ol>
+<p>最初の到達点は、Tab5で入力操作できるウィンドウとメニューを表示し、少なくとも一つの描画処理をFPGA経由で実行できることとする。高速化の成立は別途測定で判断し、フレームレート、操作応答時間、CPU負荷、RAM使用量、転送量を記録する。</p>
+<p>初期はTab5既存LCDへのESP32-P4経由の表示を評価する。FPGA側DDR3に画像を置いても、表示のための画像回収が帯域を消費するため、表示経路は設計上の主要な検証項目とする。FPGAからの直接表示は別途ハードウェア構成の検討が必要であり、初期の前提にしない。</p>
+<h3>周辺機能の実装・拡張予定</h3>
+<p>以下は2026-10-23時点のコード確認に基づく計画。実装ありは本フォークでの実機検証済みを意味しない。既存機能は維持・検証し、未対応部分を段階的に追加する。</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">分類</th><th scope="col">現状</th><th scope="col">実装・検証予定</th></tr></thead><tbody><tr><td>OS・アプリ基盤</td><td>独自タスク管理、メモリ管理、IPC、M5EX・WASMあり</td><td>Tab5で基準動作を確認し、GUI・FPGA処理の待機と完了通知を統合</td></tr><tr><td>ローカル端末</td><td>画面バッファ、自動スクロール、ANSI制御の一部あり</td><td>スクロールバック、ANSI色、必要なVT系制御を追加し、SSH用端末との共通化を検討</td></tr><tr><td>SSH</td><td>独自SSH、複数タブ、色、タブごと256行の履歴あり</td><td>端末互換性、キー操作、再接続、ストレージ通信用チャネルを検証・拡張</td></tr><tr><td>Wi-Fi・Tailscale</td><td>Wi-Fiとネットワーク処理あり。Tailscaleは実装範囲未精査</td><td>対応範囲と接続の安定性を確認し、GUIから接続状態・設定を扱えるようにする</td></tr><tr><td>有線キーボード</td><td>専用I2CキーボードとUSB HIDブートキーボードあり。起動時に選択</td><td>両入力の共存、抜き差し、GUIへのキーイベント配送を整備</td></tr><tr><td>USBマウス</td><td>未実装</td><td>HID入力、移動・ボタン・ホイール、ポインター描画、GUIイベントへの変換を追加</td></tr><tr><td>Bluetooth入力</td><td>BTキーボード・マウス接続は未実装</td><td>C6との通信とファームウェアの対応範囲を調査し、利用可能なBLE HID機器の探索・ペアリング・再接続・入力を実装。Bluetooth Classic対応は別途可否を判断</td></tr><tr><td>タッチ</td><td>GT911の1点入力と画面キーボードあり。ST7123未対応</td><td>搭載機種を確認し、ST7123対応とGUIへの押下・移動・解放イベント統合を追加</td></tr><tr><td>microSD</td><td>Tab5ではドライバー未実装・無効</td><td>Tab5向けブロックデバイスを実装し、読み書き・エラー処理を検証</td></tr><tr><td>USBメモリ</td><td>Mass Storageドライバーなし</td><td>USB bulk転送、Mass Storage BOT・SCSI、ブロックデバイスを実装し、抜き差し・取り外し処理を整備</td></tr><tr><td>ファイルシステム</td><td>M5FS・VFS・RAMディスク、一部の専用フラッシュ保存あり</td><td>FAT対応を追加し、microSD・USBメモリをVFSへ統合。exFATは対象媒体と実装条件を確認して追加</td></tr><tr><td>SSH先からのローカルストレージマウント</td><td>未実装</td><td>Tab5_thinclientを参考に、SSH接続先LinuxからTab5のmicroSD・USBメモリを通常のファイルとして操作できるようにする（下記）</td></tr><tr><td>ローカルアプリ</td><td>MeOS専用アプリあり。Linuxバイナリー互換なし</td><td>slなどの小規模TUIアプリ移植を入口に、端末・ファイルAPIの不足を評価。nano・Vimは依存調査後に移植範囲を決める</td></tr><tr><td>MicroPython</td><td>本フォークでの組み込み状況・依存関係は未調査</td><td>MeOS上へ組み込み、対話REPL、ファイルからのスクリプト実行、中断・終了、VFS連携を実装</td></tr><tr><td>MicroPythonからのGPIO操作</td><td>未調査・実装予定</td><td>Tab5の利用可能な外部GPIOを<code>machine.Pin</code>互換のAPIで操作できるようにし、入力・出力・プル設定を提供</td></tr><tr><td>ネイティブシェルからのGPIO操作</td><td>利用者向けコマンドは未調査・実装予定</td><td>ピン一覧・用途・使用状態の表示、入力読み取り、出力設定、モード・プル設定を行うコマンドを追加</td></tr><tr><td>FPGA描画・DDR3</td><td>本フォークでは未実装</td><td>上記「GUI化の段階と評価」に沿って実装</td></tr></tbody></table></div>
+<h4>SSH接続先からのストレージマウント</h4>
+<p>Tab5_thinclientのサーバー側FUSEヘルパーとSSH通信方式を参考に、Tab5から接続したLinuxサーバー上で、Tab5のmicroSDを<code>~/sd</code>、USBメモリを<code>~/usb</code>などにマウントする。サーバー上のエディタやコマンドからファイルを直接読み書きできることを目標とする。MeOS自身にLinuxやFUSEを移植する方式ではなく、サーバー側ヘルパーとMeOS側VFS操作をSSH経由でつなぐ。</p>
+<ul>
+<li>初期はLinuxサーバーを対象とし、Python・FUSE・ユーザーマウントの利用条件を確認する。既存ヘルパーの互換性と再利用条件を調査する。</li>
+<li>SSH端末用とは別のチャネルで、一覧取得、属性取得、ファイルの読み書き・作成・切り詰め・名前変更・削除、ディレクトリ操作を扱う。</li>
+<li>公開する領域をmicroSD・USBメモリの指定ルートに限定し、範囲外のパスを拒否する。読み取り専用と読み書きを選択できるようにする。</li>
+<li>ローカルのファイラー・アプリとの同時アクセス、キャッシュ整合性、書き込み完了・同期を設計する。切断時に未完了の書き込みを成功として扱わない。</li>
+<li>媒体未挿入、取り外し、SSH切断・再接続、サーバーヘルパー終了時のエラー通知とマウント解除を整備する。</li>
+<li>小さなファイルの読み取りから開始し、書き込み、ファイル操作、同時アクセスへ拡張する。転送前後の内容照合と切断試験で確認する。</li>
+<li>関連機能としてSCP相当のファイル転送、サーバー上の画像をTab5へ転送・表示する機能も実装予定に含める。</li>
+</ul>
+<h4>MicroPythonとGPIO操作</h4>
+<p>MicroPythonをMeOSのタスク・メモリ管理・コンソール・VFSへ接続する。既存のESP32向けポートやTab5_thinclientの実装は依存関係を調べて参考にし、FreeRTOS依存の実装をそのまま利用できるとは扱わない。REPLとスクリプト実行を入口とし、Ctrl-Cによる中断、例外表示、終了時の資源解放、GCヒープとタスクスタックの使用量を検証する。</p>
+<p>GPIO操作はMeOS側に共通の管理APIを設け、MicroPythonとネイティブシェルの両方から利用する。最初はデジタル入出力とプル設定を対象とし、PWM、ADC、割り込み、I2C・SPIなどは対応ピン・周辺回路と依存関係を調査して段階的に拡張する。</p>
+<ul>
+<li>Tab5の外部端子とGPIO番号の対応、対応する入力・出力モード、予約用途、使用中の所有者を一覧化する。</li>
+<li>LCD、PSRAM、Wi-Fi、ストレージ、キーボード、FPGA通信などの使用ピンを管理し、競合する再設定を拒否する。</li>
+<li>シェルのコマンド案は<code>gpio list</code>、<code>gpio mode &lt;pin&gt; &lt;in|out&gt; [none|up|down]</code>、<code>gpio read &lt;pin&gt;</code>、<code>gpio write &lt;pin&gt; &lt;0|1&gt;</code>、<code>gpio release &lt;pin&gt;</code>とする。最終構文は既存CLIとの整合を確認して決める。</li>
+<li>MicroPythonは<code>machine.Pin</code>の基本操作との互換を目指す。ピン確保・解放と、スクリプト終了・例外・中断時に出力状態をどう扱うかを明文化する。シェルの設定は明示的な解放または再起動までの扱いを定める。</li>
+<li>利用可能な端子で入力・出力・プル設定、無効ピン指定、所有権競合、中断後の再実行を確認する。外部接続前に電圧・配線条件を確認する。</li>
+</ul>
+<h4>優先順</h4>
+<p>基準ビルド・実機確認の後、入力統合とmicroSD・FAT対応をGUI・FPGA通信の研究と並行して進める。ストレージマウントはmicroSDで読み取りから検証し、書き込みとUSBメモリへ広げる。GPIOの共通管理とシェル操作を整えた上で、MicroPythonのREPL・スクリプト実行とGPIO APIを統合する。USBマウス、端末共通化、Bluetooth入力、追加アプリ移植は依存機能の成立に合わせて進める。具体的な性能目標と日程は測定・実機確認後に定める。</p>
+<h3>次の作業</h3>
+<ol>
+<li><code>tools/build.sh</code>、<code>tools/env.sh</code>、Tab5固有ドライバを調べ、再現可能なビルド環境を準備する。上流のTab5向け環境指定はESP-IDF v5.4.4。実際に使用した版と成功結果を別途記録する。</li>
+<li>上流の入口 <code>sh tools/build.sh tab5 build</code> でビルドし、成果物のハッシュを保存する。書き込みは今回の作業に含めない。</li>
+<li>既存ファームウェアとC6の状態を確認した上で、実機検証の範囲・復元手順を定める。</li>
+<li>キャリア共通仕様を照合し、GPIO競合、PARLIO、DMA、割り込み、キャッシュ同期、MeOSのタスクとの協調を調べる。</li>
+<li>低速通信とDDR3全域照合から、小容量バッファによる分割処理・退避復元へ進む。Linux版とは同じ入力・データ量・精度・転送条件で比較する。</li>
+</ol>
+<h3>取り扱い</h3>
+<p>参考記事：<a href="https://note.com/shi3zblog/n/n15e659e90a23">shi3z「M5Stack用OS\&quot;MeOS\&quot;を作った/自作OS」</a>。OSを学ぶ環境としての狙いと、シェル・ファイラー・SSHなどの利用例を参照する。記事の動作報告は本フォークの検証結果とは区別する。</p>
+<p>上流の履歴、著作権表示、第三者コードのライセンスを維持する。ルートのライセンスファイルは開始時点で見当たらず、GitHub APIも未分類。再配布条件が必要な段階で上流の許諾を確認し、このフォーク独自のライセンスを上流全体へ付与しない。</p>
+<p>作業終了時は対象コミット、環境、検証内容と結果、未解決事項、次の作業を記録する。上流報告と独自検証を区別し、認証情報や生ログを公開しない。</p></article><section><h2>関連プロジェクト</h2><div class="links"><a href="https://github.com/airpocket-soundman/tab5-linux-fpga">tab5-linux-fpga</a><a href="https://github.com/airpocket-soundman/tab5-fpga-gpu">tab5-fpga-gpu</a><a href="https://github.com/airpocket-soundman/tab5-tang-primer20k-carrier">tab5-tang-primer20k-carrier</a><a href="https://github.com/airpocket-soundman/esp32p4-linux-fpga-memory">esp32p4-linux-fpga-memory</a><a href="https://github.com/airpocket-soundman/Tab5_thinclient">Tab5_thinclient</a></div></section></main><footer>Tab5 MeOS FPGA · airpocket-soundman · 研究開発計画</footer></body></html>
