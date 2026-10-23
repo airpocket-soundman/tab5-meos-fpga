@@ -8,7 +8,7 @@ An experimental MeOS fork for a graphical M5Stack Tab5 environment with FPGA-ass
 
 ## Current status
 
-Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard input and high-speed mixed-speed hubs are next. See [USB implementation](docs/USB_IMPLEMENTATION.md). FPGA communication, GUI extensions and full peripheral regression remain unverified.
+Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard command input and USB card-reader mounting/listing also passed limited checks. `lsusb` shows native USB topology and mounts; see [diagnostics](docs/USB_DIAGNOSTICS.md) and [USB implementation](docs/USB_IMPLEMENTATION.md). Sustained input under load, high-speed mixed-speed hubs, FPGA communication, GUI extensions and full peripheral regression remain unverified.
 
 ## Planned work
 

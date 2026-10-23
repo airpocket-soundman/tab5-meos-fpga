@@ -19,6 +19,7 @@
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
 #include <m5os/hal_time.h>
+#include <m5os/usb_info.h>
 #include <string.h>
 
 #define TASK_STACK        8192       /* the input method converts on this stack */
@@ -62,6 +63,39 @@ static uint8_t s_msc_iface,s_msc_in,s_msc_out;
 static uint16_t s_msc_imps,s_msc_omps;
 static bool s_hub;
 static uint16_t s_ep0_mps;
+static usb_info_t device_info[USB_INFO_MAX];
+static mutex_t info_lock=MUTEX_INIT;
+
+size_t usb_native_snapshot(usb_info_t *out,size_t capacity)
+{
+    if (!out) return 0;
+    size_t n=0;
+    mutex_lock(&info_lock);
+    for (unsigned i=1;i<USB_INFO_MAX && n<capacity;i++)
+        if (device_info[i].present) out[n++]=device_info[i];
+    mutex_unlock(&info_lock);
+    return n;
+}
+static void info_clear(unsigned address)
+{
+    mutex_lock(&info_lock);
+    if (address<USB_INFO_MAX) memset(&device_info[address],0,sizeof device_info[address]);
+    else memset(device_info,0,sizeof device_info);
+    mutex_unlock(&info_lock);
+}
+static void info_configured(unsigned address,bool configured)
+{
+    mutex_lock(&info_lock);
+    device_info[address].configured=configured;
+    mutex_unlock(&info_lock);
+}
+static void info_mount(unsigned address,int slot,bool mounted)
+{
+    mutex_lock(&info_lock);
+    device_info[address].storage_slot=slot;
+    device_info[address].mounted=mounted;
+    mutex_unlock(&info_lock);
+}
 
 const char *usbkbd_type(void) { return s_type; }
 void usbkbd_stats(keyboard_stats_t *out) { *out = s_stats; }
@@ -162,6 +196,11 @@ static int enumerate(usbh_speed_t speed, uint8_t address, int *config)
     if (ctrl(0x00, REQ_SET_ADDRESS, address, 0, NULL, 0) < 0) { kprintf("usbkbd: SET_ADDRESS failed\n"); return -1; }
     task_sleep(ADDR_RECOVERY_MS);
     if (!hal_usbh_open_control(address, mps0)) return -1;
+    mutex_lock(&info_lock);
+    device_info[address]=(usb_info_t){.vid=vid,.pid=pid,.address=address,
+        .parent=address==1?0:1,.port=address==1?0:address-1,.speed=speed,
+        .device_class=d[4],.storage_slot=-1,.present=true};
+    mutex_unlock(&info_lock);
 
     uint8_t cfg[1024];
     n = ctrl(0x80, REQ_GET_DESCRIPTOR, DESC_CONFIG << 8, 0, cfg, 9);
@@ -195,6 +234,11 @@ static int enumerate(usbh_speed_t speed, uint8_t address, int *config)
         }
         i += len;
     }
+    mutex_lock(&info_lock);
+    device_info[address].kinds=(s_hub?USB_INFO_HUB:0) |
+        (s_kbd_ep?USB_INFO_KEYBOARD:0) |
+        (s_msc_in && s_msc_out?USB_INFO_STORAGE:0);
+    mutex_unlock(&info_lock);
     if(s_kbd_ep) {
         kprintf("usbkbd: interrupt IN ep=%02x mps=%u interval=%u\n", s_kbd_ep,s_kbd_mps,s_kbd_interval);
         return iface;
@@ -277,6 +321,7 @@ static void hub_session(void)
             if (!hub_status(hub_mps,port,&status)) continue;
             bool connected=(status&1)!=0;
             if (!connected || (status&(1u<<16))) {
+                info_clear(port+1);
                 if (keyboard_port==port) {
                     mutex_lock(&usb_native_bus_lock);
                     hal_usbh_keyboard_close();
@@ -322,6 +367,7 @@ static void hub_session(void)
             mutex_lock(&usb_native_bus_lock);
             int iface=enumerate(speed,address,&config);
             bool configured=iface!=-1 && ctrl(0,REQ_SET_CONFIG,config,0,NULL,0)>=0;
+            info_configured(address,configured);
             bool keyboard_ready=false;
             if (configured && iface>=0 && !keyboard_port &&
                 ctrl(0x21,HID_SET_PROTOCOL,0,iface,NULL,0)>=0) {
@@ -349,7 +395,8 @@ static void hub_session(void)
             if (slot<0) { kprintf("usbhub: no free storage slot\n");continue; }
             if (usbmsc_attach_slot(slot,address,msc_iface,in,imps,out,omps)) {
                 slots[port-1]=slot;used[slot]=true;
-                usb_fat_mount_slot(slot,usbmsc_device_slot(slot));
+                bool mounted=usb_fat_mount_slot(slot,usbmsc_device_slot(slot));
+                info_mount(address,slot,mounted);
                 kprintf("usbhub: port %u address=%u storage slot=%u\n",port,address,slot);
             }
         }
@@ -436,6 +483,7 @@ static void usbkbd_task(void *arg)
 
     for (;;) {
         s_type = "none";
+        info_clear(USB_INFO_MAX);
         /* IDF also enables its debounce lock on disconnect. Release it before
          * waiting again. Use the port level: another poller or a quick replug
          * can consume the connection edge before this task reaches the wait. */
@@ -459,7 +507,9 @@ static void usbkbd_task(void *arg)
         int config = 0;
         int iface = enumerate(hal_usbh_speed(), KBD_ADDRESS, &config);
         if (iface == -2 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
-            if (usbmsc_attach(s_msc_iface,s_msc_in,s_msc_imps,s_msc_out,s_msc_omps)) usb_fat_mount(usbmsc_device());
+            info_configured(1,true);
+            if (usbmsc_attach(s_msc_iface,s_msc_in,s_msc_imps,s_msc_out,s_msc_omps))
+                info_mount(1,0,usb_fat_mount(usbmsc_device()));
             while(hal_usbh_connected()){hal_usbh_poll();task_sleep(CONNECT_POLL_MS);}
             usb_fat_detach();usbmsc_detach();
             kprintf("usbmsc: disconnected\n");
@@ -467,8 +517,10 @@ static void usbkbd_task(void *arg)
              * the device was reinserted during filesystem cleanup. */
             continue;
         } else if (iface == -3 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
+            info_configured(1,true);
             hub_session();
         } else if (iface >= 0 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
+            info_configured(1,true);
             int protocol_rc = ctrl(0x21, HID_SET_PROTOCOL, 0, (uint16_t)iface, NULL, 0);           /* 0 = boot protocol */
             ctrl(0x21, HID_SET_IDLE, 0, (uint16_t)iface, NULL, 0);               /* may STALL: not required */
             if (protocol_rc < 0) { kprintf("usbkbd: boot protocol rejected (%d)\n", protocol_rc); continue; }

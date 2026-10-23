@@ -39,6 +39,9 @@
 #include <m5os/gui.h>
 #include <m5os/wifi.h>
 #include <m5os/board_config.h>
+#if M5OS_USB_NATIVE_DMA
+#include <m5os/usb_info.h>
+#endif
 #if M5OS_HAS_KEYBOARD
 #include "../../drivers/keyboard/keyboard.h"
 #if M5OS_BOARD_TAB5
@@ -392,6 +395,31 @@ static int cmd_put(int argc, char **argv)
     return 0;
 }
 
+#if M5OS_USB_NATIVE_DMA
+static int cmd_lsusb(int argc,char **argv)
+{
+    (void)argc;(void)argv;
+    usb_info_t devices[USB_INFO_MAX];
+    size_t n=usb_native_snapshot(devices,USB_INFO_MAX);
+    sh_puts("Addr Parent:Port VID:PID   Speed Class Type          State       Mount\n");
+    for (size_t i=0;i<n;i++) {
+        usb_info_t *d=&devices[i];
+        const char *speed=d->speed==2?"HS":d->speed==1?"FS":"LS";
+        const char *type=(d->kinds&USB_INFO_HUB)?"hub":
+            (d->kinds&(USB_INFO_KEYBOARD|USB_INFO_STORAGE))==(USB_INFO_KEYBOARD|USB_INFO_STORAGE)?"HID+MSC":
+            (d->kinds&USB_INFO_KEYBOARD)?"keyboard":(d->kinds&USB_INFO_STORAGE)?"storage":"unsupported";
+        const char *mount=d->storage_slot==0?"/usb":d->storage_slot==1?"/usb1":
+                          d->storage_slot==2?"/usb2":"-";
+        SH_PRINTF("%3u  %u:%u         %04x:%04x %s    %02x    %-13s %-11s %s%s\n",
+                  d->address,d->parent,d->port,d->vid,d->pid,speed,d->device_class,type,
+                  d->configured?"configured":"addressed",mount,
+                  d->storage_slot>=0 && !d->mounted?" (unmounted)":"");
+    }
+    if (!n) sh_puts("No enumerated USB devices.\n");
+    sh_puts("HS=480 Mbit/s FS=12 Mbit/s LS=1.5 Mbit/s; 0:0 is the root port.\n");
+    return 0;
+}
+#endif
 
 static int cmd_send(int argc, char **argv)
 {
@@ -903,6 +931,9 @@ static int cmd_history(int argc, char **argv)
 
 static const command_t s_commands[] = {
     { "help",    cmd_help,    "list commands" },
+#if M5OS_USB_NATIVE_DMA
+    { "lsusb",   cmd_lsusb,   "show cached USB devices, topology, speed and mounts" },
+#endif
     { "history", cmd_history, "show command history (or use Up/Down arrows)" },
     { "ps",      cmd_ps,      "list tasks" },
     { "kill",    cmd_kill,    "kill PID        terminate one task (an app: its owner task)" },

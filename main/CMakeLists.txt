@@ -63,6 +63,10 @@ idf_component_register(
     PRIV_REQUIRES soc hal esp_rom esp_hw_support ${M5OS_ARCH_REQUIRES})
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE ${M5OS_BOARD_DEF} ${M5OS_DEFS})
+if("$ENV{M5OS_BOARD}" STREQUAL "tab5" AND M5OS_USB_BACKEND STREQUAL "native_dma")
+    set_source_files_properties(${M5OS_ROOT}/user/shell/shell.c PROPERTIES
+        COMPILE_DEFINITIONS M5OS_USB_NATIVE_DMA=1)
+endif()
 
 # wasm3 (third_party/wasm3, MIT): the interpreter behind .wasm apps.  Vendored as is except for the allocator hook in
 # m3_core.c; its own warnings are not ours to fix.  Optimised for speed: it is the hot loop of every WebAssembly app.
