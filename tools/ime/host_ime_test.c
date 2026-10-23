@@ -13,6 +13,16 @@
 #include <string.h>
 #include <stdarg.h>
 
+#ifndef IME_HOST_PLATFORM_PROVIDED
+#include <m5os/mutex.h>
+#include <assert.h>
+/* This single-thread regression runs as pre-scheduler initialization. */
+bool sched_started(void) { return false; }
+void mutex_lock(mutex_t *m) { (void)m; assert(!"unexpected host mutex acquisition"); }
+void mutex_unlock(mutex_t *m) { (void)m; assert(!"unexpected host mutex release"); }
+void fbcon_scroll_live(void) {}
+#endif
+
 /* ---- stubs for the OS ---- */
 static char s_out[4096];
 static size_t s_outn;

@@ -15,6 +15,7 @@
 #include <m5os/ime.h>
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
+#include <m5os/mutex.h>
 #include <m5os/display.h>
 #include <m5os/kmalloc.h>
 #include <m5os/board_config.h>
@@ -597,20 +598,20 @@ static bool view_inline(void)
 
 static void view_update(void);
 
-void ime_bypass(bool on)
+static void ime_bypass_unlocked(bool on)
 {
     if (on == g.bypass) return;
     g.bypass = on;
     if (on && B && (composing() || g.converting)) { pre_reset(); view_update(); }      /* drop a half-typed word */
 }
 
-void ime_set_anchor(int cx, int cy)
+static void ime_set_anchor_unlocked(int cx, int cy)
 {
     if (g.bar_saved && (g.ax != cx || g.ay != cy)) bar_hide();            /* the field moved: the old picture is stale */
     g.ax = cx; g.ay = cy; g.anchor_set = true;
 }
 
-void ime_clear_anchor(void)
+static void ime_clear_anchor_unlocked(void)
 {
     if (g.anchor_set) { bar_hide(); g.shown = false; }
     g.anchor_set = false;
@@ -630,7 +631,7 @@ static void view_update(void)
 
 /* ---- public --------------------------------------------------------------------------------- */
 
-void ime_init(void)
+static void ime_init_unlocked(void)
 {
     if (g.inited) return;
     g.inited = true;
@@ -644,17 +645,17 @@ void ime_init(void)
     ime_dict_load_async();
 }
 
-bool ime_active(void) { return g.mode != IME_OFF; }
+static bool ime_active_unlocked(void) { return g.mode != IME_OFF; }
 
-const char *ime_status(void)
+static const char *ime_status_unlocked(void)
 {
     return g.mode == IME_OFF ? "off" : g.mode == IME_HIRA ? "hiragana" : "katakana";
 }
 
-void ime_feed(const char *key)
+static void ime_feed_unlocked(const char *key)
 {
     if (key && key[0] && !fbcon_is_paused()) fbcon_scroll_live();
-    if (!g.inited) ime_init();
+    if (!g.inited) ime_init_unlocked();
     if (!B || g.bypass) { out_str(key); return; }                   /* no memory, or an app wants the raw keys */
     char ch;
     key_t kt = parse_key(key, &ch);
@@ -665,3 +666,33 @@ void ime_feed(const char *key)
     else idle_key(kt, ch, key);
     if (g.mode != IME_OFF || g.shown) view_update();
 }
+
+/* All public state access shares one owner. Lock order is IME -> display;
+ * display transactions must not call back into the IME. Boot initialization
+ * precedes scheduling, so no mutex is needed until sched_init has run.
+ * Calls are task-context only, like the drawing and console APIs they use. */
+static mutex_t s_ime_mutex = MUTEX_INIT;
+static bool ime_enter(void)
+{
+    if (!sched_started()) return false;
+    mutex_lock(&s_ime_mutex);
+    return true;
+}
+static void ime_leave(bool held) { if (held) mutex_unlock(&s_ime_mutex); }
+void ime_init(void) { bool held=ime_enter(); ime_init_unlocked(); ime_leave(held); }
+void ime_feed(const char *key)
+{
+    if (!key || !key[0]) return;
+    bool held=ime_enter(); ime_feed_unlocked(key); ime_leave(held);
+}
+bool ime_active(void)
+{
+    bool held=ime_enter(); bool active=ime_active_unlocked(); ime_leave(held); return active;
+}
+const char *ime_status(void)
+{
+    bool held=ime_enter(); const char *status=ime_status_unlocked(); ime_leave(held); return status;
+}
+void ime_bypass(bool on) { bool held=ime_enter(); ime_bypass_unlocked(on); ime_leave(held); }
+void ime_set_anchor(int x,int y) { bool held=ime_enter(); ime_set_anchor_unlocked(x,y); ime_leave(held); }
+void ime_clear_anchor(void) { bool held=ime_enter(); ime_clear_anchor_unlocked(); ime_leave(held); }
