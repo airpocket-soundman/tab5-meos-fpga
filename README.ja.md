@@ -49,3 +49,5 @@ USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSH
 ## 公開サイト
 
 静的な日英サイトは `docs/site/` にあります。計画更新後は `python tools/build_pages.py` で生成します。日本語本文は `docs/DEVELOPMENT_GOALS.md` を使用し、英語の対応本文は生成スクリプト内で更新します。`main`で公開元が変更されるとGitHub Actionsが生成・公開します。各ページ上部の言語リンクで切り替えられ、JavaScriptは不要です。
+
+- [FPGAキャリアの適合性・製作前要求](docs/FPGA_CARRIER_REQUIREMENTS.md)

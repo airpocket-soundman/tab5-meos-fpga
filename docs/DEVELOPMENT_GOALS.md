@@ -218,3 +218,7 @@ SFTP終了処理は、キュー内の応答を送出し、exit-status・EOF・CL
 基準の上流MeOSと現在版のBIN・静的HP SRAM・内部ヒープ予約領域を、同一sdkconfigハッシュ・ESP-IDF・コンパイラによる再ビルド結果から比較する。数値は`docs/resources/baseline.json`、`current.json`、`comparison.json`から公開ページへ生成する。基準版に必要な宣言のみのビルド修正と、各成果物のハッシュは[資源使用量の記録](docs/RESOURCE_USAGE.md)を参照。
 
 静的HP SRAMには内部ヒープの予約領域全体を含むため、実行時の内部ヒープ使用量を加算して総RAM使用量とはしない。PSRAM、タスクスタック、アプリの実行時使用量はワークロード依存であり、異なる時点の値を機能追加の単独コストとして差し引かない。
+
+## キャリアボードとの整合確認
+
+Tang Primer 20K Coreを前提とし、FPGA・GUI・GPIO・通信・表示経路の変更前に共通キャリアの最新仕様・ピン表・回路と監査記録を確認する。MeOS固有の要求、参照版、帯域と表示経路の制約は[キャリア接続要求と検討記録](docs/FPGA_CARRIER_REQUIREMENTS.md)に記録する。8bit双方向通信・クロック・フロー制御・電源断時保護・復旧経路を確定してから実装・製作へ進む。
