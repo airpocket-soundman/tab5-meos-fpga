@@ -352,9 +352,14 @@ static int b64val(int c)
 static int cmd_put(int argc, char **argv)
 {
     char path[VFS_PATH_MAX];
-    if (argc != 2 || !resolve(argv[1], path)) { sh_puts("usage: put PATH   (then base64 lines, ending with a line \".\")\n"); return 1; }
+    bool ack = argc == 3 && sh_streq(argv[1], "--ack");
+    if ((!ack && argc != 2) || !resolve(argv[ack ? 2 : 1], path)) {
+        sh_puts("usage: put [--ack] PATH   (base64 lines, ending with a line \".\")\n");
+        return 1;
+    }
     int fd = vfs_open(path, VFS_O_WRITE | VFS_O_CREATE | VFS_O_TRUNC);
     if (fd < 0) return fail("put", path, fd);
+    if (ack) sh_puts("put: ready\n");
 
     char line[LINE_MAX];
     uint8_t out[LINE_MAX];
@@ -378,12 +383,15 @@ static int cmd_put(int argc, char **argv)
             crc = crc32_update(crc, out, (size_t)k);
             total += (uint32_t)k;
         }
+        if (ack) SH_PRINTF("put: ack %u\n", total);
     }
-    vfs_close(fd);
+    int close_rc = vfs_close(fd);
+    if (rc == ERR_OK && close_rc < 0) rc = close_rc;
     if (rc != ERR_OK) { vfs_unlink(path); return fail("put", path, rc); }
     SH_PRINTF("put: wrote %u bytes, crc32 %08x\n", total, crc);
     return 0;
 }
+
 
 static int cmd_send(int argc, char **argv)
 {
