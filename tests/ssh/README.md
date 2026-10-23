@@ -61,7 +61,9 @@ filesystem or simultaneous shell and mount sessions.
 The bounded independent audit covered packet and path bounds, OPEN flags and
 exclusive creation, handle lifetime, VFS error propagation, read-only policy,
 channel mode exclusivity and both SSH window counters. It identified premature
-TCP closure on EOF; the server now waits for CLOSE with a bounded grace period,
-and the dedicated handshake case checks the regression.
+TCP closure on EOF; the server now drains queued SFTP requests/replies, sends
+exit status followed by EOF/CLOSE, and waits for the peer CLOSE with a bounded
+grace period. The dedicated handshake case pipelines INIT and 32 requests before
+half-closing and checks all replies, exit status 0 and graceful channel closure.
 
 Validation on 2026-10-23: all 14 encrypted connection cases and the 32-bit packet-boundary checks passed after the EOF handshake fix. Every connection ended with `VFS_OPEN 0`.

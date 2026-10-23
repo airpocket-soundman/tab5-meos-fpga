@@ -318,11 +318,28 @@ def sftp_raw(port):
 def sftp_eof_handshake(port):
     c, ch = sftp_channel(port)
     try:
-        assert sftp_packet(ch, 1, struct.pack(">I", 3))[0] == 2
+        # Pipeline requests then half-close before reading any responses. The
+        # server must drain both queued requests and replies before channel EOF.
+        wire = struct.pack(">IBI", 5, 1, 3)
+        for request_id in range(1, 33):
+            payload = struct.pack(">I", request_id) + sftp_string(b"/sd")
+            wire += struct.pack(">IB", len(payload) + 1, 16) + payload
+        ch.sendall(wire)
         ch.shutdown_write()  # EOF is distinct from CHANNEL_CLOSE.
-        time.sleep(0.05)
-        assert c.get_transport().is_active(), "Server closed TCP before channel-close handshake"
-        ch.close()
+        for index in range(33):
+            size = struct.unpack(">I", recv_exact(ch, 4))[0]
+            response = recv_exact(ch, size)
+            assert response[0] == (2 if index == 0 else 104)
+            if index:
+                assert struct.unpack(">I", response[1:5])[0] == index
+        # The subsystem may finish at EOF. It must deliver a successful process
+        # status and gracefully finish channel CLOSE before tearing down TCP.
+        assert ch.recv_exit_status() == 0
+        deadline = time.monotonic() + 2
+        while not ch.closed and time.monotonic() < deadline:
+            time.sleep(0.005)
+        assert ch.closed, "Server did not complete channel close"
+        ch.close()  # Idempotent, without Paramiko EOFError from a TCP race.
     finally:
         c.close()
 

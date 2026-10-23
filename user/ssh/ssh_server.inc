@@ -263,7 +263,7 @@ static bool sshd_channel_output(ssh_session_t *s, const char *data, size_t len)
 
 static void sshd_console(ssh_session_t *s)
 {
-    bool opened = false, shell = false, pty=false, peer_eof=false;
+    bool opened = false, shell = false, pty=false, peer_eof=false, close_sent=false;
     uint64_t eof_at=0;
     sftp_server_t *storage=NULL;
     uint32_t remote_max = 0, local_window = SSHD_INPUT_WINDOW;
@@ -286,14 +286,31 @@ static void sshd_console(ssh_session_t *s)
                 if (!ssh_send_packet(s, s->payload, p)) break;
             }
         }
-        if (!peer_eof && (shell || storage) && s->remote_win) {
+        bool output_drained=!storage;
+        if (!close_sent && (shell || storage) && s->remote_win) {
             size_t cap = sizeof(output);
             if (cap > s->remote_win) cap = s->remote_win;
             if (cap > remote_max) cap = remote_max;
             size_t n = storage?sftp_server_read(storage,output,cap):kconsole_log_read(&log_pos, output, cap);
             if (n && !sshd_channel_output(s, output, n)) break;
+            if(storage)output_drained=n==0;
         }
         if(storage&&sftp_server_failed(storage))break;
+        if(peer_eof && !close_sent && pending_pos==pending_len && output_drained) {
+            int close_error=storage?sftp_server_destroy(storage):0;
+            storage=NULL;
+            if(close_error<0)kprintf("sshd: SFTP cleanup failed (%d)\n",close_error);
+            size_t p=buf_put_u8(s->payload,0,SSH_MSG_CHANNEL_REQUEST);
+            p=buf_put_u32(s->payload,p,s->remote_chan);
+            p=buf_put_str(s->payload,p,"exit-status");
+            p=buf_put_u8(s->payload,p,0);
+            p=buf_put_u32(s->payload,p,close_error<0?1:0);
+            if(!ssh_send_packet(s,s->payload,p) ||
+               !sshd_channel_reply(s,SSH_MSG_CHANNEL_EOF) ||
+               !sshd_channel_reply(s,SSH_MSG_CHANNEL_CLOSE))break;
+            close_sent=true;
+            eof_at=hal_time_now_us();
+        }
         uint8_t *rx;
         int n = ssh_recv_packet(s, &rx, 10);
         if (n < 0) break;
@@ -345,6 +362,7 @@ static void sshd_console(ssh_session_t *s)
             if (!buf_get_u32(rx, n, &pos, &add) || UINT32_MAX - s->remote_win < add) break;
             s->remote_win += add;
         } else if (rx[0] == SSH_MSG_CHANNEL_REQUEST) {
+            if(peer_eof)break;
             const uint8_t *name;
             size_t len;
             if (!buf_get_str(rx, n, &pos, &name, &len) || pos >= (size_t)n) break;
@@ -399,13 +417,16 @@ static void sshd_console(ssh_session_t *s)
             pending_pos = 0;
             local_window -= len;
         } else if (rx[0] == SSH_MSG_CHANNEL_CLOSE) {
-            sshd_channel_reply(s, SSH_MSG_CHANNEL_CLOSE);
+            if(pos!=(size_t)n)break;
+            if(!close_sent)sshd_channel_reply(s, SSH_MSG_CHANNEL_CLOSE);
             break;
         } else if (rx[0] == SSH_MSG_CHANNEL_EOF) {
-            /* EOF ends input, not the channel. Allow the peer to finish CLOSE. */
+            /* This one-channel subsystem finishes at EOF. Send its exit status
+             * before EOF/CLOSE, but retain TCP until the peer acknowledges CLOSE.
+             * OpenSSH waits for both status and channel close; immediate TCP
+             * teardown instead races its reply and reports a failed process. */
             if(pos!=(size_t)n || peer_eof)break;
             peer_eof=true; eof_at=hal_time_now_us();
-            if(!sshd_channel_reply(s, SSH_MSG_CHANNEL_EOF))break;
         } else {
             break;
         }
@@ -456,6 +477,16 @@ static void sshd_task(void *arg)
 
 int sshd_cmd_main(int argc, char **argv)
 {
+    if(argc==2&&!strcmp(argv[1],"fingerprint")) {
+        if(!s_sshd_task_live||!s_sshd_run){kputs("sshd: start the server before reading its public fingerprint\n");return 1;}
+        uint8_t blob[64],digest[32];char hex[65];
+        size_t n=buf_put_str(blob,0,"ssh-ed25519");
+        n=buf_put_mem(blob,n,s_sshd_host_pub,32);
+        sha256_ctx_t hash;sha256_init(&hash);sha256_update(&hash,blob,n);sha256_final(&hash,digest);
+        static const char digits[]="0123456789abcdef";
+        for(unsigned i=0;i<32;i++){hex[i*2]=digits[digest[i]>>4];hex[i*2+1]=digits[digest[i]&15];}
+        hex[64]=0;kprintf("sshd: host-key SHA256 hex %s\n",hex);return 0;
+    }
     if(argc==3&&!strcmp(argv[1],"storage-test"))return sftp_storage_selftest(argv[2])?0:1;
     if (argc == 1 || (argc == 2 && !strcmp(argv[1], "status"))) {
         kprintf("sshd: %s port=%u session=%s socket=%d storage=%s\n",
@@ -479,7 +510,7 @@ int sshd_cmd_main(int argc, char **argv)
     }
     if ((argc != 4 && argc != 5) || strcmp(argv[1], "start") ||
         !argv[2][0] || strlen(argv[2]) > 32 || strlen(argv[3]) < 8 || strlen(argv[3]) > 64) {
-        kputs("usage: sshd start USER PASSWORD [PORT] | status | stop | storage ro|rw|off\n"
+        kputs("usage: sshd start USER PASSWORD [PORT] | status | fingerprint | stop | storage ro|rw|off\n"
               "Password: 8..64 bytes. One authenticated shared console OR SFTP channel; no exec.\n");
         return 1;
     }
