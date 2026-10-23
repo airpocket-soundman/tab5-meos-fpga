@@ -424,6 +424,7 @@ static int fd_check(int fd, uint32_t need_flag)
 
 int fs_open(const char *path, uint32_t flags)
 {
+    if (flags & FS_O_EXCL) return ERR_NOSYS; /* Do not silently weaken exclusive create. */
     if (!(flags & (FS_O_READ | FS_O_WRITE))) return ERR_INVAL;
     mutex_lock(&s_lock);
     int result;

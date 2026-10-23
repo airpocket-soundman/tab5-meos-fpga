@@ -26,6 +26,7 @@
 #define VFS_O_CREATE  FS_O_CREATE
 #define VFS_O_TRUNC   FS_O_TRUNC
 #define VFS_O_APPEND  FS_O_APPEND
+#define VFS_O_EXCL    FS_O_EXCL
 #define VFS_PATH_MAX  96
 #define VFS_FD_MAX    16
 #define VFS_MOUNT_MAX 8

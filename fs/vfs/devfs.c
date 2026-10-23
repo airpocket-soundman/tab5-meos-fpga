@@ -7,7 +7,8 @@ static bool is_root(const char *rel) { return rel[0] == '/' && rel[1] == 0; }
 
 static int devfs_open(void *fsd, const char *rel, uint32_t flags, void **file)
 {
-    (void)fsd; (void)flags;
+    (void)fsd;
+    if (flags & VFS_O_EXCL) return ERR_NOSYS;
     if (is_root(rel)) return ERR_ISDIR;
     int h = device_open(rel + 1);                 /* skip the leading '/' */
     if (h < 0) return h == ERR_NODEV ? ERR_NOENT : h;

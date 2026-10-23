@@ -42,6 +42,8 @@ static int err(FRESULT r) {
         return ERR_NOENT;
     case FR_EXIST:
         return ERR_EXIST;
+    case FR_LOCKED:
+        return ERR_BUSY;
     case FR_WRITE_PROTECTED:
     case FR_DENIED:
         return ERR_PERM;
@@ -85,6 +87,9 @@ DRESULT disk_ioctl(BYTE p, BYTE cmd, void *buf) {
     }
 }
 static int op(void *d, const char *path, uint32_t flags, void **out) {
+    if ((flags & VFS_O_EXCL) &&
+        (flags & (VFS_O_CREATE | VFS_O_WRITE)) != (VFS_O_CREATE | VFS_O_WRITE))
+        return ERR_INVAL;
     volume_t *v = d;
     char resolved[VFS_PATH_MAX];
     if (!fullpath(v, path, resolved))
@@ -107,7 +112,11 @@ static int op(void *d, const char *path, uint32_t flags, void **out) {
             memset(handle, 0, sizeof *handle);
             handle->volume = v;
             BYTE mode = (flags & VFS_O_READ ? FA_READ : 0) | (flags & VFS_O_WRITE ? FA_WRITE : 0);
-            if (flags & VFS_O_TRUNC)
+            /* FatFs resolves and creates while s_lock is held. Never emulate
+             * EXCL with stat()+open(), nor let TRUNC override CREATE_NEW. */
+            if (flags & VFS_O_EXCL)
+                mode |= FA_CREATE_NEW;
+            else if (flags & VFS_O_TRUNC)
                 mode |= FA_CREATE_ALWAYS;
             else if (flags & VFS_O_CREATE)
                 mode |= FA_OPEN_ALWAYS;

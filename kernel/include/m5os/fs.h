@@ -12,6 +12,7 @@
 #define FS_O_CREATE  0x04            /* create the file if it does not exist */
 #define FS_O_TRUNC   0x08            /* discard existing contents (needs FS_O_WRITE) */
 #define FS_O_APPEND  0x10            /* every write goes to the end */
+#define FS_O_EXCL    0x20            /* atomic new file only; requires CREATE|WRITE */
 
 #define FS_SEEK_SET  0
 #define FS_SEEK_CUR  1
