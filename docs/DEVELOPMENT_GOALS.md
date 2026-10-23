@@ -70,8 +70,10 @@ FPGA側DDR3は明示的に転送する外部データ領域であり、通常の
 | ローカルアプリ | MeOS専用アプリあり。Linuxバイナリー互換なし | slなどの小規模TUIアプリ移植を入口に、端末・ファイルAPIの不足を評価。nano・Vimは依存調査後に移植範囲を決める |
 | MicroPython | 本フォークでの組み込み状況・依存関係は未調査 | MeOS上へ組み込み、対話REPL、ファイルからのスクリプト実行、中断・終了、VFS連携を実装 |
 | CPython・Pyxel | 未実装・実現性未検証 | CPythonとPyxel本体の移植を第一候補とし、既存ゲームをソース・素材の事前変換なしで実行する環境を検証。成立後にFPGA描画支援を追加 |
-| MicroPythonからのGPIO操作 | 未調査・実装予定 | Tab5の利用可能な外部GPIOを`machine.Pin`互換のAPIで操作できるようにし、入力・出力・プル設定を提供 |
-| ネイティブシェルからのGPIO操作 | 利用者向けコマンドは未調査・実装予定 | ピン一覧・用途・使用状態の表示、入力読み取り、出力設定、モード・プル設定を行うコマンドを追加 |
+| MicroPythonからのGPIO操作 | 所有者・ピン予約・GPIO／ADC／PWM／I2C／SPI／UARTの共通C APIを実装。MicroPython本体・Pythonバインディングは未統合 | `machine.Pin`等へ接続し、例外・中断・VM終了時の資源解放を検証 |
+| ネイティブシェルからのGPIO操作 | `io`と`gpio`・`adc`・`pwm`・`i2c`・`spi`・`uart`コマンドを実装。ホスト試験・全体ビルド成功。実機の予約拒否、GPIO入力・解放、ADC生値、UART内部ループバックを確認。外部実測は未確認 | 外部機器・配線、ADC基準電圧、PWM波形とI2C／SPI／UART信号を検証 |
+| ADC・PWM・DAC | ADCは未校正の12ビット生値、PWMは専用タイマー／チャネル1組。汎用DACはSoCにないため対象外 | ADC基準電圧・PWM波形を外部測定。オーディオコーデックを汎用DACとは扱わない |
+| 外部I2C・SPI・UART | SoftI2Cは反復START・ACK／NACK・タイムアウト、SoftSPIはモード0〜3・8ビット全二重、UART1は8N1・FIFOポーリングを実装 | ソフト駆動の速度・間隔を外部測定。I2Cセンサー・SPI転送・UARTループバックを検証 |
 | FPGA描画・DDR3 | 本フォークでは未実装 | 上記「GUI化の段階と評価」に沿って実装 |
 
 ### USB対応後のSSHサーバーと同時実行
@@ -100,11 +102,11 @@ Tab5_thinclientのサーバー側FUSEヘルパーとSSH通信方式を参考に�
 
 MicroPythonをMeOSのタスク・メモリ管理・コンソール・VFSへ接続する。既存のESP32向けポートやTab5_thinclientの実装は依存関係を調べて参考にし、FreeRTOS依存の実装をそのまま利用できるとは扱わない。REPLとスクリプト実行を入口とし、Ctrl-Cによる中断、例外表示、終了時の資源解放、GCヒープとタスクスタックの使用量を検証する。
 
-GPIO操作はMeOS側に共通の管理APIを設け、MicroPythonとネイティブシェルの両方から利用する。最初はデジタル入出力とプル設定を対象とし、PWM、ADC、割り込み、I2C・SPIなどは対応ピン・周辺回路と依存関係を調査して段階的に拡張する。
+GPIO操作の共通C APIとネイティブシェル操作を実装した。所有者、予約ピン、入出力・プル、未校正ADC、PWM、SoftI2C／SoftSPI、UART1を扱う。MicroPythonへの組み込みとPythonバインディングは別作業であり未統合。割り込み入力、ハードウェアI2C／SPI高速化、校正電圧測定は残件。汎用DACはSoCにないため対象外とする。
 
 - Tab5の外部端子とGPIO番号の対応、対応する入力・出力モード、予約用途、使用中の所有者を一覧化する。
 - LCD、PSRAM、Wi-Fi、ストレージ、キーボード、FPGA通信などの使用ピンを管理し、競合する再設定を拒否する。
-- シェルのコマンド案は`gpio list`、`gpio mode <pin> <in|out> [none|up|down]`、`gpio read <pin>`、`gpio write <pin> <0|1>`、`gpio release <pin>`とする。最終構文は既存CLIとの整合を確認して決める。
+- シェルに`io help`、`io pins`と`gpio`・`adc`・`pwm`・`i2c`・`spi`・`uart`を実装。構文は`io help`を参照し、ピン所有者と予約状態を確認してから操作する。
 - MicroPythonは`machine.Pin`の基本操作との互換を目指す。ピン確保・解放と、スクリプト終了・例外・中断時に出力状態をどう扱うかを明文化する。シェルの設定は明示的な解放または再起動までの扱いを定める。
 - 利用可能な端子で入力・出力・プル設定、無効ピン指定、所有権競合、中断後の再実行を確認する。外部接続前に電圧・配線条件を確認する。
 
@@ -193,3 +195,9 @@ USBカメラは160×120単一フレームのBMP保存を実機確認。画像品
 Bluetoothの限定検証：BLE初期化と3秒の受動探索（周辺2台）に成功。HCI TX20／RX22、failed 0／reject 0。実機時点でinternal free約70 KiB・最大連続約66 KiB・割当失敗0、PSRAM free約19640 KiB。接続・ペアリング・HID入力を検証した結果ではないため、Bluetoothキーボード／マウスの完了項目には含めない。USBカメラ実装コミット：`5f74e3e`。
 
 BLE初期化・探索後のWi-Fi共存確認：HTTP 200・577バイトの受信に成功。現状のBLE接続管理は1相手機器に限定する。ペアリング済み機器の入力試験は未実施であり、キーボードとマウスの同時接続・同時入力を保証しない。
+
+## 外部I/O共通基盤の実装と検証
+
+共通C APIとGPIO／未校正ADC／PWM／SoftI2C／SoftSPI／UART1のシェル操作を実装。ホスト試験・全体ビルドに成功。実機で予約ピン拒否、GPIO16入力・解放・reset、ADC16／53生値取得、UART内部ループバックに成功。ADC35は非対応として拒否。外部機器・基準電圧・PWM波形・I2C／SPI／UART配線試験は未確認。MicroPython未統合、汎用DACは対象外。 内部システムI2C・microSD・Wi-Fi・カメラ等のピンを外部APIで再設定しない。詳細は[実装計画と予約ピン](docs/IO_IMPLEMENTATION_PLAN.md)、[共通APIとシェル仕様](docs/IO_API.md)、[SoftI2C／SoftSPIの仕様と限界](docs/IO_PROTOCOLS.md)を参照。
+
+外部I/O実機の限定確認：GPIO31・システムI2C31/32・SD用SPI43/44/39/42・C6用UART10/11の再設定を拒否。GPIO16の無プル入力・読取0・入力への書込拒否・解放/resetを確認。ADC16（設定0）は2379、ADC53（設定3）は876の生値を取得したが浮遊入力のため電圧精度の検証ではない。ADC35は非対応として拒否。UARTは外部ピンを駆動しない内部ループバックのみ成功。表示19/19完了・エラー0、internal free約82 KiB・割当失敗0、PSRAM free約19704 KiB。

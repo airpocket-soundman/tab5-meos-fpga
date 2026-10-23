@@ -156,6 +156,18 @@
         "ja": "SC202CS（ID eb52）のCSI／ISP経由RGB565取得を実機確認。640×360画像をmicroSDへ460870バイトのBMPとして保存。停止・再起動・再取得も成功、DMAエラー0。画像品質、連続フレームレート、長時間動作は未評価。 BMP読戻しで230400画素すべて非ゼロ、値の変化を確認（FNV 07d53fa4）。",
         "en": "Native CSI/ISP RGB565 capture passed on SC202CS (ID eb52). A 640×360 image was saved to microSD as a 460870-byte BMP. Stop/restart and a fresh frame passed with zero DMA errors. Image quality, sustained frame rate and long-duration operation remain unmeasured. BMP readback found all 230400 pixels nonzero with varying values (FNV 07d53fa4)."
       }
+    },
+    {
+      "id": "external-io",
+      "status": "active",
+      "title": {
+        "ja": "9. 外部GPIO・ADC・PWM・I2C・SPI・UART",
+        "en": "9. External GPIO, ADC, PWM, I2C, SPI and UART"
+      },
+      "detail": {
+        "ja": "共通C APIとGPIO／未校正ADC／PWM／SoftI2C／SoftSPI／UART1のシェル操作を実装。ホスト試験・全体ビルドに成功。実機で予約ピン拒否、GPIO16入力・解放・reset、ADC16／53生値取得、UART内部ループバックに成功。ADC35は非対応として拒否。外部機器・基準電圧・PWM波形・I2C／SPI／UART配線試験は未確認。MicroPython未統合、汎用DACは対象外。",
+        "en": "Shared C services and shell control for GPIO, uncalibrated ADC, PWM, SoftI2C/SoftSPI and UART1 are implemented; host tests and the complete target build passed. Hardware checks passed reserved-pin rejection, GPIO16 input/release/reset, raw ADC16/53 sampling and internal UART loopback; ADC35 was rejected as unsupported. External devices, reference voltage, PWM waveforms and wired I2C/SPI/UART remain unverified. MicroPython is not integrated; general-purpose DAC is excluded."
+      }
     }
   ]
 }

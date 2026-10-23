@@ -29,8 +29,9 @@ EN_STATUS = [
     ('Local applications', 'MeOS apps; no Linux binary compatibility', 'Start with small TUI ports such as sl; audit nano / Vim dependencies.'),
     ('MicroPython', 'Integration / dependencies not audited', 'Embed REPL, scripts, interruption, cleanup and VFS access.'),
     ('CPython / Pyxel', 'Not implemented; feasibility unverified', 'Prioritize porting CPython and Pyxel to run existing source/assets without preprocessing; add FPGA rendering after compatibility is established.'),
-    ('Python GPIO', 'Planned; not audited', 'Basic machine.Pin-compatible digital I/O and pull settings.'),
-    ('Shell GPIO', 'User commands planned; not audited', 'List roles / owners; configure, read, write and release pins.'),
+    ('Python GPIO', 'Shared C ownership/GPIO/ADC/PWM/I2C/SPI/UART services implemented; MicroPython and Python bindings are not integrated', 'Bind machine.Pin and other objects; validate exception/interruption/VM-reset cleanup.'),
+    ('Shell GPIO / external IO', PROGRESS_BY_ID['external-io']['detail']['en'], 'Device reserved-pin/GPIO/ADC/internal-UART checks passed; validate external wiring, sensors, waveforms and loopback.'),
+    ('ADC / PWM / DAC', 'Uncalibrated raw12-bit ADC; PWM uses one dedicated timer/channel; no general-purpose DAC on ESP32-P4', 'Measure reference voltages and PWM waveforms; audio codec is not a general voltage-output DAC.'),
     ('FPGA / DDR3', 'Not implemented in this fork', 'Transport, buffers, drawing primitives and GUI integration.'),
 ]
 
@@ -111,10 +112,10 @@ Use Tab5_thinclient as a reference. A FUSE helper on the connected Linux server 
 - Verify file contents and interrupted transfers. Add SCP-style file transfer and remote image display.
 ## MicroPython and GPIO
 Integrate MicroPython with MeOS tasks, memory, console and VFS. Audit FreeRTOS dependencies before adapting ESP32 ports or Tab5_thinclient code. Provide REPL, scripts, Ctrl-C, exceptions and cleanup; measure GC heap and task stack use.
-Share a MeOS pin-management API between Python and the shell. Begin with digital input/output and pulls; evaluate PWM, ADC, interrupts, I2C and SPI later.
+Shared owner/pin-management and shell services now cover GPIO, uncalibrated ADC, PWM, SoftI2C, SoftSPI and UART1. Actual-code host tests and the whole target build passed. MicroPython and its bindings remain unintegrated. Device reserved-pin refusal, GPIO16 input/release/reset, raw ADC16/53 acquisition and UART internal loopback passed; ADC35 was rejected. Floating ADC inputs do not establish voltage accuracy. External electrical timing and fixture tests remain unverified; hardware bus acceleration and interrupt-driven GPIO are future work. General-purpose DAC is excluded because the SoC has none. See the [IO implementation plan](docs/IO_IMPLEMENTATION_PLAN.md), [shared API and shell](docs/IO_API.md), and [software protocol specification](docs/IO_PROTOCOLS.md).
 - Map external connectors to GPIO numbers, supported modes, reserved roles and current owners.
 - Reject conflicts with LCD, PSRAM, Wi-Fi, storage, keyboards and FPGA.
-- Proposed commands: `gpio list`, `gpio mode`, `gpio read`, `gpio write`, `gpio release` (not available yet).
+- Shell adapters provide `io help`, `io pins`, `gpio`, `adc`, `pwm`, `i2c`, `spi` and `uart`. Inspect ownership/reservations before changing a pin; use the help output for current syntax.
 - Aim for basic `machine.Pin` compatibility. Define output state and ownership on exit, exception and interruption; define shell pin lifetime.
 - Verify valid/invalid pins, modes, pulls, ownership conflicts and repeated execution. Check wiring and voltage conditions before connecting hardware.
 ## CPython and Pyxel: existing games without preprocessing
@@ -162,12 +163,15 @@ def implementation_records(lang):
     title = '今回の検証と実装記録' if lang == 'ja' else 'Implementation and validation records'
     commits = [('4be8303', 'FP context'), ('79ac3ce', 'Touch / display'),
                ('6d58268', 'Display retirement under load'), ('cd262af', 'Native CSI / ISP camera'),
-               ('5f74e3e', 'Native USB camera'), ('b7b8e6c', 'BLE transport / scan')]
+               ('5f74e3e', 'Native USB camera'), ('b7b8e6c', 'BLE transport / scan'),
+               ('e22d8bf', 'Shared external IO services'), ('8b26e52', 'External IO shell')]
     links = ' · '.join('<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/commit/'+sha+'">'+label+'</a>' for sha,label in commits)
     note = '実機確認は各項目に記載した範囲に限ります。画質・ちらつきの目視評価、連続撮影、Bluetooth HID入力は未確認です。' if lang == 'ja' else 'Hardware results apply only to each stated scope. Visual quality/flicker assessment, sustained capture and Bluetooth HID input remain unverified.'
     audit_label = '最終監査・実機検証記録' if lang == 'ja' else 'Final audit and hardware validation record'
     audit = '<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/VALIDATION_2026_10_23.md">'+audit_label+'</a>'
-    return '<section><h2>'+title+'</h2><p>'+note+'</p><p>'+links+'</p><p>'+audit+'</p></section>'
+    api_label = '外部I/O共通APIとシェル仕様' if lang == 'ja' else 'Shared external IO API and shell specification'
+    api = '<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/IO_API.md">'+api_label+'</a>'
+    return '<section><h2>'+title+'</h2><p>'+note+'</p><p>'+links+'</p><p>'+audit+' · '+api+'</p></section>'
 
 for ja in (False, True):
     lang='ja' if ja else 'en'
