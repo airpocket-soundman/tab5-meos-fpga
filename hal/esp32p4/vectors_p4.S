@@ -57,9 +57,10 @@ m5_mtvt_table:
  * previous level...), MIE = 0 (MPIE = old MIE = 1: the interrupted code had interrupts on or the tick
  * could not have fired).  sp is the interrupted task's stack.
  *
- * Frame, 20 words (kept a multiple of 16 bytes): 0 ra | 1..3 t0-t2 | 4..11 a0-a7 | 12..15 t3-t6
+ * Frame, 56 words (kept a multiple of 16 bytes): 0 ra | 1..3 t0-t2 | 4..11 a0-a7 | 12..15 t3-t6
  *                                              | 16 mepc | 17 mcause | 18 mstatus
- * Only caller-saved registers are saved here: the C code called below keeps s0-s11, and if the scheduler
+ * FP state is at +80..+204 with fcsr at +208. Integer
+ * caller-saved registers are saved here: the C code called below keeps s0-s11, and if the scheduler
  * switches tasks it goes through arch_context_switch(), which saves and restores those.  A task parked
  * inside this handler resumes in the C code, falls out to the epilogue and returns to ITS interrupted
  * code with the epilogue's MRET.
@@ -68,7 +69,7 @@ m5_mtvt_table:
     .global m5_tick_entry
     .type   m5_tick_entry, @function
 m5_tick_entry:
-    addi    sp, sp, -80
+    addi    sp, sp, -224
     sw      ra,   0(sp)
     sw      t0,   4(sp)
     sw      t1,   8(sp)
@@ -92,14 +93,91 @@ m5_tick_entry:
     sw      t1,  68(sp)
     sw      t2,  72(sp)
 
+
+    /* Eager FP ownership: enable FS even if boot left it Off. */
+    li      t0, 0x6000
+    csrs    mstatus, t0
+    /* Preserve all FP registers before calling C, including caller temporaries. */
+    fsw     f0, 80(sp)
+    fsw     f1, 84(sp)
+    fsw     f2, 88(sp)
+    fsw     f3, 92(sp)
+    fsw     f4, 96(sp)
+    fsw     f5, 100(sp)
+    fsw     f6, 104(sp)
+    fsw     f7, 108(sp)
+    fsw     f8, 112(sp)
+    fsw     f9, 116(sp)
+    fsw     f10, 120(sp)
+    fsw     f11, 124(sp)
+    fsw     f12, 128(sp)
+    fsw     f13, 132(sp)
+    fsw     f14, 136(sp)
+    fsw     f15, 140(sp)
+    fsw     f16, 144(sp)
+    fsw     f17, 148(sp)
+    fsw     f18, 152(sp)
+    fsw     f19, 156(sp)
+    fsw     f20, 160(sp)
+    fsw     f21, 164(sp)
+    fsw     f22, 168(sp)
+    fsw     f23, 172(sp)
+    fsw     f24, 176(sp)
+    fsw     f25, 180(sp)
+    fsw     f26, 184(sp)
+    fsw     f27, 188(sp)
+    fsw     f28, 192(sp)
+    fsw     f29, 196(sp)
+    fsw     f30, 200(sp)
+    fsw     f31, 204(sp)
+    frcsr   t0
+    sw      t0, 208(sp)
+
     call    m5_tick_dispatch            /* C: acknowledge, re-arm, run the scheduler (may switch tasks) */
 
     csrci   mstatus, 8                  /* make sure nothing interrupts the epilogue */
+    flw     f0, 80(sp)
+    flw     f1, 84(sp)
+    flw     f2, 88(sp)
+    flw     f3, 92(sp)
+    flw     f4, 96(sp)
+    flw     f5, 100(sp)
+    flw     f6, 104(sp)
+    flw     f7, 108(sp)
+    flw     f8, 112(sp)
+    flw     f9, 116(sp)
+    flw     f10, 120(sp)
+    flw     f11, 124(sp)
+    flw     f12, 128(sp)
+    flw     f13, 132(sp)
+    flw     f14, 136(sp)
+    flw     f15, 140(sp)
+    flw     f16, 144(sp)
+    flw     f17, 148(sp)
+    flw     f18, 152(sp)
+    flw     f19, 156(sp)
+    flw     f20, 160(sp)
+    flw     f21, 164(sp)
+    flw     f22, 168(sp)
+    flw     f23, 172(sp)
+    flw     f24, 176(sp)
+    flw     f25, 180(sp)
+    flw     f26, 184(sp)
+    flw     f27, 188(sp)
+    flw     f28, 192(sp)
+    flw     f29, 196(sp)
+    flw     f30, 200(sp)
+    flw     f31, 204(sp)
+    lw      t0, 208(sp)
+    fscsr   t0
     lw      t0,  64(sp)
     lw      t1,  68(sp)
     lw      t2,  72(sp)
     csrw    mepc, t0
     csrw    mcause, t1                  /* CLIC: MRET takes the previous interrupt level from here */
+    /* Keep FS enabled: MeOS does not use IDF lazy RTOS FP ownership. */
+    li      t0, 0x6000
+    or      t2, t2, t0
     csrw    mstatus, t2
     lw      ra,   0(sp)
     lw      t0,   4(sp)
@@ -117,7 +195,7 @@ m5_tick_entry:
     lw      t4,  52(sp)
     lw      t5,  56(sp)
     lw      t6,  60(sp)
-    addi    sp, sp, 80
+    addi    sp, sp, 224
     mret
     .size   m5_tick_entry, . - m5_tick_entry
     .option pop

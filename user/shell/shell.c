@@ -41,6 +41,7 @@
 #include <m5os/msg.h>
 #include <m5os/gui.h>
 #include <m5os/wifi.h>
+#include <m5os/fp_context_test.h>
 #include <m5os/board_config.h>
 #if M5OS_USB_NATIVE_DMA
 #include <m5os/usb_info.h>
@@ -497,6 +498,7 @@ static int cmd_gui(int argc, char **argv)
 
 #if M5OS_HAS_KEYBOARD
 #if M5OS_BOARD_TAB5
+static int cmd_fptest(int argc,char **argv){(void)argc;(void)argv;fp_context_test_result_t r;bool ok=fp_context_test_run(&r);SH_PRINTF("FP context: %s complete=%u iterations=%u/%u failures=%u/%u ticks=%u\n",ok?"PASS":"FAIL",r.complete,r.iterations[0],r.iterations[1],r.failures[0],r.failures[1],r.ticks);return ok?0:1;}
 static int cmd_osk(int argc, char **argv)
 {
     if (!osk_available()) { sh_puts("osk: no touch controller\n"); return 0; }
@@ -977,6 +979,7 @@ static const command_t s_commands[] = {
     { "snap",    cmd_snap,    "snap [FILE.bmp] capture one 640x360 BMP photo from camera" },
     { "keys",    cmd_keys,    "keyboard statistics (bring-up diagnostics)" },
 #if M5OS_BOARD_TAB5
+    { "fptest", cmd_fptest, "audit floating point task isolation" },
     { "osk",     cmd_osk,     "osk [on|off|map N|debug]  on-screen keyboard (touch); no argument: status" },
 #endif
 #endif
