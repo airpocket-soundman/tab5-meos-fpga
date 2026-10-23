@@ -17,7 +17,7 @@ EN_STATUS = [
     ('Bluetooth input', 'Not implemented', 'Audit C6 transport / firmware, then BLE HID pairing and reconnect. Assess Classic separately.'),
     ('Touch', 'GT911 single-point and screen keyboard; no ST7123', 'Add ST7123 and GUI press / move / release events.'),
     ('microSD', 'Tab5 SPI and /sd FAT verified: list, 38-byte write/read, persistence after reset; /usb concurrent', 'Optimize speed; verify hot-plug, sustained transfers and errors.'),
-    ('USB storage', 'No Mass Storage driver', 'Add bulk transfers, BOT / SCSI, block access and removal handling.'),
+    ('USB storage', 'TinyUSB OS_NONE MSC + FatFs: 37, 512 and 8192 byte writes, full readback and persistence after reset verified', 'Add hubs and multiple drives; validate independent removal and error recovery.'),
     ('Filesystems', 'M5FS, VFS, RAM disk; dedicated flash persistence for some data', 'Add FAT and VFS storage integration; evaluate exFAT.'),
     ('Storage over SSH', 'Not implemented', 'Mount Tab5 SD / USB on the connected Linux server using FUSE.'),
     ('Local applications', 'MeOS apps; no Linux binary compatibility', 'Start with small TUI ports such as sl; audit nano / Vim dependencies.'),
@@ -78,6 +78,9 @@ DDR3 is an explicitly transferred external data region, not transparent CPU RAM.
 4. Integrate CPU/FPGA rendering backends, input, windows and menus; evaluate resident assets and dirty regions.
 5. Expand to compositing, scaling and compute acceleration based on measurements.
 The first milestone is an interactive window and menu with at least one FPGA drawing operation. Speed improvement must be measured separately.
+## USB implementation reference
+The official M5Stack Tab5 UserDemo uses ESP-IDF USB Host/HID drivers with FreeRTOS tasks. Tab5thinclient uses TinyUSB Host HID/MSC APIs. MeOS now uses TinyUSB 0.19.0 with OS_NONE, a MeOS mutex and polled processing. IDF initializes the PHY; TinyUSB owns enumeration, transfers, HID and BOT. The current DWC2 backend uses FIFO mode with DMA disabled. The original custom-driver timeout cause remains undetermined; this does not prove a DMA hardware defect.
+References: [official Tab5 USB implementation](https://github.com/m5stack/M5Tab5-UserDemo/blob/main/platforms/tab5/main/hal/components/hal_usb.cpp), [TinyUSB DWC2 host](https://github.com/hathach/tinyusb/blob/0.19.0/src/portable/synopsys/dwc2/hcd_dwc2.c).
 ## USB hubs and simultaneous devices
 Add hub port power, connection-change and reset handling, address allocation, per-device endpoints and DATA PID tracking, multiple MSC instances and independent mounts. Support multiple USB drives and keyboard input at the same time. High-speed hubs with full/low-speed devices require split transactions. This is planned; the current host supports one directly attached device. Verify independent removal/reconnection without disrupting other devices.
 Execution order: USB receiver/storage, microSD, USB write correction and hub/multiple devices, concurrent SSH server/client, touch scrolling, Bluetooth keyboard/mouse.

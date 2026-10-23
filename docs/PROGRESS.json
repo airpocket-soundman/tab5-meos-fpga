@@ -21,8 +21,8 @@
         "en": "1. USB receivers and storage"
       },
       "detail": {
-        "ja": "無線受信機の入力成功（83回・転送エラー0）。FATマウントと /usb 一覧取得を実機確認。512バイトOUT転送で書き込みタイムアウトを確認、調査中。USBハブ・複数メモリ・キーボード併用を追加実装予定。",
-        "en": "Wireless receiver verified (83 presses, zero errors). FAT mount and /usb listing verified. Writes time out on 512-byte OUT transfers; investigating. Hub support, multiple drives and simultaneous keyboard use are planned."
+        "ja": "TinyUSBのOSなし構成へ移行。USBメモリの37・512・8192バイト書き込み、全内容読み戻し、再起動後保持を実機確認。受信機は旧実装で83回・エラー0、新スタックでの再確認は必要。",
+        "en": "Migrated to TinyUSB with OS_NONE. Hardware verified USB writes, complete readback and persistence after reset for 37, 512 and 8192 bytes. Receiver verified on the previous driver (83 presses, zero errors); retest on the new stack is pending."
       }
     },
     {
@@ -38,11 +38,23 @@
       }
     },
     {
+      "id": "usb-hub",
+      "status": "planned",
+      "title": {
+        "ja": "3. USBハブ・複数メモリ・キーボード併用",
+        "en": "3. USB hubs, multiple drives and keyboard coexistence"
+      },
+      "detail": {
+        "ja": "TinyUSBのハブ機能を有効化し、複数MSCと独立したマウント、入力との同時動作、個別抜き差しを実装・確認。",
+        "en": "Enable TinyUSB hubs; implement and verify multiple MSC volumes, concurrent input and independent removal/reconnection."
+      }
+    },
+    {
       "id": "ssh",
       "status": "planned",
       "title": {
-        "ja": "3. SSHサーバー・クライアント同時動作",
-        "en": "3. Concurrent SSH server and client"
+        "ja": "4. SSHサーバー・クライアント同時動作",
+        "en": "4. Concurrent SSH server and client"
       },
       "detail": {
         "ja": "SSHからシェル操作・ファイル転送・開発。接続を維持して既存SSHクライアントをテスト。",
@@ -53,8 +65,8 @@
       "id": "touch",
       "status": "planned",
       "title": {
-        "ja": "4. タッチ入力・コンソールスクロール",
-        "en": "4. Touch and console scrolling"
+        "ja": "5. タッチ入力・コンソールスクロール",
+        "en": "5. Touch and console scrolling"
       },
       "detail": {
         "ja": "ST7123対応、上下スワイプによる過去出力の閲覧と最新位置への復帰。",
@@ -65,8 +77,8 @@
       "id": "bt",
       "status": "planned",
       "title": {
-        "ja": "5. Bluetoothキーボード・マウス",
-        "en": "5. Bluetooth keyboard and mouse"
+        "ja": "6. Bluetoothキーボード・マウス",
+        "en": "6. Bluetooth keyboard and mouse"
       },
       "detail": {
         "ja": "C6経路を調査し、BLE HIDの探索・ペアリング・再接続・入力を実装。Classicは別途可否確認。",

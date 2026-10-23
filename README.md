@@ -8,7 +8,7 @@ An experimental MeOS fork for a graphical M5Stack Tab5 environment with FPGA-ass
 
 ## Current status
 
-Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. USB extensions are in development. FPGA communication, GUI extensions and full peripheral regression remain unverified.
+Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and USB FAT write/read/persistence tests passed; USB hub support is next. See [USB implementation](docs/USB_IMPLEMENTATION.md). FPGA communication, GUI extensions and full peripheral regression remain unverified.
 
 ## Planned work
 

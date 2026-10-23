@@ -12,8 +12,19 @@ file(GLOB_RECURSE M5OS_SRCS
 # tools/m5exbuild.py with their own link layout; the firmware only embeds the generated images.c.
 list(FILTER M5OS_SRCS EXCLUDE REGEX "/apps/sdk/|/apps/m5ex/[^i]|/apps/wasm/[^w]")
 # keep images.c / images_none.c (generated / stub).  apps/wasm holds the sources of WebAssembly apps: only wasm_images.c is firmware.
-set(M5OS_NO_WASM_RE "/drivers/usbmsc/|/fs/fat/|/third_party/fatfs/|/third_party/wasm3/|/third_party/quirc/|/kernel/app/wasm_|/apps/wasm/wasm_images\\.c$|/user/wasmapps/")      # WebAssembly runs on the Tab5 only
+set(M5OS_NO_WASM_RE "/drivers/usbmsc/|/drivers/usbhost/|/fs/fat/|/third_party/fatfs/|/third_party/wasm3/|/third_party/quirc/|/kernel/app/wasm_|/apps/wasm/wasm_images\\.c$|/user/wasmapps/")      # WebAssembly runs on the Tab5 only
 
+if("$ENV{M5OS_BOARD}" STREQUAL "tab5")
+    list(APPEND M5OS_SRCS
+        ${M5OS_ROOT}/third_party/tinyusb/src/tusb.c
+        ${M5OS_ROOT}/third_party/tinyusb/src/common/tusb_fifo.c
+        ${M5OS_ROOT}/third_party/tinyusb/src/host/usbh.c
+        ${M5OS_ROOT}/third_party/tinyusb/src/host/hub.c
+        ${M5OS_ROOT}/third_party/tinyusb/src/class/hid/hid_host.c
+        ${M5OS_ROOT}/third_party/tinyusb/src/class/msc/msc_host.c
+        ${M5OS_ROOT}/third_party/tinyusb/src/portable/synopsys/dwc2/hcd_dwc2.c
+        ${M5OS_ROOT}/third_party/tinyusb/src/portable/synopsys/dwc2/dwc2_common.c)
+endif()
 # Board-specific sources: *_cores3.c / *_cardputer.c, the chip directories hal/esp32s3 (Xtensa) and
 # hal/esp32p4 (RISC-V), and the drivers that only some boards have.
 if("$ENV{M5OS_BOARD}" STREQUAL "cardputer")
@@ -37,7 +48,7 @@ endif()
 
 idf_component_register(
     SRCS ${M5OS_SRCS}
-    INCLUDE_DIRS ${M5OS_ROOT}/kernel/include ${M5OS_ROOT}/hal ${M5OS_ROOT}/third_party/wasm3 ${M5OS_ROOT}/third_party/quirc
+    INCLUDE_DIRS ${M5OS_ROOT}/drivers/usbhost ${M5OS_ROOT}/third_party/tinyusb/src ${M5OS_ROOT}/kernel/include ${M5OS_ROOT}/hal ${M5OS_ROOT}/third_party/wasm3 ${M5OS_ROOT}/third_party/quirc
     # Only low-level, FreeRTOS-free IDF pieces are linked in explicitly.
     PRIV_REQUIRES soc hal esp_rom esp_hw_support ${M5OS_ARCH_REQUIRES})
 

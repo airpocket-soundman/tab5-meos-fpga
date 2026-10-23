@@ -59,7 +59,7 @@ FPGA側DDR3は明示的に転送する外部データ領域であり、通常の
 | Bluetooth入力 | BTキーボード・マウス接続は未実装 | C6との通信とファームウェアの対応範囲を調査し、利用可能なBLE HID機器の探索・ペアリング・再接続・入力を実装。Bluetooth Classic対応は別途可否を判断 |
 | タッチ | GT911の1点入力と画面キーボードあり。ST7123未対応 | 搭載機種を確認し、ST7123対応とGUIへの押下・移動・解放イベント統合を追加 |
 | microSD | Tab5のSPIドライバーと /sd FATマウントを追加。実機で一覧・新規ファイル読み書き・再起動後保持を確認 | 高速化、抜き差し、長時間転送・エラー処理を検証 |
-| USBメモリ | Mass Storageドライバーなし | USB bulk転送、Mass Storage BOT・SCSI、ブロックデバイスを実装し、抜き差し・取り外し処理を整備 |
+| USBメモリ | TinyUSB MSC＋FatFs。37・512・8192バイトの書き込み・全内容読み戻し・再起動後保持を実機確認 | ハブ・複数メモリ、個別抜き差しとエラー復旧を検証 |
 | ファイルシステム | M5FS・VFS・RAMディスク、一部の専用フラッシュ保存あり | FAT対応を追加し、microSD・USBメモリをVFSへ統合。exFATは対象媒体と実装条件を確認して追加 |
 | SSH先からのローカルストレージマウント | 未実装 | Tab5_thinclientを参考に、SSH接続先LinuxからTab5のmicroSD・USBメモリを通常のファイルとして操作できるようにする（下記） |
 | ローカルアプリ | MeOS専用アプリあり。Linuxバイナリー互換なし | slなどの小規模TUIアプリ移植を入口に、端末・ファイルAPIの不足を評価。nano・Vimは依存調査後に移植範囲を決める |
@@ -150,3 +150,7 @@ GPIO操作はMeOS側に共通の管理APIを設け、MicroPythonとネイティ�
 ### USBハブ・複数機器対応
 
 USBハブを介した複数のUSBメモリ、およびキーボードとUSBメモリの同時利用を実装対象とする。現状は直結1台のみであり、未対応。ハブのポート電源・接続変化・リセット・アドレス割り当て、機器別エンドポイントとDATA PID管理、複数MSCインスタンスと独立したVFSマウント、切断時のハンドル処理を追加する。High-Speedハブ配下のFull/Low-Speed機器にはスプリットトランザクション対応が必要で、検証対象に含める。複数メモリ間の読み書きとキーボード入力の継続、個別取り外し・再接続で他機器を妨げないことを確認する。
+
+### USBスタックの選択（2026-10-23）
+
+M5Stack公式UserDemoはESP-IDFのUSB Host LibraryとHIDドライバーをFreeRTOSタスクから利用している。Tab5thinclientはTinyUSBのHID・MSC Host APIを利用する。MeOSではTinyUSB 0.19.0のOS_NONE構成を採用し、MeOS mutexとタスクによるポーリングへ接続した。PHYの電源・クロック初期化はESP-IDFに残し、USB列挙・転送・BOT・HIDをTinyUSBへ任せる。現在はDWC2 FIFO方式を使用し、DMAは無効。元の独自実装の停止原因そのものは未確定であり、DMAが原因と断定するものではない。実装と検証範囲は[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照。
