@@ -230,7 +230,15 @@ static void usbkbd_task(void *arg)
 
     for (;;) {
         s_type = "none";
-        while (hal_usbh_poll() != USBH_EVENT_CONNECT) task_sleep(CONNECT_POLL_MS);
+        /* IDF also enables its debounce lock on disconnect. Release it before
+         * waiting again. Use the port level: another poller or a quick replug
+         * can consume the connection edge before this task reaches the wait. */
+        hal_usbh_debounce_done();
+        while (!hal_usbh_connected()) {
+            hal_usbh_poll();
+            task_sleep(CONNECT_POLL_MS);
+        }
+        hal_usbh_poll();
 
         task_sleep(DEBOUNCE_MS);
         hal_usbh_debounce_done();
@@ -249,6 +257,9 @@ static void usbkbd_task(void *arg)
             while(hal_usbh_connected()){hal_usbh_poll();task_sleep(CONNECT_POLL_MS);}
             usb_fat_detach();usbmsc_detach();
             kprintf("usbmsc: disconnected\n");
+            /* Removal already observed; do not wait for a second unplug if
+             * the device was reinserted during filesystem cleanup. */
+            continue;
         } else if (iface >= 0 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             int protocol_rc = ctrl(0x21, HID_SET_PROTOCOL, 0, (uint16_t)iface, NULL, 0);           /* 0 = boot protocol */
             ctrl(0x21, HID_SET_IDLE, 0, (uint16_t)iface, NULL, 0);               /* may STALL: not required */

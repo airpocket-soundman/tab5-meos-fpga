@@ -29,8 +29,16 @@ New files of 37, 512 and 8192 bytes passed CRC32 checks and full readback. All t
 
 ## Scope / 対応範囲
 
-One directly connected device, boot HID keyboard or MSC BOT/SCSI LUN 0 with 512-byte sectors. No hub or UVC camera support yet. Disconnect detection and enumeration on reconnection exist; hardware hot-plug validation and safe-eject support remain pending. Removing storage during a write can corrupt its filesystem. The driver itself cannot be replaced while the firmware is running.
+### Reconnection / 再接続
 
-直結1台のブートHIDキーボード、またはMSC BOT/SCSIのLUN 0・512バイトセクターが対象。ハブ・UVCカメラは未対応。切断検出と再接続時の列挙処理はあるが、実機の抜き差し検証と安全な取り外し機能は未完了。書き込み中の取り外しはファイルシステムを破損する可能性がある。動作中のドライバコード差し替えには対応しない。
+The first replug test failed to remount. IDF's HAL masks connection events with a debounce lock on disconnect as well as connect; the native loop did not release that lock before waiting for the next connection edge. The loop now releases the lock and checks physical connection state instead of depending solely on a single event. After MSC removal it returns directly to connection waiting, avoiding an extra removal wait if reinsertion occurs during cleanup.
+
+After the fix, one physical unplug/replug cycle without a board reset produced disconnect, enumeration, MSC ready and `/usb` mount logs. All three original test files were fully read and matched; a new 512-byte file was written and fully read back with CRC32 `a166aacf`. microSD access remained available. Rapid replug, removal during I/O and open-file reconnect are not yet hardware-verified.
+
+初回の抜き差しでは再マウントしなかった。IDF HALが切断時にも設定するデバウンスロックを解除せず、次の接続イベントを待っていた。ロック解除と物理接続状態の確認に変更し、MSC切断後にもう一度取り外しを待つ処理も回避した。修正後はボード再起動なしの抜き差し1回で再列挙・再マウントを確認。既存3ファイルの全内容一致と、新規512バイトの書き込み・全内容読み戻しを確認した。高速な抜き差し、I/O中の取り外し、ファイルを開いたままの再接続は実機未検証。
+
+One directly connected device, boot HID keyboard or MSC BOT/SCSI LUN 0 with 512-byte sectors. No hub or UVC camera support yet. Idle storage replug was hardware-verified once; safe-eject support remains pending. Removing storage during a write can corrupt its filesystem. The driver itself cannot be replaced while the firmware is running.
+
+直結1台のブートHIDキーボード、またはMSC BOT/SCSIのLUN 0・512バイトセクターが対象。ハブ・UVCカメラは未対応。I/O停止中のストレージ抜き差しを1回確認。安全な取り外し機能は未実装。書き込み中の取り外しはファイルシステムを破損する可能性がある。動作中のドライバコード差し替えには対応しない。
 
 No CPU-load or throughput benchmark has been performed. DMA support alone is not evidence of higher application performance.

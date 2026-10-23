@@ -21,8 +21,8 @@
         "en": "1. USB receivers and storage"
       },
       "detail": {
-        "ja": "独自ディスクリプタDMA版の初期化順序を修正。37・512・8192バイトの書き込み・全内容読み戻し・再起動後保持を確認。TinyUSB版は比較用に保持。抜き差しと受信機の再確認は継続。",
-        "en": "Corrected native descriptor DMA initialization order. Verified 37, 512 and 8192 byte writes, complete readback and persistence after reset. TinyUSB retained for comparison. Hot-plug and receiver regression tests continue."
+        "ja": "独自DMA版で37・512・8192バイトの読み書き・再起動後保持を確認。再接続処理も修正し、I/O停止中の抜き差し1回で再マウント、既存全内容一致、新規512バイトの読み書きを確認。TinyUSBは比較用。受信機の再確認は継続。",
+        "en": "Native DMA verified: 37, 512 and 8192 byte write/read and persistence. Reconnection corrected; one idle unplug/replug cycle passed remount, full original-file readback and a new 512-byte write/read. TinyUSB retained for comparison. Receiver regression pending."
       }
     },
     {
