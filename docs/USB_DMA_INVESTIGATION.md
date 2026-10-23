@@ -37,8 +37,8 @@ After the fix, one physical unplug/replug cycle without a board reset produced d
 
 初回の抜き差しでは再マウントしなかった。IDF HALが切断時にも設定するデバウンスロックを解除せず、次の接続イベントを待っていた。ロック解除と物理接続状態の確認に変更し、MSC切断後にもう一度取り外しを待つ処理も回避した。修正後はボード再起動なしの抜き差し1回で再列挙・再マウントを確認。既存3ファイルの全内容一致と、新規512バイトの書き込み・全内容読み戻しを確認した。高速な抜き差し、I/O中の取り外し、ファイルを開いたままの再接続は実機未検証。
 
-One directly connected device, boot HID keyboard or MSC BOT/SCSI LUN 0 with 512-byte sectors. No hub or UVC camera support yet. Idle storage replug was hardware-verified once; safe-eject support remains pending. Removing storage during a write can corrupt its filesystem. The driver itself cannot be replaced while the firmware is running.
+Direct boot HID keyboard or up to three MSC BOT/SCSI LUN-0 devices with 512-byte sectors through one hub. Two drives (exFAT/FAT) were verified on a Full-Speed hub; see the [hub record](USB_HUB_IMPLEMENTATION.md). Hub HID input, mixed-speed High-Speed hubs and UVC are pending. Direct idle-storage replug was verified once; safe-eject remains pending. Removing storage during a write can corrupt its filesystem. The driver itself cannot be replaced while running.
 
-直結1台のブートHIDキーボード、またはMSC BOT/SCSIのLUN 0・512バイトセクターが対象。ハブ・UVCカメラは未対応。I/O停止中のストレージ抜き差しを1回確認。安全な取り外し機能は未実装。書き込み中の取り外しはファイルシステムを破損する可能性がある。動作中のドライバコード差し替えには対応しない。
+直結のブートHIDキーボード、または外部ハブ1段のMSC BOT/SCSI LUN 0・512バイトセクターを最大3台管理する。Full-SpeedハブでexFAT・FATの2台を確認。ハブ配下HID入力、High-Speedハブでの異速度混在、UVCは未対応。直結でI/O停止中の抜き差しを1回確認。安全な取り外し機能は未実装。書き込み中の取り外しはファイルシステムを破損する可能性がある。動作中のドライバコード差し替えには対応しない。
 
 No CPU-load or throughput benchmark has been performed. DMA support alone is not evidence of higher application performance.

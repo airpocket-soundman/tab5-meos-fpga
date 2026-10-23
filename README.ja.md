@@ -8,7 +8,7 @@ FPGAによる描画支援を組み込んだ、M5Stack Tab5向けMeOSのGUI環境
 
 ## 現在の状態
 
-基準版とサイズ最適化版のビルド・書き込み、Tab5の起動とシリアルシェルを確認済みです。microSDとUSBメモリのFAT読み書き・再起動後保持を確認済みです。次はUSBハブ対応です。[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照してください。FPGA通信、GUI拡張、周辺機能全体の回帰は未検証です。
+基準版とサイズ最適化版のビルド・書き込み、Tab5の起動とシリアルシェルを確認済みです。microSDと、Full-Speedハブ経由のUSBメモリ2台（exFAT・FAT）で読み書き・再起動後保持を確認しました。次はハブ配下キーボード入力とHigh-Speedハブでの異速度混在です。[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照してください。FPGA通信、GUI拡張、周辺機能全体の回帰は未検証です。
 
 ## 実装予定
 

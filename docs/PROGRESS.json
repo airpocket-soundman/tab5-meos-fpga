@@ -39,14 +39,14 @@
     },
     {
       "id": "usb-hub",
-      "status": "planned",
+      "status": "active",
       "title": {
         "ja": "3. USBハブ・複数メモリ・キーボード併用",
         "en": "3. USB hubs, multiple drives and keyboard coexistence"
       },
       "detail": {
-        "ja": "独自DMAドライバでFull-Speedハブを試験中。USB 2.0 High-Speedハブと速度の異なるメモリ・受信機の混在も必須とし、バッファDMA・スプリット転送を追加。複数マウント・入力併用・個別抜き差しを検証。",
-        "en": "Native DMA full-speed hub tests underway. Require USB 2.0 high-speed hubs and mixed-speed drives/receivers; add buffer DMA and split transactions. Verify multiple mounts, concurrent input and independent hot-plug."
+        "ja": "Full-SpeedハブでexFAT・FATの2台を同時マウント。各512・8192バイトの読み書き・再起動後保持・媒体分離とSD併存を確認。ハブ配下HIDと個別抜き差しは未完了。USB 2.0 High-Speedと異速度混在向けバッファDMA・スプリット転送も追加予定。",
+        "en": "Full-speed hub verified with simultaneous exFAT/FAT mounts: 512/8192 byte write/read, reset persistence, volume isolation and SD access. Hub HID and independent hot-plug remain pending. Add buffer DMA/split transactions for USB 2.0 high-speed mixed-speed devices."
       }
     },
     {
