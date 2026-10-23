@@ -69,8 +69,8 @@
         "en": "3b. Wi-Fi validation"
       },
       "detail": {
-        "ja": "C6はNG 1.0.6.0.1を通知。公式公開イメージとTab5thinclientはMCU方式。MeOS・thinclient・公式を優先しMCU方式に揃える方針。SDIO経由更新の読み取り専用通信を検証中。C6更新とWi-Fi通信は未完了。",
-        "en": "C6 reports NG 1.0.6.0.1; the published official image and Tab5thinclient use MCU. MCU was selected to prioritize MeOS, thinclient and official firmware. Read-only SDIO command validation is in progress; C6 update and Wi-Fi traffic validation are pending."
+        "ja": "C6をSDIO経由で公式MCUアプリへ更新。全転送ACK・自然再起動・C6リセットとP4再起動後の維持を確認。通常ビルドでWi-Fi初期化・MAC取得・AP3件検索に成功。保存済みAPなし。認証・DHCP・IP通信は未確認。",
+        "en": "Updated C6 over SDIO to the official MCU application. All transfers were acknowledged; natural reboot, C6 reset and P4 restart retained MCU. The normal build passed Wi-Fi initialization, MAC retrieval and a scan finding three APs. No AP is saved; association, DHCP and IP traffic remain pending."
       }
     },
     {
