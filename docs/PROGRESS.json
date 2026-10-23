@@ -14,6 +14,18 @@
       }
     },
     {
+      "id": "fp-context",
+      "status": "verified",
+      "title": {
+        "ja": "OS基盤：浮動小数点コンテキスト",
+        "en": "OS foundation: floating-point context"
+      },
+      "detail": {
+        "ja": "ESP32-P4の協調切替でFP保存レジスタとFCSR、タイマー割り込みで全FPレジスタとFCSRを保存・復元。実機タスク間分離試験とホストの配置・初期化試験に成功。全命令・全ISRの網羅検証ではない。",
+        "en": "ESP32-P4 cooperative switches preserve FP callee registers and FCSR; timer interrupts preserve all FP registers and FCSR. Hardware task-isolation and host layout/initialization tests passed. This is not exhaustive instruction or ISR validation."
+      }
+    },
+    {
       "id": "usb",
       "status": "regression",
       "title": {
@@ -99,50 +111,50 @@
     },
     {
       "id": "touch",
-      "status": "active",
+      "status": "verified",
       "title": {
         "ja": "5. タッチ入力・コンソールスクロール",
         "en": "5. Touch and console scrolling"
       },
       "detail": {
-        "ja": "256行の色付き履歴とスワイプ操作を実装。初回実機試験は反応せず、GT911専用入力ドライバーが新ST7121パネルを認識しない原因を特定。ST7123互換入力を追加し、実機再検証中。",
-        "en": "256-line colored history and swipe handling implemented. Initial device swipe failed because the GT911-only input driver did not recognize the ST7121 panel. ST7123-compatible input added; device recheck pending."
+        "ja": "256行の色付き履歴、上下スワイプ、最新出力への復帰を実装。ST7121端末でユーザーがスクロールを確認。2面描画は実機で更新20回・DMA完了20回、エラー・タイムアウト0。ちらつき改善の目視評価と長時間試験は未実施。 UVC同時実行でも描画16/16完了・エラー0だが、最大更新時間1.642秒となり高負荷時の応答遅延は残る。",
+        "en": "256-line colored history, vertical swipes and return to live output implemented. The user confirmed scrolling on ST7121. Two-buffer rendering passed 20 updates and 20 DMA-confirmed retirements with zero errors/timeouts. Subjective flicker reduction and long-duration tests remain unverified. With UVC active, display retirement passed 16/16 with zero errors, but maximum batch time reached 1.642 seconds; high-load response latency remains."
       }
     },
     {
       "id": "bt",
-      "status": "planned",
+      "status": "active",
       "title": {
         "ja": "6. Bluetoothキーボード・マウス",
         "en": "6. Bluetooth keyboard and mouse"
       },
       "detail": {
-        "ja": "C6経路を調査し、BLE HIDの探索・ペアリング・再接続・入力を実装。Classicは別途可否確認。",
-        "en": "Audit C6 transport; implement BLE HID discovery, pairing, reconnect and input. Assess Classic separately."
+        "ja": "C6のSDIO HCI経由でBLE初期化に成功（ready、error 0）。3秒の受動探索で周辺2台を検出。HCI TX20／RX22、failed 0／reject 0。自動接続は行わず、ペアリング済みHID機器によるキーボード／マウス入力・再接続は未確認。Classicは別途調査。 BLE起動・探索後もWi-FiでHTTP 200・577バイトの受信を確認。現状の接続管理は1相手機器に限定。",
+        "en": "BLE initialization passed through C6 SDIO HCI (ready, error 0). A 3-second passive scan discovered two nearby devices; HCI TX20/RX22, failed 0/reject 0. No automatic connection was attempted. Paired HID keyboard/mouse input and reconnect remain unverified; Classic requires separate assessment. Wi-Fi HTTP 200 retrieval (577 bytes) also passed after BLE startup and scanning. Current connection management is limited to one peer."
       }
     },
     {
       "id": "usb-camera",
-      "status": "planned",
+      "status": "active",
       "title": {
         "ja": "7. USBカメラ（UVC）",
         "en": "7. USB cameras (UVC)"
       },
       "detail": {
-        "ja": "独自USB DMAドライバへUVC列挙・映像転送・バッファ管理を追加。機器に応じてバルク／アイソクロナス転送、MJPEG／非圧縮形式を調査。低解像度から表示・保存・抜き差しを検証。",
-        "en": "Add UVC enumeration, video transport and buffers to the native USB DMA driver. Audit bulk/isochronous transfers and MJPEG/uncompressed formats per device. Verify preview, capture and hot-plug at low resolution first."
+        "ja": "接続UVCカメラで160×120の単一フレーム取得とBMP保存に実機成功。2688バイトのペイロードとalt6を使用し、High-Speedの3トランザクション転送に対応。画像品質、連続取得、プレビュー、抜き差しは未確認。 現状は1フレーム取得に約8〜10秒を要し、不正・不完全なパケットが多く、実用的なフレームレートには達していない。 BMP読戻しで19113/19200画素が非ゼロ、値の変化を確認（FNV 9c385858）。色・向き・画質の目視確認は未実施。",
+        "en": "The connected UVC camera passed hardware capture of one 160×120 frame and BMP save, using a 2688-byte payload and alternate setting 6 with three High-Speed transactions. Image quality, sustained capture, preview and hot-plug remain unverified. Current acquisition takes about 8–10 seconds per complete frame, with many bad/incomplete payload observations; a practical frame rate has not been achieved. BMP readback found 19113/19200 nonzero pixels with varying values (FNV 9c385858); visual color/orientation/quality checks remain pending."
       }
     },
     {
       "id": "builtin-camera",
-      "status": "planned",
+      "status": "verified",
       "title": {
         "ja": "8. Tab5内蔵カメラ",
         "en": "8. Tab5 built-in camera"
       },
       "detail": {
-        "ja": "SC202CS／MIPI-CSI／ISPの既存ドライバと撮影アプリを実機検証。初期化・プレビュー・保存・終了時の資源解放を確認し、不足を修正。USBカメラとの共通アプリAPIも検討。",
-        "en": "Validate the existing SC202CS/MIPI-CSI/ISP driver and camera app on hardware. Check initialization, preview, capture and cleanup; fix gaps. Evaluate a common application API with USB cameras."
+        "ja": "SC202CS（ID eb52）のCSI／ISP経由RGB565取得を実機確認。640×360画像をmicroSDへ460870バイトのBMPとして保存。停止・再起動・再取得も成功、DMAエラー0。画像品質、連続フレームレート、長時間動作は未評価。 BMP読戻しで230400画素すべて非ゼロ、値の変化を確認（FNV 07d53fa4）。",
+        "en": "Native CSI/ISP RGB565 capture passed on SC202CS (ID eb52). A 640×360 image was saved to microSD as a 460870-byte BMP. Stop/restart and a fresh frame passed with zero DMA errors. Image quality, sustained frame rate and long-duration operation remain unmeasured. BMP readback found all 230400 pixels nonzero with varying values (FNV 07d53fa4)."
       }
     }
   ]

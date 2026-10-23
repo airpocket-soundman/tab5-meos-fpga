@@ -80,3 +80,5 @@ A subsequent camera restart/frame test also passed with zero DMA errors.
 The display remained active with two framebuffers and no reported queue errors
 or completion timeouts. These checks establish capture/save/restart operation;
 image quality and sustained frame rate have not been measured.
+
+The saved native 640×360 BMP was read back: all 230400 pixels were nonzero, pixel values varied, and the decoded RGB565 FNV checksum was `07d53fa4`. This confirms decodable nonuniform stored content, not visual scene/color/orientation correctness. A final UVC coexistence run retained both display buffers with 16/16 retirements and no errors/timeouts; maximum observed display batch duration was 1642072 microseconds under load.

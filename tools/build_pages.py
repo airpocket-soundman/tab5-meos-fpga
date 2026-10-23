@@ -6,22 +6,24 @@ import json
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'docs/site'
+progress = json.loads((ROOT/'docs/PROGRESS.json').read_text(encoding='utf-8'))
+PROGRESS_BY_ID = {item['id']: item for item in progress['items']}
 
 EN_STATUS = [
-    ('OS / apps', 'Tasks, memory, IPC, M5EX and WASM exist', 'Validate Tab5 baseline and integrate GUI / FPGA completion.'),
+    ('OS / apps', 'Tasks, memory, IPC, M5EX and WASM exist; ESP32-P4 FP context isolation passed hardware and host tests', 'Integrate GUI / FPGA completion and continue regression tests.'),
     ('Local terminal', '256-line colored history; ANSI/DEC colors, margins, cursor and alternate-screen controls implemented; host tests passed', 'Verify Vim/sl on hardware; continue documenting unsupported VT220/xterm features.'),
     ('SSH', 'Shared-console server and client ran concurrently over Ethernet; login, commands, reconnect and stop verified', 'Independent PTYs, exec, SFTP and storage channels remain to be implemented.'),
     ('Wi-Fi / Tailscale', 'C6 updated to official MCU application; WPA2, DHCP, DNS and HTTP verified over Wi-Fi', 'Verify long-duration traffic and reconnect; Tailscale scope remains unaudited.'),
     ('Wired keyboards', 'I2C accessory or USB boot keyboard', 'Add coexistence, hotplug and GUI key events.'),
     ('USB mouse', 'Not implemented', 'Add HID input, pointer, buttons, wheel and GUI events.'),
-    ('Bluetooth input', 'Not implemented', 'Audit C6 transport / firmware, then BLE HID pairing and reconnect. Assess Classic separately.'),
-    ('Touch', 'GT911 plus ST7123/ST7121-compatible input; new panel recognized on hardware; swipe integration implemented', 'Recheck swipe/return-to-live on the device; keyboard is hidden at boot and enabled with osk on.'),
+    ('Bluetooth input', PROGRESS_BY_ID['bt']['detail']['en'], 'Verify paired HID keyboard/mouse input and reconnect; one peer only. Assess Classic separately.'),
+    ('Touch', PROGRESS_BY_ID['touch']['detail']['en'], 'Verify sustained operation and subjective flicker reduction; integrate GUI events.'),
     ('microSD', 'Tab5 SPI and /sd FAT verified: list, 38-byte write/read, persistence after reset; /usb concurrent', 'Optimize speed; verify hot-plug, sustained transfers and errors.'),
     ('USB storage', 'Native DMA + FatFs: two exFAT/FAT drives passed write/read, reset persistence and isolation; hub keyboard command input and USB card-reader mount/listing checked; lsusb shows cached topology', 'High-Speed mixed-speed receiver input passed; repeat storage write/read on Buffer DMA and verify sustained input under load and hot-plug.'),
     ('USB Ethernet', 'RTL8153 CDC-ECM: link, DHCP, ping and concurrent SSH verified at USB2 High-Speed', 'Measure throughput and repeat storage coexistence checks on Buffer DMA; other adapters are unverified.'),
-    ('USB cameras', 'UVC not implemented', 'Add video transport to the native DMA driver; verify low-resolution preview, capture and hot-plug first.'),
+    ('USB cameras', PROGRESS_BY_ID['usb-camera']['detail']['en'], 'Inspect saved images, improve frame acquisition and verify preview, hot-plug and other devices.'),
     ('USB diagnostics / card reader', 'Native lsusb verified with a hub and three storage devices; USB microSD reader mounted and listed before/after reset without card writes', 'Add stable device identification; verify card-only replacement, multiple LUNs and reader writes. USB block nodes are not exposed under /dev.'),
-    ('Built-in camera', 'SC202CS / MIPI-CSI / ISP driver and camera app exist; hardware unverified in this fork', 'Verify initialization, preview, capture, repeated start/stop and cleanup; fix gaps.'),
+    ('Built-in camera', PROGRESS_BY_ID['builtin-camera']['detail']['en'], 'Assess visual quality, sustained frame rate, long-duration operation and cleanup.'),
     ('Filesystems', 'M5FS, VFS, RAM disk, FAT/exFAT and selected flash persistence', 'Continue hot-plug/error and coexistence validation.'),
     ('Storage over SSH', 'Not implemented', 'Mount Tab5 SD / USB on the connected Linux server using FUSE.'),
     ('Local applications', 'MeOS apps; no Linux binary compatibility', 'Start with small TUI ports such as sl; audit nano / Vim dependencies.'),
@@ -98,9 +100,9 @@ Share terminal processing between the local console and SSH client. Implement VT
 - Verify with vttest and remote Vim, nano, less and top. Remote applications are separate from native application ports.
 Reference: [XTerm Control Sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html). Develop the common terminal alongside concurrent SSH, before touch scrolling.
 ## USB and built-in cameras
-Add UVC support to the native USB DMA driver. Inspect device descriptors and supported transport, formats, resolutions and frame rates. Implement bulk/isochronous video transfers as required; handle frame boundaries, loss, bandwidth, cache synchronization and removal. Evaluate MJPEG decoding and uncompressed conversion separately, starting with low-resolution, low-frame-rate preview and capture. Compatibility with all USB cameras is unverified.
-The existing Tab5 SC202CS/MIPI-CSI/ISP driver and camera app need hardware validation in this fork. Check initialization, preview, capture, repeated start/stop and cleanup; fix gaps. Validate the separate USB and built-in paths before considering a shared frame API and GUI integration.
-Keep the existing USB, microSD, hub, SSH, touch and Bluetooth priorities. Terminal compatibility belongs alongside SSH; the two camera milestones follow Bluetooth. Set performance, format support and dates after measurement.
+Native UVC supports uncompressed YUY2 using High-Speed isochronous Buffer DMA with one to three transactions per service interval. One 160×120 frame from 056e:700a was saved as BMP and read back. Continuous video, hot-plug and other devices are unverified; MJPEG, audio and bulk video are unsupported.
+The native SC202CS CSI/ISP path passed capture, microSD BMP save, readback and restart. The USB UVC path passed one-frame capture and BMP readback but takes about 8–10 seconds per complete frame. Nonuniform stored pixels were verified; visual quality and sustained video operation remain unverified. The paths share BMP handling but retain separate capture transports. See the [native camera record](docs/CAMERA_IMPLEMENTATION.md) and [USB camera record](docs/USB_CAMERA_IMPLEMENTATION.md).
+Keep the existing USB, microSD, hub, SSH, touch and Bluetooth priorities. Terminal compatibility belongs alongside SSH; camera work proceeds in parallel where dependencies allow. Set performance, format support and dates after measurement.
 ## Storage mounted from the SSH server
 Use Tab5_thinclient as a reference. A FUSE helper on the connected Linux server mounts Tab5 microSD and USB storage as ~/sd and ~/usb. A separate SSH channel connects the helper to MeOS VFS. Linux and FUSE stay on the server. Audit Python/FUSE prerequisites, helper compatibility and reuse terms.
 - Start with read-only SD access, then writes, attributes, create/truncate/rename/delete, directories and USB storage.
@@ -141,7 +143,6 @@ Fork starting commit: `a6a9f234e509737f9fe84fe13468a8ec78b60fc9` from [shi3z/MeO
 Reference: [shi3z — MeOS article](https://note.com/shi3zblog/n/n15e659e90a23). Article and upstream hardware reports are not this fork's verification results.
 '''
 
-progress = json.loads((ROOT/'docs/PROGRESS.json').read_text(encoding='utf-8'))
 
 def progress_html(lang):
     labels = {'ja': {'verified':'完了・基本機能実機確認済み','regression':'実装完了・回帰確認待ち','host-tested':'一部実装・ホスト試験済み','active':'実装・実機検証中','planned':'未着手'},
@@ -151,14 +152,28 @@ def progress_html(lang):
     rows = ''.join('<li class="stage '+x['status']+'"><div><strong>'+escape(x['title'][lang])+'</strong><span class="status">'+labels[x['status']]+'</span></div><p>'+escape(x['detail'][lang])+'</p></li>' for x in progress['items'])
     checked = sum(x['status'] == 'verified' for x in progress['items'])
     regression = sum(x['status'] == 'regression' for x in progress['items'])
-    summary = f'基本機能完了・実機確認済み：{checked}項目 ／ 実装完了・回帰確認待ち：{regression}項目' if lang == 'ja' else f'Core hardware checks complete: {checked} items / Implemented, awaiting regression: {regression} items'
+    host = sum(x['status'] == 'host-tested' for x in progress['items'])
+    active = sum(x['status'] == 'active' for x in progress['items'])
+    summary = f'基本機能完了・実機確認済み：{checked}項目 ／ 実装完了・回帰確認待ち：{regression}項目 ／ 一部実装・ホスト試験済み：{host}項目 ／ 開発・検証中：{active}項目' if lang == 'ja' else f'Core hardware checks complete: {checked} items / Implemented, awaiting regression: {regression} items / Partly implemented, host-tested: {host} / In development: {active}'
     return '<section id="progress"><h2>'+title+'</h2><p>'+escape(summary)+'</p><p>'+note+'</p><ol class="progress-list">'+rows+'</ol></section>'
+
+
+def implementation_records(lang):
+    title = '今回の検証と実装記録' if lang == 'ja' else 'Implementation and validation records'
+    commits = [('4be8303', 'FP context'), ('79ac3ce', 'Touch / display'),
+               ('6d58268', 'Display retirement under load'), ('cd262af', 'Native CSI / ISP camera'),
+               ('5f74e3e', 'Native USB camera'), ('b7b8e6c', 'BLE transport / scan')]
+    links = ' · '.join('<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/commit/'+sha+'">'+label+'</a>' for sha,label in commits)
+    note = '実機確認は各項目に記載した範囲に限ります。画質・ちらつきの目視評価、連続撮影、Bluetooth HID入力は未確認です。' if lang == 'ja' else 'Hardware results apply only to each stated scope. Visual quality/flicker assessment, sustained capture and Bluetooth HID input remain unverified.'
+    audit_label = '最終監査・実機検証記録' if lang == 'ja' else 'Final audit and hardware validation record'
+    audit = '<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/VALIDATION_2026_10_23.md">'+audit_label+'</a>'
+    return '<section><h2>'+title+'</h2><p>'+note+'</p><p>'+links+'</p><p>'+audit+'</p></section>'
 
 for ja in (False, True):
     lang='ja' if ja else 'en'
     title='Tab5 MeOS FPGA 開発計画' if ja else 'Tab5 MeOS FPGA Development Plan'
     subtitle='M5Stack Tab5上のMeOSに、Tang Primer 20Kによる描画処理と外部DDR3バッファを追加する計画です。実装状況、構成、検証項目を記載します。' if ja else 'Plan to add Tang Primer 20K rendering operations and external DDR3 buffers to MeOS on M5Stack Tab5. This document describes implementation status, architecture and validation requirements.'
-    notice='基準ファーム、microSD、USB Ethernet、Wi-Fi、SSHサーバー・クライアント同時動作は基本機能を実機確認済みです。USBハブのキーボード入力も確認済みで、新転送方式でのストレージ回帰試験が残っています。FPGA・GUI拡張は今後の計画です。' if ja else 'Core baseline, microSD, USB Ethernet, Wi-Fi and concurrent SSH server/client checks passed on hardware. Hub keyboard input passed; storage regression checks on the new transfer engine remain pending. FPGA and GUI extensions are planned.'
+    notice='基準ファーム、浮動小数点コンテキスト、microSD、USB Ethernet、Wi-Fi、SSH同時動作、タッチスクロール、内蔵カメラの基本機能を実機確認済みです。USBストレージの新転送方式での回帰試験は残件です。USBカメラとBluetooth入力は一部動作を確認し検証を継続中、FPGA・GUI拡張は今後の計画です。' if ja else 'Core hardware checks passed for baseline firmware, FP context, microSD, USB Ethernet, Wi-Fi, concurrent SSH, touch scrolling and the built-in camera. USB storage regression on the new transfer engine remains pending. USB cameras and Bluetooth passed limited checks; full input/video validation remains pending. FPGA and GUI extensions are planned.'
     prefix='../' if ja else './'
     body=markdown(plan) if ja else '<h2>Feature status & planned work</h2>'+table(EN_STATUS,['Area','Current source status','Planned work'])+markdown(en_details)
     # Source Markdown links resolve from GitHub, not from the deployed site.
@@ -168,7 +183,7 @@ for ja in (False, True):
     doc=f'''<!doctype html>
 <html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tab5 MeOS FPGA — {'開発計画' if ja else 'Development roadmap'}</title><meta name="description" content="{subtitle}"><link rel="stylesheet" href="{prefix}style.css"><link rel="alternate" hreflang="en" href="https://airpocket-soundman.github.io/tab5-meos-fpga/"><link rel="alternate" hreflang="ja" href="https://airpocket-soundman.github.io/tab5-meos-fpga/ja/"></head>
 <body><header><strong>Tab5 MeOS FPGA</strong><nav aria-label="{'ナビゲーション' if ja else 'Navigation'}"><a href="#progress">{'進捗' if ja else 'Progress'}</a><a href="#plan">{'開発計画' if ja else 'Roadmap'}</a><a href="{'../' if ja else './ja/'}" lang="{'en' if ja else 'ja'}" hreflang="{'en' if ja else 'ja'}">{'English' if ja else '日本語'}</a><a href="https://github.com/airpocket-soundman/tab5-meos-fpga">GitHub ↗</a></nav></header>
-<main><div class="hero"><h1>{title}</h1><p class="lead">{subtitle}</p><div class="notice">{notice}</div><p>{'更新日' if ja else 'Updated'}: <time datetime="2026-10-23">2026-10-23</time></p></div>{progress_html(lang)}<article id="plan">{body}</article><section><h2>{'関連プロジェクト' if ja else 'Related projects'}</h2><div class="links">{links}</div></section></main><footer>Tab5 MeOS FPGA · airpocket-soundman · {'研究開発計画' if ja else 'Research roadmap'}</footer></body></html>
+<main><div class="hero"><h1>{title}</h1><p class="lead">{subtitle}</p><div class="notice">{notice}</div><p>{'更新日' if ja else 'Updated'}: <time datetime="2026-10-23">2026-10-23</time></p></div>{progress_html(lang)}{implementation_records(lang)}<article id="plan">{body}</article><section><h2>{'関連プロジェクト' if ja else 'Related projects'}</h2><div class="links">{links}</div></section></main><footer>Tab5 MeOS FPGA · airpocket-soundman · {'研究開発計画' if ja else 'Research roadmap'}</footer></body></html>
 '''
     dest=OUT/('ja/index.html' if ja else 'index.html')
     dest.parent.mkdir(parents=True,exist_ok=True)
