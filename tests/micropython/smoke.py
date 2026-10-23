@@ -63,4 +63,3 @@ for gpio in (16, 53):
 refused(lambda: ADC(35))
 refused(lambda: ADC(16, atten=99))
 print("MicroPython machine.Pin/ADC input and GC smoke PASS")
-
