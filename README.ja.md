@@ -26,6 +26,8 @@ USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSH
 - CPythonとPyxel本体の移植を検討し、既存ゲームをソース・素材の事前変換なしで実行。互換性とメモリを検証後、FPGAによる描画高速化を追加。
 - 小規模TUIアプリの移植。nano／Vimは依存関係を調査。Linux実行ファイルの直接実行には非対応。
 
+同一SDK・ツールによる再ビルド比較、成果物ハッシュと実行時メモリの扱いは[資源使用量](docs/RESOURCE_USAGE.md)に記録し、[公開ページ](https://airpocket-soundman.github.io/tab5-meos-fpga/ja/#resources)へ表示しています。
+
 ## 開発資料
 
 [詳細な開発記録](docs/DEVELOPMENT_GOALS.md)、[公開ロードマップ](https://airpocket-soundman.github.io/tab5-meos-fpga/ja/)、[保存した上流README（英語）](docs/UPSTREAM_README.md)を参照してください。

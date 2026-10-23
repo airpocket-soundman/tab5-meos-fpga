@@ -1,0 +1,12 @@
+diff --git a/user/shell/shell.c b/user/shell/shell.c
+index df36c92..319fce7 100644
+--- a/user/shell/shell.c
++++ b/user/shell/shell.c
+@@ -121,6 +121,7 @@ static int read_line_ex(char *line, bool echo);
+ 
+ typedef struct { const char *name; int (*fn)(int, char **); const char *help; } command_t;
+ static const command_t s_commands[];
++static bool sh_streq(const char *a, const char *b);
+ 
+ static int cmd_help(int argc, char **argv)
+ {

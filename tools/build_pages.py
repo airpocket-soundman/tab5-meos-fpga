@@ -150,6 +150,44 @@ Reference: [shi3z — MeOS article](https://note.com/shi3zblog/n/n15e659e90a23).
 '''
 
 
+def resource_html(lang):
+    """Static artifact comparison; runtime heaps are deliberately not summed."""
+    source = ROOT / 'docs/resources'
+    baseline = json.loads((source/'baseline.json').read_text(encoding='utf-8'))
+    current = json.loads((source/'current.json').read_text(encoding='utf-8'))
+    comparison = json.loads((source/'comparison.json').read_text(encoding='utf-8'))
+    metrics = [
+        ('flash_bin_bytes', 'フラッシュ BIN画像', 'Flash BIN image'),
+        ('static_hp_sram_including_arena_bytes', '静的HP SRAM（内部ヒープ予約領域を含む）', 'Static HP SRAM (including internal heap arena)'),
+        ('internal_heap_arena_bytes', '内部ヒープ予約領域（上記に内包）', 'Internal heap arena (already included above)'),
+    ]
+    ja = lang == 'ja'
+    rows = []
+    for key, jp, en in metrics:
+        before, after = baseline[key], current[key]
+        delta = after-before
+        if comparison['delta_bytes'].get(key) != delta:
+            raise ValueError('Resource comparison JSON is stale: '+key)
+        def amount(value, signed=False):
+            prefix = '+' if signed and value >= 0 else ''
+            return f'{prefix}{value/1024:,.2f} KiB ({prefix}{value:,} B)'
+        growth = f'{delta/before*100:+.2f}%' if before else ('—' if not delta else 'n/a')
+        rows.append([jp if ja else en, amount(before), amount(after), amount(delta, True), growth])
+    baseline_label = str(baseline['artifact_project_version'])
+    headings = ['項目', '上流再ビルド '+baseline_label, '現在の計測ビルド', '増減', '増減率'] if ja else ['Metric', 'Rebuilt upstream '+baseline_label, 'Measured current build', 'Change', 'Change %']
+    same_sdk = baseline['sdkconfig_sha256'] == current['sdkconfig_sha256']
+    same_tools = baseline['idf_version'] == current['idf_version'] and baseline['compiler_version'] == current['compiler_version']
+    if same_sdk and same_tools:
+        method = '同一sdkconfigハッシュ・ESP-IDF・コンパイラで再ビルドした上流版との比較です。基準版には宣言のみのビルド修正を適用しています。' if ja else 'Compared with upstream rebuilt using the same sdkconfig hash, ESP-IDF and compiler. The baseline includes a declaration-only build fix.'
+    else:
+        method = 'SDK設定またはツールが異なるため、同一条件の比較ではありません。詳細記録を確認してください。' if ja else 'SDK settings or tools differ; this is not a matched build comparison. Consult the detailed record.'
+    policy = '静的HP SRAMには、使用中・未使用を含む内部ヒープ予約領域全体が既に含まれます。実行時の内部ヒープ使用量を再加算しません。PSRAM・タスク・アプリの使用量はワークロードに依存し、この表は各機能の単独コストを示しません。' if ja else 'Static HP SRAM already includes the complete internal heap arena, both used and free. Do not add runtime internal-heap usage again. PSRAM, tasks and application usage depend on workload; these cumulative changes are not isolated per-feature costs.'
+    title = '資源使用量の比較' if ja else 'Resource usage comparison'
+    label = '測定条件・ハッシュ・実行時メモリの詳細' if ja else 'Measurement conditions, hashes and runtime-memory details'
+    url = 'https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/RESOURCE_USAGE.md'
+    return '<section id="resources"><h2>'+title+'</h2><p>'+method+'</p>'+table(rows,headings)+'<p>'+policy+'</p><p><a href="'+url+'">'+label+'</a></p></section>'
+
+
 def progress_html(lang):
     labels = {'ja': {'verified':'完了・基本機能実機確認済み','regression':'実装完了・回帰確認待ち','host-tested':'一部実装・ホスト試験済み','active':'実装・実機検証中','planned':'未着手'},
               'en': {'verified':'Complete: core hardware checks passed','regression':'Implemented: regression checks pending','host-tested':'Partly implemented: host tests passed','active':'Implementation / device validation','planned':'Not started'}}[lang]
@@ -180,6 +218,9 @@ def implementation_records(lang):
     storage = '<a href="https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/STORAGE_HELPER.md">'+storage_label+'</a>'
     return '<section><h2>'+title+'</h2><p>'+note+'</p><p>'+links+'</p><p>'+audit+' · '+api+' · '+storage+'</p></section>'
 
+plan_date = re.search(r'更新日：(\d{4}-\d{2}-\d{2})', plan)
+page_updated = max(progress['updated'], plan_date.group(1) if plan_date else progress['updated'])
+
 for ja in (False, True):
     lang='ja' if ja else 'en'
     title='Tab5 MeOS FPGA 開発計画' if ja else 'Tab5 MeOS FPGA Development Plan'
@@ -193,8 +234,8 @@ for ja in (False, True):
     links=''.join(f'<a href="https://github.com/airpocket-soundman/{r}">{r}</a>' for r in related)
     doc=f'''<!doctype html>
 <html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tab5 MeOS FPGA — {'開発計画' if ja else 'Development roadmap'}</title><meta name="description" content="{subtitle}"><link rel="stylesheet" href="{prefix}style.css"><link rel="alternate" hreflang="en" href="https://airpocket-soundman.github.io/tab5-meos-fpga/"><link rel="alternate" hreflang="ja" href="https://airpocket-soundman.github.io/tab5-meos-fpga/ja/"></head>
-<body><header><strong>Tab5 MeOS FPGA</strong><nav aria-label="{'ナビゲーション' if ja else 'Navigation'}"><a href="#progress">{'進捗' if ja else 'Progress'}</a><a href="#plan">{'開発計画' if ja else 'Roadmap'}</a><a href="{'../' if ja else './ja/'}" lang="{'en' if ja else 'ja'}" hreflang="{'en' if ja else 'ja'}">{'English' if ja else '日本語'}</a><a href="https://github.com/airpocket-soundman/tab5-meos-fpga">GitHub ↗</a></nav></header>
-<main><div class="hero"><h1>{title}</h1><p class="lead">{subtitle}</p><div class="notice">{notice}</div><p>{'更新日' if ja else 'Updated'}: <time datetime="2026-10-23">2026-10-23</time></p></div>{progress_html(lang)}{implementation_records(lang)}<article id="plan">{body}</article><section><h2>{'関連プロジェクト' if ja else 'Related projects'}</h2><div class="links">{links}</div></section></main><footer>Tab5 MeOS FPGA · airpocket-soundman · {'研究開発計画' if ja else 'Research roadmap'}</footer></body></html>
+<body><header><strong>Tab5 MeOS FPGA</strong><nav aria-label="{'ナビゲーション' if ja else 'Navigation'}"><a href="#progress">{'進捗' if ja else 'Progress'}</a><a href="#resources">{'資源使用量' if ja else 'Resources'}</a><a href="#plan">{'開発計画' if ja else 'Roadmap'}</a><a href="{'../' if ja else './ja/'}" lang="{'en' if ja else 'ja'}" hreflang="{'en' if ja else 'ja'}">{'English' if ja else '日本語'}</a><a href="https://github.com/airpocket-soundman/tab5-meos-fpga">GitHub ↗</a></nav></header>
+<main><div class="hero"><h1>{title}</h1><p class="lead">{subtitle}</p><div class="notice">{notice}</div><p>{'更新日' if ja else 'Updated'}: <time datetime="{page_updated}">{page_updated}</time></p></div>{resource_html(lang)}{progress_html(lang)}{implementation_records(lang)}<article id="plan">{body}</article><section><h2>{'関連プロジェクト' if ja else 'Related projects'}</h2><div class="links">{links}</div></section></main><footer>Tab5 MeOS FPGA · airpocket-soundman · {'研究開発計画' if ja else 'Research roadmap'}</footer></body></html>
 '''
     dest=OUT/('ja/index.html' if ja else 'index.html')
     dest.parent.mkdir(parents=True,exist_ok=True)

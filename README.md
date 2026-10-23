@@ -26,6 +26,8 @@ Native SL completed on hardware serial, including ANSI screen restoration and Ct
 - Investigate porting CPython and Pyxel to run existing games without source or asset preprocessing; validate compatibility and memory first, then FPGA rendering acceleration.
 - Small TUI application ports; investigate nano/Vim dependencies. Linux executables do not run directly on MeOS.
 
+Resource comparisons from matched SDK/toolchain rebuilds, artifact hashes and runtime-memory accounting are documented in [resource usage](docs/RESOURCE_USAGE.md) and shown on the [public page](https://airpocket-soundman.github.io/tab5-meos-fpga/#resources).
+
 ## Development
 
 See the [detailed development record (Japanese)](docs/DEVELOPMENT_GOALS.md), [public roadmap](https://airpocket-soundman.github.io/tab5-meos-fpga/) and [preserved upstream documentation](docs/UPSTREAM_README.md).
