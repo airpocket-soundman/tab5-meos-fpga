@@ -11,14 +11,14 @@ EN_STATUS = [
     ('OS / apps', 'Tasks, memory, IPC, M5EX and WASM exist', 'Validate Tab5 baseline and integrate GUI / FPGA completion.'),
     ('Local terminal', '256-line colored history; ANSI/DEC colors, margins, cursor and alternate-screen controls implemented; host tests passed', 'Verify Vim/sl on hardware; continue documenting unsupported VT220/xterm features.'),
     ('SSH', 'Shared-console server and client ran concurrently over Ethernet; login, commands, reconnect and stop verified', 'Independent PTYs, exec, SFTP and storage channels remain to be implemented.'),
-    ('Wi-Fi / Tailscale', 'C6 uses ESP-Hosted-NG while upstream MeOS expects ESP-Hosted-MCU; Wi-Fi traffic not verified', 'Align C6 firmware with the existing MeOS driver before changing the host stack; Tailscale scope remains unaudited.'),
+    ('Wi-Fi / Tailscale', 'C6 updated to official MCU application; WPA2, DHCP, DNS and HTTP verified over Wi-Fi', 'Verify long-duration traffic and reconnect; Tailscale scope remains unaudited.'),
     ('Wired keyboards', 'I2C accessory or USB boot keyboard', 'Add coexistence, hotplug and GUI key events.'),
     ('USB mouse', 'Not implemented', 'Add HID input, pointer, buttons, wheel and GUI events.'),
     ('Bluetooth input', 'Not implemented', 'Audit C6 transport / firmware, then BLE HID pairing and reconnect. Assess Classic separately.'),
     ('Touch', 'GT911 plus ST7123/ST7121-compatible input; new panel recognized on hardware; swipe integration implemented', 'Recheck swipe/return-to-live on the device; keyboard is hidden at boot and enabled with osk on.'),
     ('microSD', 'Tab5 SPI and /sd FAT verified: list, 38-byte write/read, persistence after reset; /usb concurrent', 'Optimize speed; verify hot-plug, sustained transfers and errors.'),
-    ('USB storage', 'Native DMA + FatFs: two exFAT/FAT drives passed write/read, reset persistence and isolation; hub keyboard command input and USB card-reader mount/listing checked; lsusb shows cached topology', 'Verify sustained input under load, independent hot-plug and high-speed mixed-speed hubs.'),
-    ('USB Ethernet', 'RTL8153 CDC-ECM: link, DHCP, ping and concurrent SSH verified at USB2 High-Speed', 'Measure throughput and reduce storage coexistence latency; other adapters are unverified.'),
+    ('USB storage', 'Native DMA + FatFs: two exFAT/FAT drives passed write/read, reset persistence and isolation; hub keyboard command input and USB card-reader mount/listing checked; lsusb shows cached topology', 'High-Speed mixed-speed receiver input passed; repeat storage write/read on Buffer DMA and verify sustained input under load and hot-plug.'),
+    ('USB Ethernet', 'RTL8153 CDC-ECM: link, DHCP, ping and concurrent SSH verified at USB2 High-Speed', 'Measure throughput and repeat storage coexistence checks on Buffer DMA; other adapters are unverified.'),
     ('USB cameras', 'UVC not implemented', 'Add video transport to the native DMA driver; verify low-resolution preview, capture and hot-plug first.'),
     ('USB diagnostics / card reader', 'Native lsusb verified with a hub and three storage devices; USB microSD reader mounted and listed before/after reset without card writes', 'Add stable device identification; verify card-only replacement, multiple LUNs and reader writes. USB block nodes are not exposed under /dev.'),
     ('Built-in camera', 'SC202CS / MIPI-CSI / ISP driver and camera app exist; hardware unverified in this fork', 'Verify initialization, preview, capture, repeated start/stop and cleanup; fix gaps.'),
@@ -83,12 +83,12 @@ DDR3 is an explicitly transferred external data region, not transparent CPU RAM.
 5. Expand to compositing, scaling and compute acceleration based on measurements.
 The first milestone is an interactive window and menu with at least one FPGA drawing operation. Speed improvement must be measured separately.
 ## USB implementation reference
-The official M5Stack Tab5 UserDemo uses ESP-IDF USB Host/HID drivers with FreeRTOS tasks. Tab5thinclient uses TinyUSB Host HID/MSC APIs. This fork is consolidating on its native descriptor DMA driver. Following TinyUSB 0.19.0, the native HAL now waits for host mode before configuring FIFOs. USB writes, complete readback and persistence after reset passed on the corrected driver. ESP-IDF provides PHY initialization and DWC2 HAL services; the FreeRTOS scheduler is not used. The TinyUSB OS_NONE/FIFO implementation remains available for comparison. See the [DMA investigation](docs/USB_DMA_INVESTIGATION.md).
+The official M5Stack Tab5 UserDemo uses ESP-IDF USB Host/HID drivers with FreeRTOS tasks. Tab5thinclient uses TinyUSB Host HID/MSC APIs. This fork uses its native Buffer DMA driver with split transactions for mixed-speed hubs. Following TinyUSB 0.19.0, the native HAL now waits for host mode before configuring FIFOs. USB writes, complete readback and persistence after reset passed on the corrected driver. ESP-IDF provides PHY initialization and DWC2 HAL services; the FreeRTOS scheduler is not used. The TinyUSB OS_NONE/FIFO implementation remains available for comparison. See the [DMA investigation](docs/USB_DMA_INVESTIGATION.md).
 References: [official Tab5 USB implementation](https://github.com/m5stack/M5Tab5-UserDemo/blob/main/platforms/tab5/main/hal/components/hal_usb.cpp), [TinyUSB DWC2 host](https://github.com/hathach/tinyusb/blob/0.19.0/src/portable/synopsys/dwc2/hcd_dwc2.c).
 ## USB hubs and simultaneous devices
 Implemented one external hub, port power, connection-change/reset handling, address allocation, per-device DATA PID tracking and independent MSC mounts. Two exFAT/FAT drives on a full-speed hub passed 512/8192 byte write/read, persistence after reset, volume isolation and simultaneous SD access. Hub keyboard command input passed on a separate DMA channel; sustained input under load and storage hot-plug remain pending. A USB microSD reader was mounted and listed without writing the card. The native lsusb command shows cached topology and mounts. See the [hub record](docs/USB_HUB_IMPLEMENTATION.md) and [diagnostics](docs/USB_DIAGNOSTICS.md).
 Execution order: USB receiver/storage, microSD, USB write correction and hub/multiple devices, concurrent SSH server/client, touch scrolling, Bluetooth keyboard/mouse.
-USB 2.0 High-Speed hubs (480 Mbit/s) are an explicit requirement, including mixed high-speed drives and full/low-speed keyboards or receivers. Descriptor DMA cannot perform split transactions; add buffer DMA and Transaction Translator handling to the native driver. Full-speed hub results do not verify high-speed hubs. The current test hub, 05e3:0606, enumerates at full speed; high-speed and mixed-speed operation remain unverified. See [Espressif limitations](https://docs.espressif.com/projects/esp-usb/en/latest/esp32p4/usb_host.html).
+USB 2.0 High-Speed hubs (480 Mbit/s) are an explicit requirement, including mixed high-speed drives and full/low-speed keyboards or receivers. Buffer DMA and Transaction Translator handling are implemented. The 0bda:5411 High-Speed hub enumerated two drives, a Full-Speed receiver and Ethernet; keyboard input and shell execution passed. Storage write/read regression on the new engine remains pending. See [Espressif limitations](https://docs.espressif.com/projects/esp-usb/en/latest/esp32p4/usb_host.html).
 ## Shared terminal and compatibility
 Share terminal processing between the local console and SSH client. Implement VT100 as the baseline, then required VT220 features and selected xterm extensions. The SSH server must handle terminal type, PTY size, resize notifications and session I/O.
 - Verify cursor movement/save/restore, line/screen erase, text attributes/colors, scrolling regions, autowrap and DEC special graphics.
@@ -144,18 +144,21 @@ Reference: [shi3z — MeOS article](https://note.com/shi3zblog/n/n15e659e90a23).
 progress = json.loads((ROOT/'docs/PROGRESS.json').read_text(encoding='utf-8'))
 
 def progress_html(lang):
-    labels = {'ja': {'verified':'実機確認（範囲限定）','active':'実装中・実機未確認','planned':'未着手'},
-              'en': {'verified':'Hardware checked (limited)','active':'In development / unverified','planned':'Not started'}}[lang]
+    labels = {'ja': {'verified':'完了・基本機能実機確認済み','regression':'実装完了・回帰確認待ち','host-tested':'一部実装・ホスト試験済み','active':'実装・実機検証中','planned':'未着手'},
+              'en': {'verified':'Complete: core hardware checks passed','regression':'Implemented: regression checks pending','host-tested':'Partly implemented: host tests passed','active':'Implementation / device validation','planned':'Not started'}}[lang]
     title = '開発順序と進捗' if lang == 'ja' else 'Development order and progress'
-    note = 'USB以降は上から順に進めます。状態は実装・確認結果に基づき更新し、全体の完了率や日程は未設定です。' if lang == 'ja' else 'USB and later work proceed in the order shown. Status reflects evidence; no overall percentage or dates are committed.'
+    note = '完了は記載した基本機能の実機確認を指します。長時間試験や追加機能は残件として区別します。実装後に転送方式を変更したUSBは、回帰確認待ちとして表示します。' if lang == 'ja' else 'Complete means the documented core hardware checks passed. Stress tests and additional features remain separate follow-ups. USB features affected by the transfer-engine change are marked as awaiting regression checks.'
     rows = ''.join('<li class="stage '+x['status']+'"><div><strong>'+escape(x['title'][lang])+'</strong><span class="status">'+labels[x['status']]+'</span></div><p>'+escape(x['detail'][lang])+'</p></li>' for x in progress['items'])
-    return '<section id="progress"><h2>'+title+'</h2><p>'+note+'</p><ol class="progress-list">'+rows+'</ol></section>'
+    checked = sum(x['status'] == 'verified' for x in progress['items'])
+    regression = sum(x['status'] == 'regression' for x in progress['items'])
+    summary = f'基本機能完了・実機確認済み：{checked}項目 ／ 実装完了・回帰確認待ち：{regression}項目' if lang == 'ja' else f'Core hardware checks complete: {checked} items / Implemented, awaiting regression: {regression} items'
+    return '<section id="progress"><h2>'+title+'</h2><p>'+escape(summary)+'</p><p>'+note+'</p><ol class="progress-list">'+rows+'</ol></section>'
 
 for ja in (False, True):
     lang='ja' if ja else 'en'
     title='Tab5 MeOS FPGA 開発計画' if ja else 'Tab5 MeOS FPGA Development Plan'
     subtitle='M5Stack Tab5上のMeOSに、Tang Primer 20Kによる描画処理と外部DDR3バッファを追加する計画です。実装状況、構成、検証項目を記載します。' if ja else 'Plan to add Tang Primer 20K rendering operations and external DDR3 buffers to MeOS on M5Stack Tab5. This document describes implementation status, architecture and validation requirements.'
-    notice='基準ファームウェアのビルド・書き込み・起動とシリアルシェルを確認済みです。USB拡張は実装中。FPGA通信・GUI拡張などの予定機能は未検証です。' if ja else 'Baseline build, flashing, boot and serial shell verified. USB extensions are in development. FPGA communication and GUI extensions remain unverified.'
+    notice='基準ファーム、microSD、USB Ethernet、Wi-Fi、SSHサーバー・クライアント同時動作は基本機能を実機確認済みです。USBハブのキーボード入力も確認済みで、新転送方式でのストレージ回帰試験が残っています。FPGA・GUI拡張は今後の計画です。' if ja else 'Core baseline, microSD, USB Ethernet, Wi-Fi and concurrent SSH server/client checks passed on hardware. Hub keyboard input passed; storage regression checks on the new transfer engine remain pending. FPGA and GUI extensions are planned.'
     prefix='../' if ja else './'
     body=markdown(plan) if ja else '<h2>Feature status & planned work</h2>'+table(EN_STATUS,['Area','Current source status','Planned work'])+markdown(en_details)
     # Source Markdown links resolve from GitHub, not from the deployed site.

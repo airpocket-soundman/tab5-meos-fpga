@@ -15,14 +15,14 @@
     },
     {
       "id": "usb",
-      "status": "active",
+      "status": "regression",
       "title": {
         "ja": "1. USB受信機・USBメモリ",
         "en": "1. USB receivers and storage"
       },
       "detail": {
-        "ja": "独自DMA版で37・512・8192バイトの読み書き・再起動後保持を確認。再接続処理も修正し、I/O停止中の抜き差し1回で再マウント、既存全内容一致、新規512バイトの読み書きを確認。TinyUSBは比較用。受信機の再確認は継続。",
-        "en": "Native DMA verified: 37, 512 and 8192 byte write/read and persistence. Reconnection corrected; one idle unplug/replug cycle passed remount, full original-file readback and a new 512-byte write/read. TinyUSB retained for comparison. Receiver regression pending."
+        "ja": "独自DMA版で37・512・8192バイトの読み書き・再起動後保持を確認。再接続処理も修正し、I/O停止中の抜き差し1回で再マウント、既存全内容一致、新規512バイトの読み書きを確認。TinyUSBは比較用。受信機の直接接続と高速ハブ経由の入力も確認済み。Buffer DMA切替後のストレージ読み書き回帰試験は残件。",
+        "en": "Native DMA verified: 37, 512 and 8192 byte write/read and persistence. Reconnection corrected; one idle unplug/replug cycle passed remount, full original-file readback and a new 512-byte write/read. TinyUSB retained for comparison. Receiver input passed both directly and through a High-Speed hub. Storage write/read regression after the Buffer DMA conversion remains pending."
       }
     },
     {
@@ -39,7 +39,7 @@
     },
     {
       "id": "usb-hub",
-      "status": "active",
+      "status": "regression",
       "title": {
         "ja": "3. USBハブ・複数メモリ・キーボード併用",
         "en": "3. USB hubs, multiple drives and keyboard coexistence"
@@ -51,7 +51,7 @@
     },
     {
       "id": "usb-ethernet",
-      "status": "active",
+      "status": "verified",
       "title": {
         "ja": "3a. USB Ethernet",
         "en": "3a. USB Ethernet"
@@ -63,7 +63,7 @@
     },
     {
       "id": "wifi-check",
-      "status": "active",
+      "status": "verified",
       "title": {
         "ja": "3b. Wi-Fi動作確認",
         "en": "3b. Wi-Fi validation"
@@ -75,7 +75,7 @@
     },
     {
       "id": "ssh",
-      "status": "active",
+      "status": "verified",
       "title": {
         "ja": "4. SSHサーバー・クライアント同時動作",
         "en": "4. Concurrent SSH server and client"
@@ -87,7 +87,7 @@
     },
     {
       "id": "terminal-spec",
-      "status": "active",
+      "status": "host-tested",
       "title": {
         "ja": "4a. 共通端末・VT100／VT220／xterm対応",
         "en": "4a. Shared terminal: VT100 / VT220 / xterm"
