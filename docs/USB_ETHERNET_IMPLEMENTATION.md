@@ -60,9 +60,9 @@ adapter's product class. Actual throughput has not been benchmarked.
   passed on the device. Concurrent outbound SSH and interface switching are
   tracked separately in the SSH implementation notes.
 
-Wi-Fi SDIO card enumeration succeeds, but its ESP-Hosted WifiInit request currently
-times out. Wi-Fi IP communication has not passed. Metadata-only diagnostics were
-added to separate transport, RPC timeout and C6 error responses.
+Wi-Fi SDIO enumeration succeeds, but the device uses ESP-Hosted-NG while the
+existing MeOS driver expects MCU. Wi-Fi IP communication has not passed. See
+[firmware compatibility](WIFI_COMPATIBILITY.md).
 
 ## References
 

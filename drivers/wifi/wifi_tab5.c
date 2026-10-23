@@ -18,6 +18,7 @@
 #include <m5os/vfs.h>
 #include <m5os/kmalloc.h>
 #include <m5os/errno.h>
+#include "hosted_wire.h"
 #include <m5os/net_external.h>
 #include <string.h>
 
@@ -134,6 +135,7 @@ static mutex_t      s_wifi_lock;
 static bool         s_lock_ready;
 static bool         s_sdio_ready;
 static bool         s_priv_init_done;
+static bool         s_hosted_ng_detected;
 static bool         s_wifi_inited;
 static bool         s_daemon_started;
 
@@ -900,6 +902,12 @@ static void sdio_poll_rx_transport_locked(void)
         s_sdio_rx_bytes = (s_sdio_rx_bytes + len_from_slave) % 0x100000u;
 
         /* De-frame one or more back-to-back esp_payload_header packets */
+        /* Reject an incompatible C6 control protocol before sending MCU RPCs. */
+        if (!s_priv_init_done && hosted_wire_is_ng_boot(s_rx_packet_buf,len_from_slave)) {
+            s_hosted_ng_detected=true;
+            kprintf("wifi: ESP-Hosted-NG detected; this driver requires MCU firmware\n");
+            return;
+        }
         size_t pos = 0;
         while (pos + 12u <= len_from_slave) {
             const uint8_t *hdr = &s_rx_packet_buf[pos];
@@ -2119,11 +2127,20 @@ bool wifi_init(void)
 
     /* Wait up to 1.5s for ESP_PRIV_EVENT_INIT from slave and send capability response */
     s_priv_init_done = false;
+    s_hosted_ng_detected = false;
     uint64_t t0 = hal_time_now_us();
     while (hal_time_now_us() - t0 < 1500000ULL) {
         sdio_poll_rx_locked();
-        if (s_priv_init_done) break;
+        if (s_priv_init_done || s_hosted_ng_detected) break;
         task_sleep(10);
+    }
+
+    if (s_hosted_ng_detected) {
+        s_status.state=WIFI_STATE_ERROR;
+        s_sdio_ready=false;
+        set_msg("ESP-Hosted-NG: MCU firmware required");
+        mutex_unlock(&s_wifi_lock);
+        return false;
     }
 
     /* Build WifiInit default config with nvs_enable = 1 and magic = 0x1F2F3F4F */
