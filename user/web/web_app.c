@@ -2970,7 +2970,7 @@ static void join_argv_space(int start_idx, int argc, char **argv, char *out, siz
 static bool ensure_wifi_connected(void)
 {
     wifi_status_t st;
-    wifi_get_status(&st);
+    wifi_get_network_status(&st);
     if (st.state == WIFI_STATE_CONNECTED && st.ip[0] != 0) return true;
 
     char ssid[WIFI_SSID_MAX + 1] = "";
@@ -2981,7 +2981,7 @@ static bool ensure_wifi_connected(void)
         wifi_connect(ssid, pass, false);
     }
     for (int i = 0; i < 40; i++) {
-        wifi_get_status(&st);
+        wifi_get_network_status(&st);
         if (st.state == WIFI_STATE_CONNECTED && st.ip[0] != 0) return true;
         task_sleep(100);
     }

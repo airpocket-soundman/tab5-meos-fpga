@@ -1355,7 +1355,7 @@ static bool ts_tun_tx_callback(const uint8_t *ipv4_pkt, size_t len)
         for (int w = 0; w < 6; w++) {
             uint32_t saved_d = ts_unlock_all();
             wifi_status_t wst;
-            wifi_get_status(&wst);
+            wifi_get_network_status(&wst);
             task_sleep(10);
             ts_relock_all(saved_d);
         }
@@ -1364,7 +1364,7 @@ static bool ts_tun_tx_callback(const uint8_t *ipv4_pkt, size_t len)
         while (hal_time_now_us() < deadline && !p->info.wg_established) {
             uint32_t saved_d = ts_unlock_all();
             wifi_status_t wst;
-            wifi_get_status(&wst); /* Polls SDIO RX so WG Type-2 Handshake Response arrives promptly */
+            wifi_get_network_status(&wst); /* Polls SDIO RX so WG Type-2 Handshake Response arrives promptly */
             task_sleep(10);
             ts_relock_all(saved_d);
             if (!p->info.wg_established && (hal_time_now_us() - p->last_hs_tx_us >= 1200000ULL)) {
@@ -2246,7 +2246,7 @@ static bool parse_map_response(const char *json, size_t len)
     const char *end = json + len;
 
     wifi_status_t wst;
-    wifi_get_status(&wst);
+    wifi_get_network_status(&wst);
     uint32_t my_lan_u32 = ((uint32_t)wst.ip[0] << 24) | ((uint32_t)wst.ip[1] << 16) |
                           ((uint32_t)wst.ip[2] << 8)  | (uint32_t)wst.ip[3];
     uint32_t my_mask_u32 = ((uint32_t)wst.netmask[0] << 24) | ((uint32_t)wst.netmask[1] << 16) |
@@ -2409,11 +2409,11 @@ static bool parse_map_response(const char *json, size_t len)
 static bool ts_sync_control_plane(void)
 {
     wifi_status_t wst;
-    wifi_get_status(&wst);
+    wifi_get_network_status(&wst);
     if (wst.state == WIFI_STATE_CONNECTED && wst.ip[0] == 0) {
         for (int i = 0; i < 50 && wst.ip[0] == 0; i++) {
             task_sleep(100);
-            wifi_get_status(&wst);
+            wifi_get_network_status(&wst);
         }
     }
     if (wst.state != WIFI_STATE_CONNECTED || wst.ip[0] == 0) {
@@ -2757,7 +2757,7 @@ int tailscale_ping(const char *target, uint8_t out_peer_ip[4], uint8_t out_ep_ip
     uint64_t deadline = hal_time_now_us() + 2500000ULL;
     while (hal_time_now_us() < deadline) {
         wifi_status_t wst;
-        wifi_get_status(&wst); /* polls SDIO RX */
+        wifi_get_network_status(&wst); /* polls SDIO RX */
         if (s_ping_done) {
             s_ping_waiting = false;
             if (out_ep_ip) mem_copy(out_ep_ip, s_ping_pong_ip, 4);

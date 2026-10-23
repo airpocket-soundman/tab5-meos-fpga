@@ -2141,7 +2141,7 @@ static int ssh_session_loop(ssh_session_t *s, const char *remote_cmd)
 static bool ssh_ensure_wifi_ready(void)
 {
     wifi_status_t st;
-    wifi_get_status(&st);
+    wifi_get_network_status(&st);
 
     if (st.state != WIFI_STATE_CONNECTED) {
         char saved_ssid[WIFI_SSID_MAX + 1] = "";
@@ -2150,7 +2150,7 @@ static bool ssh_ensure_wifi_ready(void)
         if (wifi_load_saved(saved_ssid, saved_pass, &auto_conn) && auto_conn && saved_ssid[0]) {
             kprintf("ssh: connecting to saved Wi-Fi '%s'...\n", saved_ssid);
             wifi_connect(saved_ssid, saved_pass, false);
-            wifi_get_status(&st);
+            wifi_get_network_status(&st);
         }
     }
 
@@ -2158,7 +2158,7 @@ static bool ssh_ensure_wifi_ready(void)
         kprintf("ssh: waiting for DHCP IPv4 on '%s'...\n", st.ssid);
         for (int i = 0; i < 60 && st.ip[0] == 0; i++) {
             task_sleep(100);
-            wifi_get_status(&st);
+            wifi_get_network_status(&st);
         }
     }
 
@@ -2927,7 +2927,7 @@ static void gui_render_manager(ssh_tab_t tabs[SSH_MAX_TABS], int active_tab, int
 
     /* Wi-Fi Status Banner (Rows 3..5) */
     wifi_status_t wst;
-    wifi_get_status(&wst);
+    wifi_get_network_status(&wst);
     dq_window(1, 3, 78, 4);
     char wline[76];
     if (wst.state == WIFI_STATE_CONNECTED && wst.ip[0]) {

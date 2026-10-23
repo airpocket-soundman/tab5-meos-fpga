@@ -76,6 +76,8 @@ bool wifi_disconnect(void);
 
 /* Read current Wi-Fi status snapshot. */
 void wifi_get_status(wifi_status_t *out);
+/* Active IP interface, including a USB Ethernet backend on Tab5. */
+void wifi_get_network_status(wifi_status_t *out);
 
 /* Saved credential helpers (/home/wifi.cfg + ESP32-C6 NVS flash fallback). */
 bool wifi_load_saved(char *ssid_out, char *pass_out, bool *auto_conn_out);

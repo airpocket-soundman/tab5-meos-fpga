@@ -46,3 +46,10 @@ bool hal_usbh_keyboard_open(uint8_t address, uint8_t endpoint, uint16_t mps, uin
 void hal_usbh_keyboard_close(void);
 bool hal_usbh_keyboard_start(void);
 int hal_usbh_keyboard_poll(uint8_t report[8]);
+
+/* Dedicated ECM RX, TX and notification channels, separate from storage/HID. */
+bool hal_usbh_net_open(unsigned pipe,uint8_t address,uint8_t endpoint,uint16_t mps,
+                       bool interrupt,uint8_t interval);
+void hal_usbh_net_close(unsigned pipe);
+bool hal_usbh_net_start(unsigned pipe,void *buffer,size_t length);
+int hal_usbh_net_poll(unsigned pipe);

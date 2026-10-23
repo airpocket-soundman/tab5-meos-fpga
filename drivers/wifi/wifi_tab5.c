@@ -18,6 +18,7 @@
 #include <m5os/vfs.h>
 #include <m5os/kmalloc.h>
 #include <m5os/errno.h>
+#include <m5os/net_external.h>
 
 #include "soc/sdmmc_struct.h"
 #include "soc/sdmmc_reg.h"
@@ -154,6 +155,11 @@ static int          s_scan_count;
 
 /* Current station status */
 static wifi_status_t s_status;
+static wifi_status_t s_external_status;
+static bool s_external;
+static net_external_tx_t s_external_tx;
+static net_external_rx_t s_external_rx;
+#define NET_STATUS (*(s_external ? &s_external_status : &s_status))
 static char          s_saved_pass[WIFI_PASS_MAX + 1];
 static bool          s_manual_disconnect;
 
@@ -851,8 +857,9 @@ static void handle_priv_packet(const uint8_t *payload, size_t len);
 static void handle_serial_packet(const uint8_t *payload, size_t len);
 static void handle_sta_rx_frame(const uint8_t *frame, size_t len);
 static void dhcp_send_discover(void);
+static void sdio_poll_rx_locked(void);
 
-static void sdio_poll_rx_locked(void)
+static void sdio_poll_rx_transport_locked(void)
 {
     static bool s_in_sdio_poll = false;
     if (!s_sdio_ready || s_in_sdio_poll) return;
@@ -908,7 +915,7 @@ static void sdio_poll_rx_locked(void)
                 handle_serial_packet(payload, plen);
             } else if (if_type == ESP_STA_IF) {
                 s_status.rx_packets++;
-                handle_sta_rx_frame(payload, plen);
+                if (!s_external) handle_sta_rx_frame(payload, plen);
             }
             pos += (size_t)offset + (size_t)plen;
         }
@@ -919,6 +926,26 @@ static void sdio_poll_rx_locked(void)
 /* =========================================================================
  * ESP_PRIV_IF Initial Capabilities Handshake
  * ========================================================================= */
+
+static bool net_send_frame(const uint8_t *frame,size_t length)
+{
+    if (!s_external) return sdio_send_packet(ESP_STA_IF,0,frame,length);
+    bool ok=s_external_tx && s_external_tx(frame,length);
+    if (ok) s_external_status.tx_packets++;
+    return ok;
+}
+static void sdio_poll_rx_locked(void)
+{
+    sdio_poll_rx_transport_locked();
+    if (!s_external || !s_external_rx) return;
+    static uint8_t frame[1600];
+    for (unsigned i=0;i<8;i++) {
+        int n=s_external_rx(frame,sizeof frame);
+        if (n<=0) break;
+        s_external_status.rx_packets++;
+        handle_sta_rx_frame(frame,n);
+    }
+}
 
 static void handle_priv_packet(const uint8_t *payload, size_t len)
 {
@@ -1128,9 +1155,11 @@ static void handle_rpc_event(uint32_t msg_id, const uint8_t *payload, size_t len
                 s_status.bssid[3], s_status.bssid[4], s_status.bssid[5],
                 (unsigned)s_status.channel, (unsigned)s_status.authmode);
         /* Kick off DHCP Discover over ESP_STA_IF */
-        s_dhcp_state = 1;
-        s_dhcp_last_tx_us = 0;
-        dhcp_send_discover();
+        if (!s_external) {
+            s_dhcp_state = 1;
+            s_dhcp_last_tx_us = 0;
+            dhcp_send_discover();
+        }
     } else if (msg_id == RPC_EVT_STA_DISCONNECTED) {
         uint32_t reason = 0;
         int32_t rssi = 0;
@@ -1178,7 +1207,7 @@ static void handle_rpc_event(uint32_t msg_id, const uint8_t *payload, size_t len
         mem_zero(s_status.ip, 4);
         mem_zero(s_status.netmask, 4);
         mem_zero(s_status.gateway, 4);
-        s_dhcp_state = 0;
+        if (!s_external) s_dhcp_state = 0;
         ksnprintf(s_status.last_msg, sizeof s_status.last_msg, "Disconnected (reason %u)", (unsigned)reason);
     }
 }
@@ -1313,7 +1342,7 @@ static void dhcp_send_packet(uint8_t msg_type, const uint8_t *req_ip, const uint
 
     /* 1. Ethernet header (14 bytes): broadcast dst */
     for (int i = 0; i < 6; i++) pkt[i] = 0xFFu;
-    mem_copy(&pkt[6], s_status.mac, 6);
+    mem_copy(&pkt[6], NET_STATUS.mac, 6);
     pkt[12] = 0x08u; pkt[13] = 0x00u; /* IPv4 */
 
     /* 2. IPv4 header (20 bytes) + UDP header (8 bytes) + BOOTP (240 bytes) + options (32 bytes) */
@@ -1325,7 +1354,7 @@ static void dhcp_send_packet(uint8_t msg_type, const uint8_t *req_ip, const uint
     uint8_t *opt = &bp[240];
     opt[opt_len++] = 53; opt[opt_len++] = 1; opt[opt_len++] = msg_type; /* DHCP Message Type */
     opt[opt_len++] = 61; opt[opt_len++] = 7; opt[opt_len++] = 1;        /* Client ID (MAC) */
-    mem_copy(&opt[opt_len], s_status.mac, 6); opt_len += 6;
+    mem_copy(&opt[opt_len], NET_STATUS.mac, 6); opt_len += 6;
     opt[opt_len++] = 12; opt[opt_len++] = 7;                            /* Hostname: M5-Tab5 */
     mem_copy(&opt[opt_len], "M5-Tab5", 7); opt_len += 7;
     if (msg_type == 3 && req_ip) {
@@ -1354,7 +1383,7 @@ static void dhcp_send_packet(uint8_t msg_type, const uint8_t *req_ip, const uint
     bp[6] = (uint8_t)((s_dhcp_xid >> 8) & 0xFFu);
     bp[7] = (uint8_t)(s_dhcp_xid & 0xFFu);
     bp[10] = 0x80u; /* Broadcast flag */
-    mem_copy(&bp[28], s_status.mac, 6);
+    mem_copy(&bp[28], NET_STATUS.mac, 6);
     bp[236] = 99; bp[237] = 130; bp[238] = 83; bp[239] = 99; /* DHCP magic cookie */
 
     /* Fill UDP */
@@ -1376,7 +1405,7 @@ static void dhcp_send_packet(uint8_t msg_type, const uint8_t *req_ip, const uint
     ip[11] = (uint8_t)(csum & 0xFFu);
 
     s_dhcp_last_tx_us = hal_time_now_us();
-    sdio_send_packet(ESP_STA_IF, 0, pkt, 14u + ip_len);
+    net_send_frame(pkt, 14u + ip_len);
 }
 
 static void dhcp_send_discover(void)
@@ -1420,16 +1449,16 @@ static void arp_send_request(const uint8_t target_ip[4])
     uint8_t pkt[42];
     mem_zero(pkt, sizeof pkt);
     for (int i = 0; i < 6; i++) pkt[i] = 0xFFu;
-    mem_copy(&pkt[6], s_status.mac, 6);
+    mem_copy(&pkt[6], NET_STATUS.mac, 6);
     pkt[12] = 0x08u; pkt[13] = 0x06u;
     pkt[14] = 0x00u; pkt[15] = 0x01u; /* Ethernet */
     pkt[16] = 0x08u; pkt[17] = 0x00u; /* IPv4 */
     pkt[18] = 6u;    pkt[19] = 4u;
     pkt[20] = 0x00u; pkt[21] = 0x01u; /* ARP Request */
-    mem_copy(&pkt[22], s_status.mac, 6);
-    mem_copy(&pkt[28], s_status.ip, 4);
+    mem_copy(&pkt[22], NET_STATUS.mac, 6);
+    mem_copy(&pkt[28], NET_STATUS.ip, 4);
     mem_copy(&pkt[38], target_ip, 4);
-    sdio_send_packet(ESP_STA_IF, 0, pkt, sizeof pkt);
+    net_send_frame(pkt, sizeof pkt);
 }
 
 static uint16_t tcp_checksum(const uint8_t src_ip[4], const uint8_t dst_ip[4],
@@ -1459,7 +1488,7 @@ static bool tcp_send_segment_locked(tcp_conn_t *c, uint8_t flags, uint32_t seq, 
 {
     if (!c || data_len > 1360u) return false;
     bool via_tun = (is_tailscale_ip(c->remote_ip) && s_tun_tx_cb != NULL && s_tun_ip[0] != 0);
-    const uint8_t *src_ip = via_tun ? s_tun_ip : s_status.ip;
+    const uint8_t *src_ip = via_tun ? s_tun_ip : NET_STATUS.ip;
 
     static uint8_t pkt[1420];
     size_t opt_len = (flags & TCP_SYN) ? 4u : 0u;
@@ -1469,7 +1498,7 @@ static bool tcp_send_segment_locked(tcp_conn_t *c, uint8_t flags, uint32_t seq, 
 
     mem_zero(pkt, 14u + 20u + tcp_hdr_len);
     mem_copy(&pkt[0], c->remote_mac, 6);
-    mem_copy(&pkt[6], s_status.mac, 6);
+    mem_copy(&pkt[6], NET_STATUS.mac, 6);
     pkt[12] = 0x08u; pkt[13] = 0x00u;
 
     uint8_t *ip = &pkt[14];
@@ -1531,7 +1560,7 @@ static bool tcp_send_segment_locked(tcp_conn_t *c, uint8_t flags, uint32_t seq, 
         mutex_lock(&s_wifi_lock);
         return ok;
     }
-    return sdio_send_packet(ESP_STA_IF, 0, pkt, 14u + ip_len);
+    return net_send_frame(pkt, 14u + ip_len);
 }
 
 static size_t dns_skip_name(const uint8_t *msg, size_t len, size_t pos)
@@ -1587,11 +1616,11 @@ static void handle_ipv4_rx_locked(const uint8_t *frame, size_t frame_len, const 
     uint8_t proto = ip[9];
 
     /* Learn MAC of local-subnet sender on physical interface */
-    if (!from_tun && frame && s_status.ip[0] != 0 &&
-        ((ip[12] ^ s_status.ip[0]) & s_status.netmask[0]) == 0 &&
-        ((ip[13] ^ s_status.ip[1]) & s_status.netmask[1]) == 0 &&
-        ((ip[14] ^ s_status.ip[2]) & s_status.netmask[2]) == 0 &&
-        ((ip[15] ^ s_status.ip[3]) & s_status.netmask[3]) == 0) {
+    if (!from_tun && frame && NET_STATUS.ip[0] != 0 &&
+        ((ip[12] ^ NET_STATUS.ip[0]) & NET_STATUS.netmask[0]) == 0 &&
+        ((ip[13] ^ NET_STATUS.ip[1]) & NET_STATUS.netmask[1]) == 0 &&
+        ((ip[14] ^ NET_STATUS.ip[2]) & NET_STATUS.netmask[2]) == 0 &&
+        ((ip[15] ^ NET_STATUS.ip[3]) & NET_STATUS.netmask[3]) == 0) {
         arp_learn(&ip[12], &frame[6]);
     }
 
@@ -1599,9 +1628,9 @@ static void handle_ipv4_rx_locked(const uint8_t *frame, size_t frame_len, const 
     if (proto == 1u && ip_total_len >= ihl + 8u && ip_total_len <= 1480u) {
         const uint8_t *icmp = ip + ihl;
         if (icmp[0] == 8u && icmp[1] == 0u) {
-            bool for_sta = (!from_tun && s_status.ip[0] != 0 &&
-                            ip[16] == s_status.ip[0] && ip[17] == s_status.ip[1] &&
-                            ip[18] == s_status.ip[2] && ip[19] == s_status.ip[3]);
+            bool for_sta = (!from_tun && NET_STATUS.ip[0] != 0 &&
+                            ip[16] == NET_STATUS.ip[0] && ip[17] == NET_STATUS.ip[1] &&
+                            ip[18] == NET_STATUS.ip[2] && ip[19] == NET_STATUS.ip[3]);
             bool for_tun = (from_tun && s_tun_ip[0] != 0 &&
                             ip[16] == s_tun_ip[0] && ip[17] == s_tun_ip[1] &&
                             ip[18] == s_tun_ip[2] && ip[19] == s_tun_ip[3]);
@@ -1610,8 +1639,8 @@ static void handle_ipv4_rx_locked(const uint8_t *frame, size_t frame_len, const 
                 size_t rlen = 14u + ip_total_len;
                 mem_copy(reply, frame, rlen);
                 mem_copy(&reply[0], &frame[6], 6);
-                mem_copy(&reply[6], s_status.mac, 6);
-                mem_copy(&reply[14 + 12], s_status.ip, 4);
+                mem_copy(&reply[6], NET_STATUS.mac, 6);
+                mem_copy(&reply[14 + 12], NET_STATUS.ip, 4);
                 mem_copy(&reply[14 + 16], &ip[12], 4);
                 reply[14 + 10] = 0; reply[14 + 11] = 0;
                 uint16_t hcsum = ip_checksum(&reply[14], ihl);
@@ -1625,7 +1654,7 @@ static void handle_ipv4_rx_locked(const uint8_t *frame, size_t frame_len, const 
                 uint16_t icsum = ip_checksum(ricmp, icmp_len);
                 ricmp[2] = (uint8_t)(icsum >> 8);
                 ricmp[3] = (uint8_t)(icsum & 0xFFu);
-                sdio_send_packet(ESP_STA_IF, 0, reply, rlen);
+                net_send_frame(reply, rlen);
             } else if (for_tun && s_tun_tx_cb) {
                 static uint8_t rip[1480];
                 mem_copy(rip, ip, ip_total_len);
@@ -1717,19 +1746,19 @@ static void handle_ipv4_rx_locked(const uint8_t *frame, size_t frame_len, const 
             s_dhcp_state = 2;
             dhcp_send_packet(3, s_dhcp_offered_ip, s_dhcp_server_ip);
         } else if (msg_type == 5u) { /* DHCP Ack */
-            mem_copy(s_status.ip, &bp[16], 4);
-            mem_copy(s_status.netmask, mask, 4);
-            mem_copy(s_status.gateway, gw, 4);
+            mem_copy(NET_STATUS.ip, &bp[16], 4);
+            mem_copy(NET_STATUS.netmask, mask, 4);
+            mem_copy(NET_STATUS.gateway, gw, 4);
             if (dns[0]) mem_copy(s_dns_ip, dns, 4);
             else if (gw[0]) mem_copy(s_dns_ip, gw, 4);
             if (!from_tun && frame && ip[12] != 0) {
                 arp_learn(&ip[12], &frame[6]);
             }
             s_dhcp_state = 3;
-            ksnprintf(s_status.last_msg, sizeof s_status.last_msg,
+            ksnprintf(NET_STATUS.last_msg, sizeof NET_STATUS.last_msg,
                       "Connected to %s (IP %u.%u.%u.%u)",
-                      s_status.ssid,
-                      s_status.ip[0], s_status.ip[1], s_status.ip[2], s_status.ip[3]);
+                      NET_STATUS.ssid,
+                      NET_STATUS.ip[0], NET_STATUS.ip[1], NET_STATUS.ip[2], NET_STATUS.ip[3]);
         }
         return;
     }
@@ -1826,19 +1855,19 @@ static void handle_sta_rx_frame(const uint8_t *frame, size_t len)
     if (ethertype == 0x0806u && len >= 42) {
         uint16_t oper = ((uint16_t)frame[20] << 8) | (uint16_t)frame[21];
         arp_learn(&frame[28], &frame[22]);
-        if (oper == 1 && s_status.ip[0] != 0 &&
-            frame[38] == s_status.ip[0] && frame[39] == s_status.ip[1] &&
-            frame[40] == s_status.ip[2] && frame[41] == s_status.ip[3]) {
+        if (oper == 1 && NET_STATUS.ip[0] != 0 &&
+            frame[38] == NET_STATUS.ip[0] && frame[39] == NET_STATUS.ip[1] &&
+            frame[40] == NET_STATUS.ip[2] && frame[41] == NET_STATUS.ip[3]) {
             uint8_t reply[42];
             mem_copy(&reply[0], &frame[6], 6);
-            mem_copy(&reply[6], s_status.mac, 6);
+            mem_copy(&reply[6], NET_STATUS.mac, 6);
             reply[12] = 0x08u; reply[13] = 0x06u;
             mem_copy(&reply[14], &frame[14], 6);
             reply[20] = 0x00u; reply[21] = 0x02u; /* ARP Reply */
-            mem_copy(&reply[22], s_status.mac, 6);
-            mem_copy(&reply[28], s_status.ip, 4);
+            mem_copy(&reply[22], NET_STATUS.mac, 6);
+            mem_copy(&reply[28], NET_STATUS.ip, 4);
             mem_copy(&reply[32], &frame[22], 10);
-            sdio_send_packet(ESP_STA_IF, 0, reply, sizeof reply);
+            net_send_frame(reply, sizeof reply);
         }
         return;
     }
@@ -2326,6 +2355,7 @@ bool wifi_connect(const char *ssid, const char *password, bool save)
     while (hal_time_now_us() < deadline) {
         sdio_poll_rx_locked();
         if (s_status.state == WIFI_STATE_CONNECTED) {
+            if (s_external) break;
             if (s_dhcp_state == 3 && s_status.ip[0] != 0) {
                 break;
             }
@@ -2412,7 +2442,7 @@ bool wifi_disconnect(void)
     mem_zero(s_status.ip, 4);
     mem_zero(s_status.netmask, 4);
     mem_zero(s_status.gateway, 4);
-    s_dhcp_state = 0;
+    if (!s_external) s_dhcp_state = 0;
     set_msg("Disconnected by user");
     mutex_unlock(&s_wifi_lock);
     return true;
@@ -2423,9 +2453,9 @@ void wifi_get_status(wifi_status_t *out)
     if (!out) return;
     ensure_lock();
     mutex_lock(&s_wifi_lock);
-    if (s_sdio_ready) {
+    if (s_sdio_ready || s_external) {
         sdio_poll_rx_locked();
-        if (s_status.state == WIFI_STATE_CONNECTED && s_status.ip[0] == 0 &&
+        if (!s_external && s_status.state == WIFI_STATE_CONNECTED && s_status.ip[0] == 0 &&
             (s_dhcp_state == 1 || s_dhcp_state == 2) &&
             hal_time_now_us() - s_dhcp_last_tx_us > 1500000ULL) {
             s_dhcp_state = 1;
@@ -2433,6 +2463,84 @@ void wifi_get_status(wifi_status_t *out)
         }
     }
     *out = s_status;
+    mutex_unlock(&s_wifi_lock);
+}
+
+/* The existing IPv4 stack has one active interface. Switching transport
+ * invalidates sockets and neighbor state; Wi-Fi radio management stays separate. */
+static void network_reset_locked(void)
+{
+    mem_zero(s_arp_cache, sizeof s_arp_cache);
+    s_arp_next_slot = 0;
+    s_dns_done = false;
+    mem_zero(s_dns_ip, sizeof s_dns_ip);
+    s_dhcp_state = 0;
+    for (unsigned i=0;i<WIFI_MAX_TCP_SOCKETS;i++) {
+        s_tcp_conns[i].state = TCP_STATE_CLOSED;
+        s_tcp_conns[i].rx_head = s_tcp_conns[i].rx_tail = s_tcp_conns[i].rx_count = 0;
+    }
+}
+void net_external_up(const uint8_t mac[6], net_external_tx_t tx, net_external_rx_t rx)
+{
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    network_reset_locked();
+    mem_zero(&s_external_status, sizeof s_external_status);
+    s_external_status.hw_ready = true;
+    s_external_status.state = WIFI_STATE_CONNECTED;
+    mem_copy(s_external_status.mac, mac, 6);
+    str_copy(s_external_status.ssid, sizeof s_external_status.ssid, "Ethernet");
+    s_external_tx = tx; s_external_rx = rx; s_external = true;
+    s_dhcp_state = 1; s_dhcp_last_tx_us = 0;
+    dhcp_send_discover();
+    mutex_unlock(&s_wifi_lock);
+}
+void net_external_down(void)
+{
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    if (s_external) {
+        network_reset_locked();
+        s_external = false; s_external_tx = NULL; s_external_rx = NULL;
+        if (s_status.state == WIFI_STATE_CONNECTED) {
+            mem_zero(s_status.ip,4);
+            s_dhcp_state = 1;
+            dhcp_send_discover();
+        }
+    }
+    mutex_unlock(&s_wifi_lock);
+}
+void net_external_poll(void)
+{
+    ensure_lock();
+    /* Never block USB servicing behind an ARP/DNS wait holding this lock. */
+    if (!mutex_trylock(&s_wifi_lock)) return;
+    if (s_external) {
+        sdio_poll_rx_locked();
+        if ((s_dhcp_state == 1 || s_dhcp_state == 2) &&
+            hal_time_now_us()-s_dhcp_last_tx_us > 2500000ULL) {
+            s_dhcp_state = 1;
+            dhcp_send_discover();
+        }
+    }
+    mutex_unlock(&s_wifi_lock);
+}
+bool net_external_status(wifi_status_t *out)
+{
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    bool active = s_external;
+    if (out) *out = s_external_status;
+    mutex_unlock(&s_wifi_lock);
+    return active;
+}
+void wifi_get_network_status(wifi_status_t *out)
+{
+    if (!out) return;
+    ensure_lock();
+    mutex_lock(&s_wifi_lock);
+    sdio_poll_rx_locked();
+    *out = NET_STATUS;
     mutex_unlock(&s_wifi_lock);
 }
 
@@ -2537,15 +2645,15 @@ static bool parse_ipv4_literal(const char *s, uint8_t out_ip[4])
 
 static bool arp_resolve_locked(const uint8_t target_ip[4], uint8_t out_mac[6], uint32_t timeout_ms)
 {
-    if (s_status.ip[0] == 0) return false;
+    if (NET_STATUS.ip[0] == 0) return false;
 
     const uint8_t *next_hop = target_ip;
-    if (((target_ip[0] ^ s_status.ip[0]) & s_status.netmask[0]) != 0 ||
-        ((target_ip[1] ^ s_status.ip[1]) & s_status.netmask[1]) != 0 ||
-        ((target_ip[2] ^ s_status.ip[2]) & s_status.netmask[2]) != 0 ||
-        ((target_ip[3] ^ s_status.ip[3]) & s_status.netmask[3]) != 0) {
-        if (s_status.gateway[0] != 0) {
-            next_hop = s_status.gateway;
+    if (((target_ip[0] ^ NET_STATUS.ip[0]) & NET_STATUS.netmask[0]) != 0 ||
+        ((target_ip[1] ^ NET_STATUS.ip[1]) & NET_STATUS.netmask[1]) != 0 ||
+        ((target_ip[2] ^ NET_STATUS.ip[2]) & NET_STATUS.netmask[2]) != 0 ||
+        ((target_ip[3] ^ NET_STATUS.ip[3]) & NET_STATUS.netmask[3]) != 0) {
+        if (NET_STATUS.gateway[0] != 0) {
+            next_hop = NET_STATUS.gateway;
         }
     }
 
@@ -2597,7 +2705,7 @@ static void dns_send_query_locked(const uint8_t dns_srv[4], const uint8_t dst_ma
 
     /* Ethernet */
     mem_copy(&pkt[0], dst_mac, 6);
-    mem_copy(&pkt[6], s_status.mac, 6);
+    mem_copy(&pkt[6], NET_STATUS.mac, 6);
     pkt[12] = 0x08u; pkt[13] = 0x00u;
 
     /* DNS message at pkt[42] */
@@ -2632,7 +2740,7 @@ static void dns_send_query_locked(const uint8_t dns_srv[4], const uint8_t dst_ma
     udp[3] = (uint8_t)(dst_port & 0xFFu);
     udp[4] = (uint8_t)(udp_len >> 8);
     udp[5] = (uint8_t)(udp_len & 0xFFu);
-    uint16_t ucsum = udp_checksum(s_status.ip, dns_srv, udp, udp_len);
+    uint16_t ucsum = udp_checksum(NET_STATUS.ip, dns_srv, udp, udp_len);
     udp[6] = (uint8_t)(ucsum >> 8);
     udp[7] = (uint8_t)(ucsum & 0xFFu);
 
@@ -2645,13 +2753,13 @@ static void dns_send_query_locked(const uint8_t dns_srv[4], const uint8_t dst_ma
     ip[5] = (uint8_t)(s_ip_id & 0xFFu);
     ip[8] = 64u;
     ip[9] = 17u; /* UDP */
-    mem_copy(&ip[12], s_status.ip, 4);
+    mem_copy(&ip[12], NET_STATUS.ip, 4);
     mem_copy(&ip[16], dns_srv, 4);
     uint16_t hcsum = ip_checksum(ip, 20);
     ip[10] = (uint8_t)(hcsum >> 8);
     ip[11] = (uint8_t)(hcsum & 0xFFu);
 
-    sdio_send_packet(ESP_STA_IF, 0, pkt, 14u + ip_len);
+    net_send_frame(pkt, 14u + ip_len);
 }
 
 bool wifi_resolve_host(const char *host, uint8_t out_ip[4])
@@ -2668,14 +2776,14 @@ bool wifi_resolve_host(const char *host, uint8_t out_ip[4])
     }
 
     mutex_lock(&s_wifi_lock);
-    if (s_status.state != WIFI_STATE_CONNECTED || s_status.ip[0] == 0) {
+    if (NET_STATUS.state != WIFI_STATE_CONNECTED || NET_STATUS.ip[0] == 0) {
         mutex_unlock(&s_wifi_lock);
         return false;
     }
 
     uint8_t primary_dns[4];
     if (s_dns_ip[0] != 0) mem_copy(primary_dns, s_dns_ip, 4);
-    else if (s_status.gateway[0] != 0) mem_copy(primary_dns, s_status.gateway, 4);
+    else if (NET_STATUS.gateway[0] != 0) mem_copy(primary_dns, NET_STATUS.gateway, 4);
     else { primary_dns[0] = 8; primary_dns[1] = 8; primary_dns[2] = 8; primary_dns[3] = 8; }
 
     static const uint8_t dns_google[4] = {8, 8, 8, 8};
@@ -2746,7 +2854,7 @@ bool wifi_tcp_connect_sock(int sock, const uint8_t ip[4], uint16_t port, uint32_
     ensure_lock();
     mutex_lock(&s_wifi_lock);
 
-    if (s_status.state != WIFI_STATE_CONNECTED || s_status.ip[0] == 0) {
+    if (NET_STATUS.state != WIFI_STATE_CONNECTED || NET_STATUS.ip[0] == 0) {
         mutex_unlock(&s_wifi_lock);
         return false;
     }
@@ -2886,7 +2994,7 @@ int wifi_tcp_recv_sock(int sock, void *buf, size_t max_len, uint32_t timeout_ms)
     uint64_t deadline = hal_time_now_us() + (uint64_t)timeout_ms * 1000ULL;
 
     for (;;) {
-        if (s_sdio_ready) {
+        if (s_sdio_ready || s_external) {
             sdio_poll_rx_locked();
         }
         if (c->rx_count > 0 && c->rx_buf) {
@@ -2942,7 +3050,7 @@ bool wifi_tcp_is_connected_sock(int sock)
     if (sock < 0 || sock >= WIFI_MAX_TCP_SOCKETS) return false;
     ensure_lock();
     mutex_lock(&s_wifi_lock);
-    if (s_sdio_ready) sdio_poll_rx_locked();
+    if (s_sdio_ready || s_external) sdio_poll_rx_locked();
     tcp_conn_t *c = &s_tcp_conns[sock];
     bool ok = (c->state == TCP_STATE_ESTABLISHED || c->rx_count > 0);
     mutex_unlock(&s_wifi_lock);
@@ -2980,7 +3088,7 @@ bool wifi_udp_send(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port
     if (!dst_ip || !dst_ip[0] || dst_port == 0 || len > 1440u) return false;
     ensure_lock();
     mutex_lock(&s_wifi_lock);
-    if (s_status.state != WIFI_STATE_CONNECTED || s_status.ip[0] == 0) {
+    if (NET_STATUS.state != WIFI_STATE_CONNECTED || NET_STATUS.ip[0] == 0) {
         mutex_unlock(&s_wifi_lock);
         return false;
     }
@@ -2997,7 +3105,7 @@ bool wifi_udp_send(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port
     mem_zero(pkt, 14u + 20u + 8u);
 
     mem_copy(&pkt[0], dst_mac, 6);
-    mem_copy(&pkt[6], s_status.mac, 6);
+    mem_copy(&pkt[6], NET_STATUS.mac, 6);
     pkt[12] = 0x08u; pkt[13] = 0x00u;
 
     uint8_t *ip = &pkt[14];
@@ -3010,7 +3118,7 @@ bool wifi_udp_send(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port
     ip[6] = 0x40u;
     ip[8] = 64u;
     ip[9] = 17u; /* UDP */
-    mem_copy(&ip[12], s_status.ip, 4);
+    mem_copy(&ip[12], NET_STATUS.ip, 4);
     mem_copy(&ip[16], dst_ip, 4);
     uint16_t hcsum = ip_checksum(ip, 20);
     ip[10] = (uint8_t)(hcsum >> 8);
@@ -3030,11 +3138,11 @@ bool wifi_udp_send(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port
         mem_copy(&pkt[42], data, len);
     }
 
-    uint16_t ucsum = udp_checksum(s_status.ip, dst_ip, udp, udp_len);
+    uint16_t ucsum = udp_checksum(NET_STATUS.ip, dst_ip, udp, udp_len);
     udp[6] = (uint8_t)(ucsum >> 8);
     udp[7] = (uint8_t)(ucsum & 0xFFu);
 
-    bool ok = sdio_send_packet(ESP_STA_IF, 0, pkt, 14u + ip_len);
+    bool ok = net_send_frame(pkt, 14u + ip_len);
     mutex_unlock(&s_wifi_lock);
     return ok;
 }
@@ -3095,9 +3203,9 @@ static void wifi_daemon_task(void *arg)
     uint32_t tick = 0;
     for (;;) {
         mutex_lock(&s_wifi_lock);
-        if (s_sdio_ready) {
+        if (s_sdio_ready || s_external) {
             sdio_poll_rx_locked();
-            if (s_status.state == WIFI_STATE_CONNECTED && s_dhcp_state == 1 &&
+            if (!s_external && s_status.state == WIFI_STATE_CONNECTED && s_dhcp_state == 1 &&
                 hal_time_now_us() - s_dhcp_last_tx_us > 2500000ULL) {
                 dhcp_send_discover();
             }

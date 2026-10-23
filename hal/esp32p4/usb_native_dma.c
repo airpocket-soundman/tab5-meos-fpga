@@ -17,6 +17,7 @@
 #include <m5os/hal_gpio.h>
 #include <m5os/kprintf.h>
 #include <string.h>
+#include <m5os/kmalloc.h>
 
 #include "esp_idf_version.h"
 #include "hal/usb_dwc_hal.h"
@@ -66,11 +67,28 @@ static uint16_t s_kbd_mps;
 static usb_dwc_hal_chan_event_t s_kbd_event;
 static uint8_t s_kbd_qtd[512] __attribute__((aligned(512)));
 static uint8_t s_kbd_data[1024] __attribute__((aligned(64)));
+typedef struct {
+    usb_dwc_hal_chan_t channel;
+    bool open,active,in;
+    uint8_t address,ep;
+    uint16_t mps;
+    size_t length,span;
+    void *user;
+    usb_dwc_hal_chan_event_t event;
+} net_pipe_t;
+static net_pipe_t net_pipes[3];
+/* Allocated once from the internal DMA-capable heap, aligned explicitly.
+ * Keeping optional Ethernet buffers out of static BSS preserves link headroom. */
+static uint8_t (*net_qtd)[512];
+static uint8_t (*net_data)[2048];
 
 static usb_dwc_hal_chan_event_t decode_channel(usb_dwc_hal_chan_t *c)
 {
     usb_dwc_hal_chan_event_t ev = usb_dwc_hal_chan_decode_intr(c);
     if (c == &s_kbd && ev != USB_DWC_HAL_CHAN_EVENT_NONE) s_kbd_event = ev;
+    for (unsigned i=0;i<3;i++)
+        if (c==&net_pipes[i].channel && ev!=USB_DWC_HAL_CHAN_EVENT_NONE)
+            net_pipes[i].event=ev;
     return ev;
 }
 
@@ -444,4 +462,96 @@ int hal_usbh_keyboard_poll(uint8_t report[8])
     int got=s_kbd_mps-rem;
     if (got>=8) memcpy(report,s_kbd_data,8);
     return got<8?got:8;
+}
+
+void hal_usbh_net_close(unsigned id)
+{
+    if (id>=3) return;
+    net_pipe_t *p=&net_pipes[id];
+    if (!p->open) return;
+    if (p->channel.flags.active) {
+        usb_dwc_hal_chan_request_halt(&p->channel);
+        uint64_t start=hal_time_now_us();
+        while (p->channel.flags.active && hal_time_now_us()-start<STAGE_TIMEOUT_US) {
+            usb_dwc_hal_decode_intr(&s_hal);
+            usb_dwc_hal_chan_t *c;
+            while ((c=usb_dwc_hal_get_chan_pending_intr(&s_hal))!=NULL) decode_channel(c);
+        }
+    }
+    if (p->channel.flags.active) return;
+    usb_dwc_hal_chan_free(&s_hal,&p->channel);
+    cache_write_back(s_frames,sizeof s_frames);
+    p->open=p->active=false;p->event=USB_DWC_HAL_CHAN_EVENT_NONE;
+}
+bool hal_usbh_net_open(unsigned id,uint8_t address,uint8_t endpoint,uint16_t mps,
+                       bool interrupt,uint8_t interval)
+{
+    if (id>=3 || address>=16 || !mps || mps>1024 || !(endpoint&15)) return false;
+    if (!net_qtd) {
+        void *allocation=kmalloc_internal(3*512+3*2048+511);
+        if (!allocation) return false;
+        uintptr_t base=((uintptr_t)allocation+511u)&~(uintptr_t)511u;
+        net_qtd=(void *)base;
+        net_data=(void *)(base+3*512);
+    }
+    hal_usbh_net_close(id);
+    net_pipe_t *p=&net_pipes[id];
+    if (p->open) return false;
+    memset(p,0,sizeof *p);
+    if (!usb_dwc_hal_chan_alloc(&s_hal,&p->channel,NULL)) return false;
+    usb_dwc_hal_ep_char_t ep={0};
+    ep.type=interrupt?USB_DWC_XFER_TYPE_INTR:USB_DWC_XFER_TYPE_BULK;
+    ep.bEndpointAddress=endpoint;ep.mps=mps;ep.dev_addr=address;
+    ep.ls_via_fs_hub=s_low_via_hub[address];
+    ep.periodic.is_hs=hal_usbh_speed()==USBH_SPEED_HIGH;
+    ep.periodic.interval=ep.periodic.is_hs?
+        (1u<<((interval>0 && interval<=16?interval:1)-1)):(interval?interval:1);
+    usb_dwc_hal_chan_set_ep_char(&s_hal,&p->channel,&ep);
+    cache_write_back(s_frames,sizeof s_frames);
+    p->address=address;p->ep=(endpoint&15)+((endpoint&0x80)?16:0);
+    p->mps=mps;p->in=(endpoint&0x80)!=0;p->open=true;
+    return true;
+}
+bool hal_usbh_net_start(unsigned id,void *buffer,size_t length)
+{
+    if (id>=3 || !buffer) return false;
+    net_pipe_t *p=&net_pipes[id];
+    if (!p->open || p->active) return false;
+    size_t span=p->in?((length+p->mps-1)/p->mps)*p->mps:length;
+    if (span>sizeof net_data[id] || (p->in && !length)) return false;
+    p->length=length;p->span=span;p->user=buffer;
+    memset(net_qtd[id],0,sizeof net_qtd[id]);
+    if (p->in) memset(net_data[id],0,sizeof net_data[id]);
+    else if (length) memcpy(net_data[id],buffer,length);
+    cache_write_back(net_data[id],sizeof net_data[id]);
+    usb_dwc_hal_chan_set_pid(&p->channel,s_ep_pid[p->address][p->ep]);
+    usb_dwc_hal_xfer_desc_fill(net_qtd[id],0,net_data[id],span,
+        (p->in?USB_DWC_HAL_XFER_DESC_FLAG_IN:0)|USB_DWC_HAL_XFER_DESC_FLAG_HOC);
+    cache_write_back(net_qtd[id],sizeof net_qtd[id]);
+    p->event=USB_DWC_HAL_CHAN_EVENT_NONE;
+    usb_dwc_hal_chan_activate(&p->channel,net_qtd[id],1,0);
+    p->active=true;
+    return true;
+}
+int hal_usbh_net_poll(unsigned id)
+{
+    if (id>=3) return USBH_ERR_XFER;
+    net_pipe_t *p=&net_pipes[id];
+    if (!p->active) return USBH_ERR_XFER;
+    usb_dwc_hal_decode_intr(&s_hal);
+    usb_dwc_hal_chan_t *c;
+    while ((c=usb_dwc_hal_get_chan_pending_intr(&s_hal))!=NULL) decode_channel(c);
+    if (p->event==USB_DWC_HAL_CHAN_EVENT_ERROR) { p->active=false;return USBH_ERR_XFER; }
+    if (p->event!=USB_DWC_HAL_CHAN_EVENT_CPLT) return USBH_PENDING;
+    p->active=false;
+    s_ep_pid[p->address][p->ep]=usb_dwc_hal_chan_get_pid(&p->channel);
+    cache_invalidate(net_qtd[id],sizeof net_qtd[id]);
+    int rem,status;
+    usb_dwc_hal_xfer_desc_parse(net_qtd[id],0,&rem,&status);
+    if (status!=USB_DWC_HAL_XFER_DESC_STS_SUCCESS || rem<0 || (size_t)rem>p->span)
+        return USBH_ERR_XFER;
+    size_t got=p->span-rem;
+    if (got>p->length) got=p->length;
+    if (p->in) { cache_invalidate(net_data[id],sizeof net_data[id]);memcpy(p->user,net_data[id],got); }
+    return got;
 }

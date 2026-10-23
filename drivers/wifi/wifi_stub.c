@@ -74,3 +74,5 @@ void wifi_get_status(wifi_status_t *out)
     ksnprintf(out->last_msg, sizeof out->last_msg, "Wi-Fi driver not supported on this board");
 }
 
+
+void wifi_get_network_status(wifi_status_t *out) { wifi_get_status(out); }

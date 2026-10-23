@@ -1,3 +1,6 @@
+#if M5OS_USB_NATIVE_DMA
+#include <m5os/ethernet.h>
+#endif
 /*
  * M5OS shell on /dev/uart.
  *
@@ -396,6 +399,18 @@ static int cmd_put(int argc, char **argv)
 }
 
 #if M5OS_USB_NATIVE_DMA
+static int cmd_eth(int argc,char **argv)
+{
+    (void)argc;(void)argv;
+    ethernet_status_t e;
+    usb_ethernet_status(&e);
+    SH_PRINTF("Ethernet: detected=%u ready=%u link=%s active=%u\n",e.detected,e.ready,e.link?"up":"down",e.active);
+    SH_PRINTF("MAC %02x:%02x:%02x:%02x:%02x:%02x\n",e.mac[0],e.mac[1],e.mac[2],e.mac[3],e.mac[4],e.mac[5]);
+    SH_PRINTF("IPv4 %u.%u.%u.%u mask %u.%u.%u.%u gateway %u.%u.%u.%u\n",e.ip[0],e.ip[1],e.ip[2],e.ip[3],e.netmask[0],e.netmask[1],e.netmask[2],e.netmask[3],e.gateway[0],e.gateway[1],e.gateway[2],e.gateway[3]);
+    SH_PRINTF("RX %u TX %u dropped %u USB errors %u speed %u Mbps\n",e.rx_frames,e.tx_frames,e.dropped,e.usb_errors,e.speed_mbps);
+    SH_PRINTF("Service max gap %u us, USB wait %u us, network poll %u us\n",e.max_service_gap_us,e.max_bus_wait_us,e.max_network_poll_us);
+    return 0;
+}
 static int cmd_lsusb(int argc,char **argv)
 {
     (void)argc;(void)argv;
@@ -406,6 +421,7 @@ static int cmd_lsusb(int argc,char **argv)
         usb_info_t *d=&devices[i];
         const char *speed=d->speed==2?"HS":d->speed==1?"FS":"LS";
         const char *type=(d->kinds&USB_INFO_HUB)?"hub":
+            (d->kinds&USB_INFO_ETHERNET)?"ethernet":
             (d->kinds&(USB_INFO_KEYBOARD|USB_INFO_STORAGE))==(USB_INFO_KEYBOARD|USB_INFO_STORAGE)?"HID+MSC":
             (d->kinds&USB_INFO_KEYBOARD)?"keyboard":(d->kinds&USB_INFO_STORAGE)?"storage":"unsupported";
         const char *mount=d->storage_slot==0?"/usb":d->storage_slot==1?"/usb1":
@@ -932,6 +948,7 @@ static int cmd_history(int argc, char **argv)
 static const command_t s_commands[] = {
     { "help",    cmd_help,    "list commands" },
 #if M5OS_USB_NATIVE_DMA
+    { "eth", cmd_eth, "show USB Ethernet link, IP and packet counters" },
     { "lsusb",   cmd_lsusb,   "show cached USB devices, topology, speed and mounts" },
 #endif
     { "history", cmd_history, "show command history (or use Up/Down arrows)" },

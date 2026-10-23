@@ -85,24 +85,24 @@ static int rw(blockdev_t *bd, uint32_t lba, uint32_t count, void *buf, bool writ
     if (!buf || !count || lba >= bd->block_count || count > bd->block_count - lba)
         return ERR_INVAL;
     msc_t *d = bd->priv;
-    mutex_lock(&usb_native_bus_lock);
-    int rc = ERR_NODEV;
-    if (d->ready) {
-        rc = 0;
-        for (uint32_t i = 0; i < count && !rc;) {
-            uint32_t n = count - i > 8 ? 8 : count - i;
+    int rc = 0;
+    for (uint32_t i = 0; i < count && !rc;) {
+        uint32_t n = count-i > 8 ? 8 : count-i;
+        /* A complete BOT command is atomic; a large filesystem request is not.
+         * Let Ethernet and HID service their own channels between commands. */
+        mutex_lock(&usb_native_bus_lock);
+        if (!d->ready) rc = ERR_NODEV;
+        else {
             uint8_t cmd[10] = {0};
             cmd[0] = write ? 0x2a : 0x28;
-            putbe(cmd + 2, lba + i);
-            cmd[7] = n >> 8;
-            cmd[8] = n;
-            rc = scsi(d, cmd, 10, (uint8_t *)buf + i * 512, n * 512, !write);
-            i += n;
+            putbe(cmd+2,lba+i);cmd[7]=n>>8;cmd[8]=n;
+            rc=scsi(d,cmd,10,(uint8_t *)buf+i*512,n*512,!write);
+            if (rc) d->ready=false;
         }
-        if (rc)
-            d->ready = false;
+        mutex_unlock(&usb_native_bus_lock);
+        i+=n;
+        task_yield();
     }
-    mutex_unlock(&usb_native_bus_lock);
     return rc;
 }
 static int rd(blockdev_t *b, uint32_t l, uint32_t n, void *p) { return rw(b, l, n, p, false); }

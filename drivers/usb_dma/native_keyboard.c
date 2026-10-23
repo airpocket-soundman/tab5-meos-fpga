@@ -12,6 +12,7 @@
 #include "../keyboard/keyboard.h"
 #include "../usbkbd/usbkbd.h"
 #include "native_msc.h"
+#include "native_ecm.h"
 #include "../../fs/fat/usb_fat.h"
 #include "../usbkbd/hid_keys.h"
 #include <m5os/ime.h>
@@ -245,6 +246,12 @@ static int enumerate(usbh_speed_t speed, uint8_t address, int *config)
     }
     if(s_msc_in && s_msc_out)return -2;
     if(s_hub)return -3;
+    if (vid==0x0bda && pid==0x8153 && native_ecm_probe(address,mps0,d[17],config)) {
+        mutex_lock(&info_lock);
+        device_info[address].kinds=USB_INFO_ETHERNET;
+        mutex_unlock(&info_lock);
+        return -4;
+    }
     kprintf("usbkbd: device has no HID boot keyboard interface\n");
     return -1;
 }
@@ -264,6 +271,19 @@ static bool hub_status(uint16_t mps, unsigned port, uint32_t *out)
     uint8_t s[4];
     if (hub_request(mps,0xa3,0,0,port,s,4)!=4) return false;
     *out=(uint32_t)s[0] | (uint32_t)s[1]<<8 | (uint32_t)s[2]<<16 | (uint32_t)s[3]<<24;
+    return true;
+}
+/* Background topology polling must not queue behind a filesystem transaction:
+ * the same task also has to drain Ethernet RX and service HID. Reset/enumeration
+ * requests retain the blocking helper above. */
+static bool hub_status_background(uint16_t mps,unsigned port,uint32_t *out)
+{
+    if (!mutex_trylock(&usb_native_bus_lock)) return false;
+    uint8_t data[4];
+    int n=hal_usbh_open_control(1,mps)?ctrl(0xa3,0,0,port,data,4):-1;
+    mutex_unlock(&usb_native_bus_lock);
+    if (n!=4) return false;
+    *out=(uint32_t)data[0]|(uint32_t)data[1]<<8|(uint32_t)data[2]<<16|(uint32_t)data[3]<<24;
     return true;
 }
 static void hub_session(void)
@@ -288,6 +308,7 @@ static void hub_session(void)
     int slots[7];
     bool seen[7]={0}, used[NATIVE_MSC_SLOTS]={0};
     unsigned keyboard_port=0,keyboard_fails=0;
+    unsigned ethernet_port=0;
     bool keyboard_pending=false;
     uint64_t status_at=0;
     memset(&hub_keys,0,sizeof hub_keys);
@@ -314,14 +335,16 @@ static void hub_session(void)
         if (key_result==8) hub_key_report(report);
         else if (key_result!=USBH_PENDING) s_stats.i2c_errors++;
         if (keyboard_port) hub_key_repeat();
+        if (ethernet_port) native_ecm_service();
         if (hal_time_now_us()-status_at<250000u) { task_sleep(5);continue; }
         status_at=hal_time_now_us();
         for (unsigned port = 1; port <= ports; port++) {
             uint32_t status;
-            if (!hub_status(hub_mps,port,&status)) continue;
+            if (!hub_status_background(hub_mps,port,&status)) continue;
             bool connected=(status&1)!=0;
             if (!connected || (status&(1u<<16))) {
                 info_clear(port+1);
+                if (ethernet_port==port) { native_ecm_detach();ethernet_port=0; }
                 if (keyboard_port==port) {
                     mutex_lock(&usb_native_bus_lock);
                     hal_usbh_keyboard_close();
@@ -381,6 +404,10 @@ static void hub_session(void)
                 hub_request(hub_mps,0x23,1,1,port,NULL,0);
                 continue;
             }
+            if (iface==-4) {
+                if (native_ecm_attach()) ethernet_port=port;
+                continue;
+            }
             if (iface!=-2) {
                 if (keyboard_ready) {
                     keyboard_port=port;keyboard_pending=false;keyboard_fails=0;
@@ -410,6 +437,7 @@ static void hub_session(void)
     hal_usbh_keyboard_close();
     mutex_unlock(&usb_native_bus_lock);
     s_type="none";
+    native_ecm_detach();
 }
 
 static void keyboard_session(int iface)
@@ -519,6 +547,11 @@ static void usbkbd_task(void *arg)
         } else if (iface == -3 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             info_configured(1,true);
             hub_session();
+        } else if (iface == -4 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
+            info_configured(1,true);
+            if (native_ecm_attach())
+                while (hal_usbh_connected()) { native_ecm_service();task_sleep(5); }
+            native_ecm_detach();
         } else if (iface >= 0 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             info_configured(1,true);
             int protocol_rc = ctrl(0x21, HID_SET_PROTOCOL, 0, (uint16_t)iface, NULL, 0);           /* 0 = boot protocol */

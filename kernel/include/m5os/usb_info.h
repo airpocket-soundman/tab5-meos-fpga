@@ -5,6 +5,7 @@
 #define USB_INFO_HUB 1
 #define USB_INFO_KEYBOARD 2
 #define USB_INFO_STORAGE 4
+#define USB_INFO_ETHERNET 8
 typedef struct {
     uint16_t vid, pid;
     uint8_t address, parent, port, speed, device_class, kinds;
