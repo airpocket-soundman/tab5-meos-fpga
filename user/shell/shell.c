@@ -61,6 +61,7 @@
 
 static int  s_out = -1, s_in = -1;
 static char s_cwd[VFS_PATH_MAX] = "/";
+static bool sh_streq(const char *a, const char *b);
 
 /* ---------------------------------------------------------------- output */
 
@@ -464,7 +465,7 @@ static int cmd_keys(int argc, char **argv)
     (void)argc; (void)argv;
     keyboard_stats_t st;
     keyboard_stats(&st);
-    SH_PRINTF("keyboard: %s, %u key presses, last key (x=%d,y=%d), last char 0x%02x, i2c errors %u\n",
+    SH_PRINTF("keyboard: %s, %u key presses, last key (x=%d,y=%d), last char 0x%02x, transfer errors %u\n",
               keyboard_type(), st.presses, st.last_x, st.last_y, st.last_char < 0 ? 0 : st.last_char, st.i2c_errors);
     return 0;
 }

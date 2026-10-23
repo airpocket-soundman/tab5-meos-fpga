@@ -21,8 +21,8 @@
         "en": "1. USB receivers and storage"
       },
       "detail": {
-        "ja": "制御転送専用から割り込みIN・bulk対応へ拡張中。受信機の入力成功、USBメモリの読み書きは未確認。",
-        "en": "Extending control-only transport with interrupt IN and bulk. Receiver input and storage reads/writes are not yet verified."
+        "ja": "割り込みIN転送の試作で無線受信機から入力成功（ユーザー確認、統計83回・転送エラー0回）。USBメモリのBOT/SCSI・FAT接続は実装中で実機未確認。",
+        "en": "Wireless receiver input works with interrupt IN (user confirmation; 83 presses, zero transfer errors). BOT/SCSI and FAT integration for storage are in development, unverified on hardware."
       }
     },
     {

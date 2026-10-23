@@ -3,20 +3,16 @@
  * so the shell reads it like characters arriving over the serial port.  Started by drivers/tab5kbd when
  * there is no I2C keyboard.
  *
- * How a USB keyboard is read here:
- *  1. Wait for a device, give the bus time to settle, reset the port (all USB host rules, USB 2.0 ch. 7/9).
- *  2. Enumerate with control transfers on endpoint 0: read the device descriptor, give the device
- *     address 1, read the configuration descriptor, select configuration 1.
- *  3. Find the HID "boot keyboard" interface (class 3, subclass 1, protocol 1) and switch it to the boot
- *     protocol: an 8-byte report every keyboard understands (USB HID 1.11, appendix B) -
- *       byte 0 modifier bits | byte 1 reserved | bytes 2..7 up to six key codes currently held.
- *  4. Poll with GET_REPORT on endpoint 0 about every 10 ms.  A real stack would use the interrupt IN
- *     endpoint the keyboard offers; that needs the controller's periodic schedule, and control polling is
- *     enough for typing.  (Keyboards are required to answer GET_REPORT for the boot protocol.)
+ * Root-device enumeration is shared with USB Mass Storage BOT/SCSI.
+ * Boot keyboard reports use the interrupt IN endpoint and the controller periodic
+ * schedule. An idle endpoint may NAK indefinitely; this is not a disconnect.
+ * The current implementation supports one directly attached device, no hubs.
  * Key codes are HID usage IDs, US layout.
  */
 #include "../keyboard/keyboard.h"
 #include "usbkbd.h"
+#include "../usbmsc/usbmsc.h"
+#include "../../fs/fat/usb_fat.h"
 #include "hid_keys.h"
 #include <m5os/ime.h>
 #include <m5os/hal_usbh.h>
@@ -60,6 +56,10 @@
 static const char *s_type = "none";
 static keyboard_stats_t s_stats = { 0, -1, -1, -1, 0 };
 static bool s_caps;
+static uint8_t s_kbd_ep, s_kbd_interval;
+static uint16_t s_kbd_mps;
+static uint8_t s_msc_iface,s_msc_in,s_msc_out;
+static uint16_t s_msc_imps,s_msc_omps;
 
 const char *usbkbd_type(void) { return s_type; }
 void usbkbd_stats(keyboard_stats_t *out) { *out = s_stats; }
@@ -107,9 +107,10 @@ static int enumerate(usbh_speed_t speed, int *config)
     if (!hal_usbh_open_control(0, mps0)) { kprintf("usbkbd: no control channel\n"); return -1; }
 
     int n = ctrl(0x80, REQ_GET_DESCRIPTOR, DESC_DEVICE << 8, 0, d, 18);
-    if (n < 8) { kprintf("usbkbd: device descriptor read failed (%d)\n", n); return -1; }
+    if (n < 18) { kprintf("usbkbd: device descriptor read failed (%d)\n", n); return -1; }
     uint16_t vid = (uint16_t)(d[8] | d[9] << 8), pid = (uint16_t)(d[10] | d[11] << 8);
     mps0 = d[7];
+    if (mps0 != 8 && mps0 != 16 && mps0 != 32 && mps0 != 64) return -1;
     kprintf("usbkbd: device %04x:%04x, class %u, ep0 packet %u, %s speed\n", vid, pid, d[4], mps0,
             speed == USBH_SPEED_LOW ? "low" : speed == USBH_SPEED_FULL ? "full" : "high");
 
@@ -117,7 +118,7 @@ static int enumerate(usbh_speed_t speed, int *config)
     task_sleep(ADDR_RECOVERY_MS);
     if (!hal_usbh_open_control(KBD_ADDRESS, mps0)) return -1;
 
-    uint8_t cfg[255];
+    uint8_t cfg[1024];
     n = ctrl(0x80, REQ_GET_DESCRIPTOR, DESC_CONFIG << 8, 0, cfg, 9);
     if (n < 9) { kprintf("usbkbd: config descriptor read failed (%d)\n", n); return -1; }
     uint16_t total = (uint16_t)(cfg[2] | cfg[3] << 8);
@@ -126,10 +127,32 @@ static int enumerate(usbh_speed_t speed, int *config)
     if (n < 9) { kprintf("usbkbd: full config descriptor read failed (%d)\n", n); return -1; }
     *config = cfg[5];
 
-    for (int i = 0; i + 9 <= n && cfg[i] >= 2; i += cfg[i]) {                    /* walk the descriptors */
-        if (cfg[i + 1] == DESC_INTERFACE && cfg[i + 5] == HID_CLASS && cfg[i + 6] == HID_SUBCLASS_BOOT && cfg[i + 7] == HID_PROTOCOL_KBD)
-            return cfg[i + 2];
+    int iface = -1, kind = 0, current = -1;
+    s_kbd_ep = s_msc_in = s_msc_out = 0;
+    for (int i = 0; i + 2 <= n;) {
+        int len = cfg[i];
+        if (len < 2 || i + len > n) break;
+        if (cfg[i+1] == DESC_INTERFACE && len >= 9) {
+            current = cfg[i+2]; kind = 0;
+            if (cfg[i+3] == 0 && cfg[i+5] == 3 && cfg[i+6] == 1 && cfg[i+7] == 1) {kind=1;}
+            if (cfg[i+3] == 0 && cfg[i+5] == 8 && cfg[i+6] == 6 && cfg[i+7] == 0x50) {kind=2;s_msc_iface=current;}
+        } else if (cfg[i+1] == 5 && len >= 7) {
+            uint8_t ep=cfg[i+2],type=cfg[i+3]&3;
+            uint16_t mps=(cfg[i+4]|cfg[i+5]<<8)&0x7ff;
+            if(kind==1 && type==3 && (ep&0x80) && !s_kbd_ep) {
+                iface=current;s_kbd_ep=ep;s_kbd_mps=mps;s_kbd_interval=cfg[i+6];
+            }
+            if(kind==2 && type==2) {
+                if(ep&0x80){s_msc_in=ep;s_msc_imps=mps;}else{s_msc_out=ep;s_msc_omps=mps;}
+            }
+        }
+        i += len;
     }
+    if(s_kbd_ep) {
+        kprintf("usbkbd: interrupt IN ep=%02x mps=%u interval=%u\n", s_kbd_ep,s_kbd_mps,s_kbd_interval);
+        return iface;
+    }
+    if(s_msc_in && s_msc_out)return -2;
     kprintf("usbkbd: device has no HID boot keyboard interface\n");
     return -1;
 }
@@ -142,16 +165,33 @@ static void keyboard_session(int iface)
     uint8_t held = 0;                                   /* the key that auto-repeats */
     uint64_t pressed_at = 0, last_repeat = 0;
     int fails = 0;
+    bool pending = false;
+    if (!hal_usbh_data_open(KBD_ADDRESS, s_kbd_ep, s_kbd_mps, true, s_kbd_interval)) {
+        kprintf("usbkbd: cannot open interrupt endpoint\n"); return;
+    }
 
     for (;;) {
         task_sleep(POLL_MS);
         usbh_event_t ev = hal_usbh_poll();
-        if (ev == USBH_EVENT_DISCONNECT || ev == USBH_EVENT_DISABLED) return;
+        if (ev == USBH_EVENT_DISCONNECT || ev == USBH_EVENT_DISABLED) { hal_usbh_data_close(); return; }
 
-        int n = ctrl(0xA1, HID_GET_REPORT, (HID_REPORT_INPUT << 8), (uint16_t)iface, cur, REPORT_BYTES);
+        if (!pending) {
+            int rc = hal_usbh_data_start(cur, sizeof cur);
+            if (rc < 0) { kprintf("usbkbd: submit failed %d\n", rc); break; }
+            pending = true;
+        }
+        int n = hal_usbh_data_poll();
+        if (n == USBH_PENDING) {
+            uint64_t now = hal_time_now_us();
+            if (held && now - pressed_at > REPEAT_DELAY_MS * 1000u && now - last_repeat > REPEAT_PERIOD_MS * 1000u) {
+                emit(held, prev[0]); last_repeat = now;
+            }
+            continue; /* NAK/no new input is normal, not disconnection. */
+        }
+        pending = false;
         if (n < REPORT_BYTES) {
             s_stats.i2c_errors++;                       /* (field reused as "transfer errors") */
-            if (++fails >= MAX_FAILS) return;
+            if (++fails >= MAX_FAILS) { kprintf("usbkbd: interrupt reports failed, last=%d\n", n); break; }
             continue;
         }
         fails = 0;
@@ -178,6 +218,7 @@ static void keyboard_session(int iface)
         }
         memcpy(prev, cur, sizeof prev);
     }
+    hal_usbh_data_close();
 }
 
 static void usbkbd_task(void *arg)
@@ -202,9 +243,15 @@ static void usbkbd_task(void *arg)
 
         int config = 0;
         int iface = enumerate(hal_usbh_speed(), &config);
-        if (iface >= 0 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
-            ctrl(0x21, HID_SET_PROTOCOL, 0, (uint16_t)iface, NULL, 0);           /* 0 = boot protocol */
+        if (iface == -2 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
+            if (usbmsc_attach(s_msc_iface,s_msc_in,s_msc_imps,s_msc_out,s_msc_omps)) usb_fat_mount(usbmsc_device());
+            while(hal_usbh_connected()){hal_usbh_poll();task_sleep(CONNECT_POLL_MS);}
+            usb_fat_detach();usbmsc_detach();
+            kprintf("usbmsc: disconnected\n");
+        } else if (iface >= 0 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
+            int protocol_rc = ctrl(0x21, HID_SET_PROTOCOL, 0, (uint16_t)iface, NULL, 0);           /* 0 = boot protocol */
             ctrl(0x21, HID_SET_IDLE, 0, (uint16_t)iface, NULL, 0);               /* may STALL: not required */
+            if (protocol_rc < 0) { kprintf("usbkbd: boot protocol rejected (%d)\n", protocol_rc); continue; }
             s_type = "usb-hid";
             kprintf("usbkbd: keyboard ready (interface %d)\n", iface);
             keyboard_session(iface);

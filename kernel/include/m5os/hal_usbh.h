@@ -29,3 +29,12 @@ bool         hal_usbh_open_control(uint8_t dev_addr, uint16_t max_packet);   /* 
 int          hal_usbh_control(const uint8_t setup[8], void *data, size_t len);
 
 void         hal_usbh_dump(void);                    /* bring-up aid: print the port/core status registers */
+
+/* One additional, asynchronous data pipe. Owner serializes control/data operations.
+ * poll returns USBH_PENDING while an idle interrupt endpoint NAKs normally. */
+#define USBH_PENDING (-5)
+bool hal_usbh_data_open(uint8_t address, uint8_t endpoint, uint16_t mps,
+                        bool interrupt, uint8_t interval);
+void hal_usbh_data_close(void);
+int hal_usbh_data_start(void *buf, size_t len);
+int hal_usbh_data_poll(void);

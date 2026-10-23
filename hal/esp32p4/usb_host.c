@@ -29,7 +29,7 @@
 #define CACHE_LINE          64u
 #define QTD_LIST_ALIGN      512         /* USB_DWC_QTD_LIST_MEM_ALIGN */
 #define QTDS_PER_CONTROL    3           /* setup, data, status */
-#define MAX_DATA            256         /* largest data stage we support (config descriptors fit) */
+#define MAX_DATA            1024         /* largest data stage we support (config descriptors fit) */
 #define STAGE_TIMEOUT_US    500000u
 #define SETUP_BYTES         8
 
@@ -48,6 +48,15 @@ static uint16_t               s_mps;
 static uint8_t s_qtd[QTD_LIST_ALIGN] __attribute__((aligned(QTD_LIST_ALIGN)));         /* only the first 24 bytes are used */
 static uint8_t s_setup[CACHE_LINE]   __attribute__((aligned(CACHE_LINE)));
 static uint8_t s_data[MAX_DATA]      __attribute__((aligned(CACHE_LINE)));
+static uint32_t s_frames[32] __attribute__((aligned(512)));
+static usb_dwc_hal_chan_t s_io;
+static bool s_io_open, s_io_active, s_io_in;
+static uint16_t s_io_mps;
+static void *s_io_user;
+static size_t s_io_len, s_io_span;
+static uint8_t s_io_ep, s_ep_pid[32];
+static uint8_t s_io_qtd[512] __attribute__((aligned(512)));
+static uint8_t s_io_data[4096] __attribute__((aligned(64)));
 
 static void cache_write_back(void *p, size_t n) { esp_cache_msync(p, n, ESP_CACHE_MSYNC_FLAG_DIR_C2M); }
 static void cache_invalidate(void *p, size_t n) { esp_cache_msync(p, n, ESP_CACHE_MSYNC_FLAG_DIR_M2C); }
@@ -96,7 +105,13 @@ usbh_event_t hal_usbh_poll(void)
     switch (usb_dwc_hal_decode_intr(&s_hal)) {
     case USB_DWC_HAL_PORT_EVENT_CONN:     return USBH_EVENT_CONNECT;
     case USB_DWC_HAL_PORT_EVENT_DISCONN:  return USBH_EVENT_DISCONNECT;
-    case USB_DWC_HAL_PORT_EVENT_ENABLED:  usb_dwc_hal_port_enable(&s_hal); return USBH_EVENT_ENABLED;
+    case USB_DWC_HAL_PORT_EVENT_ENABLED:
+        usb_dwc_hal_port_enable(&s_hal);
+        memset(s_frames, 0, sizeof s_frames);
+        cache_write_back(s_frames, sizeof s_frames);
+        usb_dwc_hal_port_set_frame_list(&s_hal, s_frames, USB_HAL_FRAME_LIST_LEN_32);
+        usb_dwc_hal_port_periodic_enable(&s_hal);
+        return USBH_EVENT_ENABLED;
     case USB_DWC_HAL_PORT_EVENT_DISABLED: return USBH_EVENT_DISABLED;
     case USB_DWC_HAL_PORT_EVENT_OVRCUR:   return USBH_EVENT_OVERCURRENT;
     default:                              return USBH_EVENT_NONE;
@@ -119,6 +134,7 @@ usbh_speed_t hal_usbh_speed(void)
 bool hal_usbh_open_control(uint8_t dev_addr, uint16_t max_packet)
 {
     if (!s_inited) return false;
+    if (dev_addr == 0) memset(s_ep_pid, 0, sizeof s_ep_pid);
     if (s_chan_open) {                                  /* reconfigure: free and allocate again (the channel must be idle) */
         usb_dwc_hal_chan_free(&s_hal, &s_chan);
         s_chan_open = false;
@@ -218,4 +234,89 @@ void hal_usbh_dump(void)
     kprintf("usbh: hprt=%08x gintsts=%08x gotgctl=%08x gusbcfg=%08x hcfg=%08x\n",
             (unsigned)d->hprt_reg.val, (unsigned)d->gintsts_reg.val, (unsigned)d->gotgctl_reg.val,
             (unsigned)d->gusbcfg_reg.val, (unsigned)d->hcfg_reg.val);
+}
+
+void hal_usbh_data_close(void)
+{
+    if (!s_io_open) return;
+    if (s_io_active) {
+        usb_dwc_hal_chan_request_halt(&s_io);
+        uint64_t start = hal_time_now_us();
+        while (s_io.flags.active && hal_time_now_us() - start < STAGE_TIMEOUT_US) {
+            usb_dwc_hal_decode_intr(&s_hal);
+            usb_dwc_hal_chan_t *c;
+            while ((c = usb_dwc_hal_get_chan_pending_intr(&s_hal)) != NULL)
+                usb_dwc_hal_chan_decode_intr(c);
+        }
+    }
+    if (s_io.flags.active) return; /* Never reuse DMA storage while hardware owns it. */
+    usb_dwc_hal_chan_free(&s_hal, &s_io);
+    cache_write_back(s_frames, sizeof s_frames);
+    s_io_active = s_io_open = false;
+}
+
+bool hal_usbh_data_open(uint8_t address, uint8_t endpoint, uint16_t mps,
+                        bool interrupt, uint8_t interval)
+{
+    hal_usbh_data_close();
+    if (s_io_open || !mps || mps > 1024 || !(endpoint & 15)) return false;
+    memset(&s_io, 0, sizeof s_io);
+    if (!usb_dwc_hal_chan_alloc(&s_hal, &s_io, NULL)) return false;
+    usb_dwc_hal_ep_char_t ep = {0};
+    ep.type = interrupt ? USB_DWC_XFER_TYPE_INTR : USB_DWC_XFER_TYPE_BULK;
+    ep.bEndpointAddress = endpoint; ep.mps = mps; ep.dev_addr = address;
+    ep.periodic.is_hs = hal_usbh_speed() == USBH_SPEED_HIGH;
+    ep.periodic.interval = ep.periodic.is_hs ? (1u << ((interval > 0 && interval <= 16 ? interval : 1) - 1)) : (interval ? interval : 1);
+    usb_dwc_hal_chan_set_ep_char(&s_hal, &s_io, &ep);
+    s_io_ep = (endpoint & 15) + ((endpoint & 0x80) ? 16 : 0);
+    usb_dwc_hal_chan_set_pid(&s_io, s_ep_pid[s_io_ep]);
+    cache_write_back(s_frames, sizeof s_frames);
+    s_io_open = true; s_io_in = (endpoint & 0x80) != 0; s_io_mps = mps;
+    return true;
+}
+
+int hal_usbh_data_start(void *buf, size_t len)
+{
+    if (!s_io_open || s_io_active || !buf || !len) return USBH_ERR_XFER;
+    size_t span = s_io_in ? ((len + s_io_mps - 1) / s_io_mps) * s_io_mps : len;
+    if (span > sizeof s_io_data) return USBH_ERR_SIZE;
+    s_io_user = buf; s_io_len = len; s_io_span = span;
+    memset(s_io_qtd, 0, sizeof s_io_qtd);
+    if (!s_io_in) memcpy(s_io_data, buf, len);
+    else memset(s_io_data, 0, span);
+    cache_write_back(s_io_data, sizeof s_io_data);
+    usb_dwc_hal_xfer_desc_fill(s_io_qtd, 0, s_io_data, span,
+        (s_io_in ? USB_DWC_HAL_XFER_DESC_FLAG_IN : 0) | USB_DWC_HAL_XFER_DESC_FLAG_HOC);
+    cache_write_back(s_io_qtd, sizeof s_io_qtd);
+    usb_dwc_hal_chan_activate(&s_io, s_io_qtd, 1, 0);
+    s_io_active = true;
+    return 0;
+}
+
+int hal_usbh_data_poll(void)
+{
+    if (!s_io_active) return USBH_ERR_XFER;
+    usb_dwc_hal_decode_intr(&s_hal);
+    usb_dwc_hal_chan_t *c;
+    while ((c = usb_dwc_hal_get_chan_pending_intr(&s_hal)) != NULL) {
+        usb_dwc_hal_chan_event_t ev = usb_dwc_hal_chan_decode_intr(c);
+        if (c != &s_io) continue;
+        if (ev == USB_DWC_HAL_CHAN_EVENT_ERROR) {
+            s_io_active = false;
+            return usb_dwc_hal_chan_get_error(c) == USB_DWC_HAL_CHAN_ERROR_STALL ? USBH_ERR_STALL : USBH_ERR_XFER;
+        }
+        if (ev == USB_DWC_HAL_CHAN_EVENT_CPLT) {
+            s_io_active = false;
+            s_ep_pid[s_io_ep] = usb_dwc_hal_chan_get_pid(&s_io);
+            cache_invalidate(s_io_qtd, sizeof s_io_qtd);
+            int rem, status;
+            usb_dwc_hal_xfer_desc_parse(s_io_qtd, 0, &rem, &status);
+            if (status != USB_DWC_HAL_XFER_DESC_STS_SUCCESS || rem < 0 || (size_t)rem > s_io_span) return USBH_ERR_XFER;
+            size_t got = s_io_span - rem;
+            if (got > s_io_len) got = s_io_len;
+            if (s_io_in) { cache_invalidate(s_io_data, sizeof s_io_data); memcpy(s_io_user, s_io_data, got); }
+            return got;
+        }
+    }
+    return USBH_PENDING;
 }

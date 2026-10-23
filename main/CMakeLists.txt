@@ -6,12 +6,13 @@ file(GLOB_RECURSE M5OS_SRCS
     ${M5OS_ROOT}/kernel/*.c   ${M5OS_ROOT}/kernel/*.S
     ${M5OS_ROOT}/drivers/*.c  ${M5OS_ROOT}/hal/*.c  ${M5OS_ROOT}/hal/*.S
     ${M5OS_ROOT}/fs/*.c       ${M5OS_ROOT}/user/*.c ${M5OS_ROOT}/apps/*.c
-    ${M5OS_ROOT}/third_party/wasm3/*.c ${M5OS_ROOT}/third_party/quirc/*.c)
+    ${M5OS_ROOT}/third_party/wasm3/*.c ${M5OS_ROOT}/third_party/quirc/*.c
+    ${M5OS_ROOT}/third_party/fatfs/ff.c ${M5OS_ROOT}/third_party/fatfs/ffunicode.c)
 # apps/m5ex/*.c and apps/sdk/*.c are SOURCES OF LOADABLE APPS, built separately by
 # tools/m5exbuild.py with their own link layout; the firmware only embeds the generated images.c.
 list(FILTER M5OS_SRCS EXCLUDE REGEX "/apps/sdk/|/apps/m5ex/[^i]|/apps/wasm/[^w]")
 # keep images.c / images_none.c (generated / stub).  apps/wasm holds the sources of WebAssembly apps: only wasm_images.c is firmware.
-set(M5OS_NO_WASM_RE "/third_party/wasm3/|/third_party/quirc/|/kernel/app/wasm_|/apps/wasm/wasm_images\\.c$|/user/wasmapps/")      # WebAssembly runs on the Tab5 only
+set(M5OS_NO_WASM_RE "/drivers/usbmsc/|/fs/fat/|/third_party/fatfs/|/third_party/wasm3/|/third_party/quirc/|/kernel/app/wasm_|/apps/wasm/wasm_images\\.c$|/user/wasmapps/")      # WebAssembly runs on the Tab5 only
 
 # Board-specific sources: *_cores3.c / *_cardputer.c, the chip directories hal/esp32s3 (Xtensa) and
 # hal/esp32p4 (RISC-V), and the drivers that only some boards have.
