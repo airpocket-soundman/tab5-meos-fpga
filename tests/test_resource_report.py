@@ -26,6 +26,9 @@ class ResourceReportTest(unittest.TestCase):
         self.assertEqual(report.exact_heap_readings('unrelated log\n'+json.dumps(record))['internal']['used'],109)
         record['internal']['free']=82
         with self.assertRaises(ValueError):report.exact_heap_readings(json.dumps(record))
+        for invalid in (None, [], 'bad'):
+            record['internal']=invalid
+            with self.assertRaises(ValueError):report.exact_heap_readings(json.dumps(record))
         self.assertIsNone(report.exact_heap_readings('{truncated\n'))
 
     def test_heap_rounding_and_latest_capture(self):

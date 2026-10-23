@@ -48,10 +48,12 @@ def exact_heap_readings(text):
             value = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if value.get('schema') != 1 or value.get('units') != 'bytes':
+        if type(value.get('schema')) is not int or value.get('schema') != 1 or value.get('units') != 'bytes':
             continue
         for name in ('internal', 'psram'):
             fields = value.get(name, {})
+            if not isinstance(fields, dict):
+                raise ValueError('invalid exact heap object')
             for key in ('total', 'used', 'free', 'largest', 'peak', 'alloc_count', 'fail_count'):
                 if type(fields.get(key)) is not int or fields[key] < 0:
                     raise ValueError('invalid exact heap counter')
