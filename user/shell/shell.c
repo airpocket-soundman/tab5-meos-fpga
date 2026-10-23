@@ -18,6 +18,9 @@
 #include "../wifi/wifi_app.h"
 #include "../bluetooth/bt_app.h"
 #include "../io/io_app.h"
+#if M5OS_MICROPYTHON
+#include "../micropython/micropython_app.h"
+#endif
 #include "../ssh/ssh_app.h"
 #include "../tailscale/tailscale_app.h"
 #include "../web/web_app.h"
@@ -1019,6 +1022,9 @@ static int cmd_history(int argc, char **argv)
 }
 
 static const command_t s_commands[] = {
+#if M5OS_MICROPYTHON
+    { "python", micropython_cmd_main, "python [PATH | -c SOURCE]  MicroPython REPL/script" },
+#endif
     { "help",    cmd_help,    "list commands" },
 #if M5OS_USB_NATIVE_DMA
     { "eth", cmd_eth, "show USB Ethernet link, IP and packet counters" },

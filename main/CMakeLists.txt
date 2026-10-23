@@ -11,6 +11,7 @@ file(GLOB_RECURSE M5OS_SRCS
 # apps/m5ex/*.c and apps/sdk/*.c are SOURCES OF LOADABLE APPS, built separately by
 # tools/m5exbuild.py with their own link layout; the firmware only embeds the generated images.c.
 list(FILTER M5OS_SRCS EXCLUDE REGEX "/apps/sdk/|/apps/m5ex/[^i]|/apps/wasm/[^w]")
+list(FILTER M5OS_SRCS EXCLUDE REGEX "/user/micropython/")
 # keep images.c / images_none.c (generated / stub).  apps/wasm holds the sources of WebAssembly apps: only wasm_images.c is firmware.
 set(M5OS_NO_WASM_RE "/drivers/usbmsc/|/drivers/usbhost/|/fs/fat/|/third_party/fatfs/|/third_party/wasm3/|/third_party/quirc/|/kernel/app/wasm_|/apps/wasm/wasm_images\\.c$|/user/wasmapps/")      # WebAssembly runs on the Tab5 only
 
@@ -107,3 +108,5 @@ set_source_files_properties(${M5OS_QUIRC_SRCS} PROPERTIES COMPILE_OPTIONS "-w;-O
 
 include(${M5OS_ROOT}/cmake/nimble_meos.cmake)
 m5os_add_nimble(${COMPONENT_LIB})
+include(${M5OS_ROOT}/cmake/micropython_meos.cmake)
+m5os_add_micropython(${COMPONENT_LIB})
