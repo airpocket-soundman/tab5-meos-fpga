@@ -17,6 +17,7 @@
 #include "../camera/camera_app.h"
 #include "../wifi/wifi_app.h"
 #include "../bluetooth/bt_app.h"
+#include "../io/io_app.h"
 #include "../ssh/ssh_app.h"
 #include "../tailscale/tailscale_app.h"
 #include "../web/web_app.h"
@@ -630,6 +631,8 @@ static int cmd_edit(int argc, char **argv)
     return 0;
 }
 
+static int cmd_io(int argc,char **argv){return io_app_command(argc,argv,sh_puts);}
+
 static int cmd_bt(int argc,char **argv){return bt_app_command(argc,argv,sh_puts);}
 
 static int cmd_camera(int argc, char **argv)
@@ -1051,6 +1054,13 @@ static const command_t s_commands[] = {
     { "osk",     cmd_osk,     "osk [on|off|map N|debug]  on-screen keyboard (touch); no argument: status" },
 #endif
 #endif
+    { "io", cmd_io, "io: external I/O (use io help for commands)" },
+    { "gpio", cmd_io, "gpio: external I/O (use io help for commands)" },
+    { "adc", cmd_io, "adc: external I/O (use io help for commands)" },
+    { "pwm", cmd_io, "pwm: external I/O (use io help for commands)" },
+    { "i2c", cmd_io, "i2c: external I/O (use io help for commands)" },
+    { "spi", cmd_io, "spi: external I/O (use io help for commands)" },
+    { "uart", cmd_io, "uart: external I/O (use io help for commands)" },
     { "bt", cmd_bt, "BLE HID host: bt on | scan | devices | connect | status" },
     { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
     { "sshd", cmd_sshd, "sshd start USER PASSWORD [PORT] | status | stop" },
