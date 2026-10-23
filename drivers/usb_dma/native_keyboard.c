@@ -538,7 +538,12 @@ static void usbkbd_task(void *arg)
             info_configured(1,true);
             if (usbmsc_attach(s_msc_iface,s_msc_in,s_msc_imps,s_msc_out,s_msc_omps))
                 info_mount(1,0,usb_fat_mount(usbmsc_device()));
-            while(hal_usbh_connected()){hal_usbh_poll();task_sleep(CONNECT_POLL_MS);}
+            while (hal_usbh_connected()) {
+                mutex_lock(&usb_native_bus_lock);
+                hal_usbh_poll();
+                mutex_unlock(&usb_native_bus_lock);
+                task_sleep(CONNECT_POLL_MS);
+            }
             usb_fat_detach();usbmsc_detach();
             kprintf("usbmsc: disconnected\n");
             /* Removal already observed; do not wait for a second unplug if

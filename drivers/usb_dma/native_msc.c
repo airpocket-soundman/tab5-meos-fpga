@@ -16,6 +16,7 @@ typedef struct {
 } msc_t;
 static msc_t devices[NATIVE_MSC_SLOTS];
 mutex_t usb_native_bus_lock = MUTEX_INIT;
+static mutex_t msc_lock = MUTEX_INIT;
 static uint32_t be32(const uint8_t *p) {
     return (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3];
 }
@@ -34,29 +35,40 @@ static void putle(uint8_t *p, uint32_t n) {
 static uint32_t le32(const uint8_t *p) {
     return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
 }
-/* Caller owns the shared native host lock for the entire SCSI command. */
+/* msc_lock protects a complete BOT transaction. The HAL lock protects only
+ * register/channel operations, never the time spent waiting for DMA. */
 static int bulk(msc_t *d, bool in, void *buf, size_t n) {
-    if (!hal_usbh_data_open(d->address, in ? d->in : d->out, in ? d->imps : d->omps, false, 0))
-        return ERR_IO;
-    if (hal_usbh_data_start(buf, n) < 0) {
+    mutex_lock(&usb_native_bus_lock);
+    bool opened =
+        hal_usbh_data_open(d->address, in ? d->in : d->out, in ? d->imps : d->omps, false, 0);
+    bool started = opened && hal_usbh_data_start(buf, n) >= 0;
+    if (!started)
         hal_usbh_data_close();
+    mutex_unlock(&usb_native_bus_lock);
+    if (!started)
         return ERR_IO;
-    }
     uint64_t start = hal_time_now_us();
     int r;
-    while ((r = hal_usbh_data_poll()) == USBH_PENDING) {
-        if (!hal_usbh_connected() || hal_time_now_us() - start > 3000000u) {
+    for (;;) {
+        mutex_lock(&usb_native_bus_lock);
+        r = hal_usbh_data_poll();
+        bool timed_out =
+            r == USBH_PENDING && (!hal_usbh_connected() || hal_time_now_us() - start > 3000000u);
+        if (r != USBH_PENDING || timed_out)
+            hal_usbh_data_close();
+        mutex_unlock(&usb_native_bus_lock);
+        if (timed_out) {
             kprintf("native-dma: bulk timeout address=%u ep=%02x bytes=%u\n", d->address,
                     in ? d->in : d->out, (unsigned)n);
-            hal_usbh_data_close();
             return ERR_IO;
         }
+        if (r != USBH_PENDING)
+            break;
         task_sleep(1);
     }
-    hal_usbh_data_close();
     if (r != (int)n)
-        kprintf("native-dma: address=%u bulk result=%d expected=%u ep=%02x\n",
-                d->address,r,(unsigned)n,in?d->in:d->out);
+        kprintf("native-dma: address=%u bulk result=%d expected=%u ep=%02x\n", d->address, r,
+                (unsigned)n, in ? d->in : d->out);
     return r;
 }
 static int scsi(msc_t *d, const uint8_t *cdb, int cdbn, void *data, uint32_t n, bool in) {
@@ -87,20 +99,24 @@ static int rw(blockdev_t *bd, uint32_t lba, uint32_t count, void *buf, bool writ
     msc_t *d = bd->priv;
     int rc = 0;
     for (uint32_t i = 0; i < count && !rc;) {
-        uint32_t n = count-i > 8 ? 8 : count-i;
+        uint32_t n = count - i > 8 ? 8 : count - i;
         /* A complete BOT command is atomic; a large filesystem request is not.
          * Let Ethernet and HID service their own channels between commands. */
-        mutex_lock(&usb_native_bus_lock);
-        if (!d->ready) rc = ERR_NODEV;
+        mutex_lock(&msc_lock);
+        if (!d->ready)
+            rc = ERR_NODEV;
         else {
             uint8_t cmd[10] = {0};
             cmd[0] = write ? 0x2a : 0x28;
-            putbe(cmd+2,lba+i);cmd[7]=n>>8;cmd[8]=n;
-            rc=scsi(d,cmd,10,(uint8_t *)buf+i*512,n*512,!write);
-            if (rc) d->ready=false;
+            putbe(cmd + 2, lba + i);
+            cmd[7] = n >> 8;
+            cmd[8] = n;
+            rc = scsi(d, cmd, 10, (uint8_t *)buf + i * 512, n * 512, !write);
+            if (rc)
+                d->ready = false;
         }
-        mutex_unlock(&usb_native_bus_lock);
-        i+=n;
+        mutex_unlock(&msc_lock);
+        i += n;
         task_yield();
     }
     return rc;
@@ -115,17 +131,19 @@ blockdev_t *usbmsc_device_slot(unsigned slot) {
 void usbmsc_detach_slot(unsigned slot) {
     if (slot >= NATIVE_MSC_SLOTS)
         return;
-    mutex_lock(&usb_native_bus_lock);
+    mutex_lock(&msc_lock);
     devices[slot].ready = false;
+    mutex_lock(&usb_native_bus_lock);
     hal_usbh_data_close();
     mutex_unlock(&usb_native_bus_lock);
+    mutex_unlock(&msc_lock);
 }
 bool usbmsc_attach_slot(unsigned slot, uint8_t address, uint8_t iface, uint8_t in, uint16_t imps,
                         uint8_t out, uint16_t omps) {
     (void)iface;
     if (slot >= NATIVE_MSC_SLOTS)
         return false;
-    mutex_lock(&usb_native_bus_lock);
+    mutex_lock(&msc_lock);
     msc_t *d = &devices[slot];
     d->ready = false;
     d->address = address;
@@ -156,7 +174,7 @@ bool usbmsc_attach_slot(unsigned slot, uint8_t address, uint8_t iface, uint8_t i
     } else
         kprintf("usbmsc: slot=%u capacity or transport error\n", slot);
     bool ready = d->ready;
-    mutex_unlock(&usb_native_bus_lock);
+    mutex_unlock(&msc_lock);
     return ready;
 }
 bool usbmsc_attach(uint8_t iface, uint8_t in, uint16_t imps, uint8_t out, uint16_t omps) {

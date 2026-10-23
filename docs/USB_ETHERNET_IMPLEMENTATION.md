@@ -31,8 +31,11 @@ active-interface status. Wi-Fi fallback still requires a working C6 connection.
 
 Network callbacks only enqueue/dequeue frames. They never take the USB bus lock.
 USB servicing polls the network mutex without blocking behind DNS/ARP waits.
-Complete storage BOT commands remain atomic; large filesystem requests release
-the bus between commands so other USB classes can run.
+A separate MSC mutex preserves complete BOT command order. The shared HAL mutex
+covers only channel/register operations and is released while storage DMA is
+pending. Control, keyboard and network pollers preserve MSC completion events;
+the waiting storage task can retrieve them later. The direct-storage monitor
+also uses the HAL mutex to avoid concurrent interrupt decoding.
 
 ## Diagnostics
 
@@ -53,9 +56,15 @@ adapter's product class. Actual throughput has not been benchmarked.
 - Each USB drive passed a new 8192-byte write/read with matching CRC on this hub;
   one is exFAT and the other FAT. Further new 512-byte files also matched.
 - Ethernet RX/TX continued after the storage tests, without USB transfer errors.
-- Storage activity caused substantial packet loss and delay during a concurrent
-  ping trial. Coexistence latency remains under investigation; successful file
-  contents alone do not establish responsive concurrent networking.
+- Initial storage activity caused substantial packet loss. Separating BOT
+  ownership from short HAL operations corrected the normal-I/O stall. With the
+  corrected driver, four stored files (8192/512 bytes on each drive) and the SD
+  test file read back correctly while 20 concurrent 982-byte pings all passed
+  (20–41 ms). New 512-byte writes/readbacks on both drives also passed with all
+  20 concurrent 470-byte pings (22–44 ms). USB errors and queued RX drops stayed
+  zero; measured maximum service gap in the read trial was about 15 ms.
+- These checks do not establish sustained throughput or hot-plug responsiveness.
+  Hub enumeration and filesystem removal can still wait in the USB service task.
 - Inbound SSH authentication, console commands, disconnect/reconnect and stop
   passed on the device. Concurrent outbound SSH and interface switching are
   tracked separately in the SSH implementation notes.

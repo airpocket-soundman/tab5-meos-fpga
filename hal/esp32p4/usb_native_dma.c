@@ -52,6 +52,7 @@ static uint8_t s_data[MAX_DATA]      __attribute__((aligned(CACHE_LINE)));
 static uint32_t s_frames[32] __attribute__((aligned(512)));
 static usb_dwc_hal_chan_t s_io;
 static bool s_io_open, s_io_active, s_io_in;
+static usb_dwc_hal_chan_event_t s_io_event;
 static uint16_t s_io_mps;
 static void *s_io_user;
 static size_t s_io_len, s_io_span;
@@ -86,6 +87,7 @@ static usb_dwc_hal_chan_event_t decode_channel(usb_dwc_hal_chan_t *c)
 {
     usb_dwc_hal_chan_event_t ev = usb_dwc_hal_chan_decode_intr(c);
     if (c == &s_kbd && ev != USB_DWC_HAL_CHAN_EVENT_NONE) s_kbd_event = ev;
+    if (c == &s_io && ev != USB_DWC_HAL_CHAN_EVENT_NONE) s_io_event = ev;
     for (unsigned i=0;i<3;i++)
         if (c==&net_pipes[i].channel && ev!=USB_DWC_HAL_CHAN_EVENT_NONE)
             net_pipes[i].event=ev;
@@ -353,6 +355,7 @@ int hal_usbh_data_start(void *buf, size_t len)
     usb_dwc_hal_xfer_desc_fill(s_io_qtd, 0, s_io_data, span,
         (s_io_in ? USB_DWC_HAL_XFER_DESC_FLAG_IN : 0) | USB_DWC_HAL_XFER_DESC_FLAG_HOC);
     cache_write_back(s_io_qtd, sizeof s_io_qtd);
+    s_io_event=USB_DWC_HAL_CHAN_EVENT_NONE;
     usb_dwc_hal_chan_activate(&s_io, s_io_qtd, 1, 0);
     s_io_active = true;
     return 0;
@@ -363,27 +366,25 @@ int hal_usbh_data_poll(void)
     if (!s_io_active) return USBH_ERR_XFER;
     usb_dwc_hal_decode_intr(&s_hal);
     usb_dwc_hal_chan_t *c;
-    while ((c = usb_dwc_hal_get_chan_pending_intr(&s_hal)) != NULL) {
-        usb_dwc_hal_chan_event_t ev = decode_channel(c);
-        if (c != &s_io) continue;
-        if (ev == USB_DWC_HAL_CHAN_EVENT_ERROR) {
-            s_io_active = false;
-            return usb_dwc_hal_chan_get_error(c) == USB_DWC_HAL_CHAN_ERROR_STALL ? USBH_ERR_STALL : USBH_ERR_XFER;
-        }
-        if (ev == USB_DWC_HAL_CHAN_EVENT_CPLT) {
-            s_io_active = false;
-            s_ep_pid[s_io_address][s_io_ep] = usb_dwc_hal_chan_get_pid(&s_io);
-            cache_invalidate(s_io_qtd, sizeof s_io_qtd);
-            int rem, status;
-            usb_dwc_hal_xfer_desc_parse(s_io_qtd, 0, &rem, &status);
-            if (status != USB_DWC_HAL_XFER_DESC_STS_SUCCESS || rem < 0 || (size_t)rem > s_io_span) return USBH_ERR_XFER;
-            size_t got = s_io_span - rem;
-            if (got > s_io_len) got = s_io_len;
-            if (s_io_in) { cache_invalidate(s_io_data, sizeof s_io_data); memcpy(s_io_user, s_io_data, got); }
-            return got;
-        }
+    while ((c=usb_dwc_hal_get_chan_pending_intr(&s_hal))!=NULL) decode_channel(c);
+    /* Other channels may have harvested this completion while MSC was asleep. */
+    if (s_io_event==USB_DWC_HAL_CHAN_EVENT_ERROR) {
+        s_io_active=false;
+        return usb_dwc_hal_chan_get_error(&s_io)==USB_DWC_HAL_CHAN_ERROR_STALL?
+            USBH_ERR_STALL:USBH_ERR_XFER;
     }
-    return USBH_PENDING;
+    if (s_io_event!=USB_DWC_HAL_CHAN_EVENT_CPLT) return USBH_PENDING;
+    s_io_active=false;
+    s_ep_pid[s_io_address][s_io_ep]=usb_dwc_hal_chan_get_pid(&s_io);
+    cache_invalidate(s_io_qtd,sizeof s_io_qtd);
+    int rem,status;
+    usb_dwc_hal_xfer_desc_parse(s_io_qtd,0,&rem,&status);
+    if (status!=USB_DWC_HAL_XFER_DESC_STS_SUCCESS || rem<0 || (size_t)rem>s_io_span)
+        return USBH_ERR_XFER;
+    size_t got=s_io_span-rem;
+    if (got>s_io_len) got=s_io_len;
+    if (s_io_in) { cache_invalidate(s_io_data,sizeof s_io_data);memcpy(s_io_user,s_io_data,got); }
+    return got;
 }
 
 void hal_usbh_keyboard_close(void)

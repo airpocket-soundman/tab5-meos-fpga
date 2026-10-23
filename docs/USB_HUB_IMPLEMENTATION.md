@@ -47,3 +47,12 @@ FatFsのexFATを有効化し、無効時に未定義となる`CONFIG_FATFS_USE_L
 ストレージの個別抜き差し、ハブ本体の取り外し、ファイルを開いたままの再接続、長時間試験は未確認。Full-Speedで確認した結果を480 Mbit/sでの動作確認とは扱わない。USB 2.0 High-SpeedハブとFull/Low-Speed機器の混在は、独自バッファDMAとスプリット転送の追加対象。
 
 参照：[Espressif USB Host limitations](https://docs.espressif.com/projects/esp-usb/en/latest/esp32p4/usb_host.html)、同梱TinyUSB 0.19.0の`src/host/hub.c`とDWC2ホスト実装。
+
+## High-Speed Ethernet hub and concurrent I/O
+
+A Realtek 0bda:5411 USB3 hub negotiated USB2 High-Speed on Tab5. Two USB drives,
+a USB microSD reader and RTL8153 Ethernet enumerate together. Both drives passed
+new 8192-byte and 512-byte write/read checks. After separating MSC transaction
+ownership from the HAL mutex, stored-file reads and new writes passed alongside
+20/20 ICMP replies. See [Ethernet results](USB_ETHERNET_IMPLEMENTATION.md).
+This does not add split transfers for FS/LS devices beneath a High-Speed hub.
