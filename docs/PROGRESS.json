@@ -21,8 +21,8 @@
         "en": "1. USB receivers and storage"
       },
       "detail": {
-        "ja": "割り込みIN転送の試作で無線受信機から入力成功（ユーザー確認、統計83回・転送エラー0回）。USBメモリのBOT/SCSI・FAT接続は実装中で実機未確認。",
-        "en": "Wireless receiver input works with interrupt IN (user confirmation; 83 presses, zero transfer errors). BOT/SCSI and FAT integration for storage are in development, unverified on hardware."
+        "ja": "無線受信機の入力成功（83回・転送エラー0）。USBメモリのFATマウントと /usb の一覧取得を実機確認。書き込み・取り外し・再接続は未確認。",
+        "en": "Wireless receiver input verified (83 presses, zero transfer errors). USB memory FAT mount and /usb directory listing verified on hardware. Writes, removal and reconnection remain unverified."
       }
     },
     {
