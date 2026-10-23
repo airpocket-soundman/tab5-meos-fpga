@@ -1,6 +1,6 @@
 # Native USB hub implementation / 独自USBハブ実装
 
-2026-10-23. The native descriptor DMA driver now enumerates one external hub and provides three independent MSC slots. The tested hub is 05e3:0606, four ports, connected at Full-Speed. High-Speed hubs with mixed-speed devices still require buffer DMA and split-transaction support; those configurations are not verified.
+2026-10-23. The native DMA driver enumerates one external hub and provides three independent MSC slots. The tested hub is 05e3:0606, four ports, connected at Full-Speed. The later buffer-DMA implementation adds mixed-speed support; see the validation below.
 
 ## 構成
 
@@ -44,7 +44,7 @@ FatFsのexFATを有効化し、無効時に未定義となる`CONFIG_FATFS_USE_L
 
 キーボード用チャネルを有効にしたファームでも、2媒体の既存512・8192バイト4ファイルの全内容と媒体分離、SD読み出しを再確認した。連続した高速入力、文字を入力しながらの長時間ストレージ負荷、キーリピート・全修飾キー・Low-Speed機器の回帰は未確認。
 
-ストレージの個別抜き差し、ハブ本体の取り外し、ファイルを開いたままの再接続、長時間試験は未確認。Full-Speedで確認した結果を480 Mbit/sでの動作確認とは扱わない。USB 2.0 High-SpeedハブとFull/Low-Speed機器の混在は、独自バッファDMAとスプリット転送の追加対象。
+ストレージの個別抜き差し、ハブ本体の取り外し、ファイルを開いたままの再接続、長時間試験は未確認。Full-Speedで確認した結果を480 Mbit/sでの動作確認とは扱わない。USB 2.0 High-SpeedハブとFull/Low-Speed機器の混在への対応と、その後の実機確認は下記を参照。
 
 参照：[Espressif USB Host limitations](https://docs.espressif.com/projects/esp-usb/en/latest/esp32p4/usb_host.html)、同梱TinyUSB 0.19.0の`src/host/hub.c`とDWC2ホスト実装。
 
@@ -55,4 +55,42 @@ a USB microSD reader and RTL8153 Ethernet enumerate together. Both drives passed
 new 8192-byte and 512-byte write/read checks. After separating MSC transaction
 ownership from the HAL mutex, stored-file reads and new writes passed alongside
 20/20 ICMP replies. See [Ethernet results](USB_ETHERNET_IMPLEMENTATION.md).
-This does not add split transfers for FS/LS devices beneath a High-Speed hub.
+These storage write/read results predate the buffer-DMA conversion below.
+
+## Buffer DMA and mixed-speed keyboards
+
+The native host now defaults to buffer DMA for all six channels: control,
+storage, keyboard, ECM RX/TX and ECM notifications. DWC2's Descriptor DMA mode
+cannot perform split transactions, and its mode switch applies to the whole
+controller. The original driver remains independent of TinyUSB and FreeRTOS.
+
+Device routes retain downstream speed, hub address and port. Full-/low-speed
+endpoints beneath a high-speed hub use start-split and complete-split phases.
+The engine advances buffers and DATA toggles only after a completed transaction.
+NAK/NYET are retried without declaring a keyboard disconnect. Periodic completion
+is scheduled in the start-split frame; fresh HFNUM/ODDFRM programming immediately
+before CHENA avoids stale scheduling. Failed halts quarantine DMA buffers.
+
+On hardware, the Realtek 0bda:5411 hub enumerated the 1ea7:0002 Full-Speed
+receiver (EP81, 8-byte reports), two High-Speed drives and RTL8153 Ethernet.
+After removing unnecessary delays between split phases, keyboard reports and
+shell command execution were captured, and the user confirmed input/execution.
+Ethernet ping returned 10/10 replies (21–53 ms) with the receiver present.
+
+The normal image removes temporary kbdDMA diagnostics. On its final boot,
+a FAT drive mounted and Ethernet linked. The subsequent new-file write and
+ping attempt could not validate coexistence: the USB topology became empty
+and /usb was absent. No write/read success is claimed for this buffer-DMA
+regression. Both-drive write/read, sustained keyboard input during storage
+I/O and hot-plug stress remain pending. Earlier descriptor-DMA storage results
+above are historical and do not substitute for these tests.
+
+Host tests include the actual engine with fake MMIO and check split phase
+sizes, PID preservation, NYET retry, PING, short packets, bounds, STALL,
+late scheduling, frame expiry and halt quarantine. They do not emulate USB
+signals, real DMA or cache coherency.
+
+Run: `python tests/usb_host/run_buffer_dma_test.py --cc PATH_TO_ZIG`
+
+References: [TinyUSB DWC2 implementation](https://github.com/hathach/tinyusb/blob/master/src/portable/synopsys/dwc2/hcd_dwc2.c),
+[Linux DWC2 Descriptor DMA restriction](https://github.com/torvalds/linux/blob/master/drivers/usb/dwc2/hcd_ddma.c).

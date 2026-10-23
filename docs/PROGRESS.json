@@ -45,8 +45,8 @@
         "en": "3. USB hubs, multiple drives and keyboard coexistence"
       },
       "detail": {
-        "ja": "Full-SpeedハブでexFAT・FATの読み書き・保持・分離とSD併存を確認。別DMAの無線キーボードでコマンド実行、同じ版で4ファイル読み出しを確認（抜き差しを含む試験後のエラー累積12）。USBカードリーダーの認識・一覧取得、lsusbでハブ＋ストレージ3台の表示も確認。個別抜き差し・長時間入力負荷・High-Speed異速度混在は継続。 USB3ハブのUSB2 High-Speed接続でも2本に各8192バイトを書き込み、読み戻しCRC一致を確認。",
-        "en": "Full-speed hub: exFAT/FAT write/read, persistence, isolation and SD access verified. Wireless keyboard command input and four-file readback passed (12 cumulative errors after a test including replug). USB card-reader mount/listing and lsusb with a hub plus three drives also verified. Storage hot-plug, sustained input under load and high-speed mixed-speed operation remain pending. On a USB3 hub operating at USB2 High-Speed, both drives passed new 8192-byte write/read CRC checks."
+        "ja": "独自Buffer DMAへ統一し、高速ハブ配下のFull-Speed無線受信機をスプリット転送で認識。入力レポート・シェル実行をログとユーザー操作で確認。USBメモリ2本のマウント、Ethernet ping 10/10も確認。診断表示は削除。新方式での読み書き併用試験は、接続機器がなくなったため未確認。従来方式では2本のCRC付き読み書きを確認済み。",
+        "en": "Unified the native host on Buffer DMA and added split transfers for a Full-Speed wireless receiver beneath a High-Speed hub. Reports and shell commands were verified in logs and by the user; two drives mounted and Ethernet ping passed 10/10. Diagnostics removed. New-engine write/read coexistence remains unverified because USB devices were absent during the attempt. Earlier CRC write/read results apply to the previous engine."
       }
     },
     {
