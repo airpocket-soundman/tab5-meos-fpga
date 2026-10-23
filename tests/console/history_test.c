@@ -14,6 +14,8 @@ void kfree(void *p) { free(p); }
 void display_draw_codepoints(int x, int y, const uint16_t *cps, int n,
                              uint16_t fg, uint16_t bg, int scale)
 { (void)x; (void)y; (void)cps; (void)n; (void)fg; (void)bg; (void)scale; }
+bool display_begin_frame(void) { return false; }
+bool display_end_frame(void) { return false; }
 void display_clear(uint16_t color) { (void)color; }
 uint64_t hal_time_now_us(void) { return 0; }
 void task_sleep(uint32_t ms) { (void)ms; }

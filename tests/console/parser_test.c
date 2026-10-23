@@ -21,6 +21,8 @@ void display_draw_codepoints(int x, int y, const uint16_t *cps, int n, uint16_t 
     (void)bg;
     (void)scale;
 }
+bool display_begin_frame(void) { return false; }
+bool display_end_frame(void) { return false; }
 void display_clear(uint16_t color) { (void)color; }
 uint64_t hal_time_now_us(void) { return 0; }
 void task_sleep(uint32_t ms) { (void)ms; }

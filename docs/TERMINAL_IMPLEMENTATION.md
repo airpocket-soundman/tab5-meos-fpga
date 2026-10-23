@@ -52,3 +52,24 @@ This corrects the case where the display worked on an ST7121 unit but the GT911-
 Touch-report decoding tests use `python tests/console/run_touch_test.py --cc D:/tmp/tab5-zig013/ziglang/zig.exe`. They check probing, portrait mapping, a valid contact in a later report slot, release, read errors and GT911 fallback. Actual panel coordinates and gestures still require hardware confirmation.
 
 Protocol reference: [M5Stack M5GFX ST7123 touch implementation](https://github.com/m5stack/M5GFX/blob/master/src/lgfx/v1/platforms/esp32p4/Touch_ST7123.inl).
+
+## Buffered console redraws on Tab5
+
+The DPI backend previously used one framebuffer while scanout continuously read it. A scrollback redraw changed glyph runs and rows in that active buffer one at a time, so a refresh could contain a partly updated viewport. The existing `display_present` also copies pixels into the active framebuffer; it does not switch scanout buffers.
+
+The backend now requests two DPI-owned RGB565 buffers from the existing 4 MiB display reserve. A console update affecting more than one row renders into the inactive buffer, including its cursor and input overlay, and then selects the completed buffer for the next DPI DMA cycle. A MeOS display mutex serializes keyboard and other drawing calls during the batch. The previous buffer is not reused until the display DMA channel source address is observed inside the new framebuffer. Refresh callbacks alone do not establish buffer retirement. The channel is discovered by its framebuffer address, without assuming a fixed channel number. The internal-framebuffer branch of ESP-IDF's DPI `draw_bitmap` performs cache maintenance and updates its framebuffer index; using one of the driver's own buffers avoids its external-buffer copy and FreeRTOS semaphore branches. The second framebuffer does not allocate another GDMA channel.
+
+A full framebuffer copy at batch start preserves pixels outside the console, including the on-screen keyboard. Single-row edits and cursor blinking retain direct rendering to avoid a full-screen copy for each key. If the second framebuffer cannot be allocated, the console keeps direct rendering. A stalled refresh disables subsequent buffer reuse and logs that condition. Atomic publication applies to multi-row console updates while refresh is operating; legacy direct drawing APIs can still change the active framebuffer.
+
+Host tests use the actual rendering and transaction code with fake DPI completion events. They check batch publication, preservation of other pixels, old-buffer retirement, nested locking, failure handling, dirty-row minimization, and color runs. Actual flicker reduction, refresh timing and input latency require target observation.
+
+```powershell
+python tests/console/run_render_test.py --cc D:/tmp/tab5-zig013/ziglang/zig.exe
+python tests/console/run_display_frame_test.py --cc D:/tmp/tab5-zig013/ziglang/zig.exe
+```
+
+Implementation reference: [ESP-IDF v5.4.4 DPI panel implementation](https://github.com/espressif/esp-idf/blob/v5.4.4/components/esp_lcd/dsi/esp_lcd_panel_dpi.c).
+
+Offscreen drawing targets are scoped to the calling task and its monotonic task ID. Other console/keyboard tasks continue to draw to the display, and reuse of a terminated task's control block does not inherit its external buffer. A frame batch holds the display mutex through publication and retirement.
+
+Target verification (2026-10-23): the ST7121 unit accepted touch scrolling, as confirmed by the operator. With two framebuffers enabled, runtime diagnostics recorded 12 submitted updates and 12 DMA-confirmed retirements, with zero queue errors/timeouts and the back buffer still available. The largest observed batch duration was 276156 microseconds; this includes scheduling delay and is not a frame-rate guarantee. Retirement continued after a camera preview. The operator was absent during the final display test, so subjective flicker reduction has not been confirmed.

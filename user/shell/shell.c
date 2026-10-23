@@ -41,6 +41,7 @@
 #include <m5os/msg.h>
 #include <m5os/gui.h>
 #include <m5os/wifi.h>
+#include <m5os/display.h>
 #include <m5os/fp_context_test.h>
 #include <m5os/board_config.h>
 #if M5OS_USB_NATIVE_DMA
@@ -499,6 +500,20 @@ static int cmd_gui(int argc, char **argv)
 #if M5OS_HAS_KEYBOARD
 #if M5OS_BOARD_TAB5
 static int cmd_fptest(int argc,char **argv){(void)argc;(void)argv;fp_context_test_result_t r;bool ok=fp_context_test_run(&r);SH_PRINTF("FP context: %s complete=%u iterations=%u/%u failures=%u/%u ticks=%u\n",ok?"PASS":"FAIL",r.complete,r.iterations[0],r.iterations[1],r.failures[0],r.failures[1],r.ticks);return ok?0:1;}
+static int cmd_displaystatus(int argc,char **argv){(void)argc;(void)argv;display_status_t d;display_get_status(&d);SH_PRINTF("display: buffers=%u refreshes=%u batches=%u submitted=%u retired=%u errors=%u timeouts=%u max_us=%u back=%u active=%u\n",d.framebuffer_count,d.refreshes,d.batches,d.submitted,d.retired,d.queue_errors,d.timeouts,d.max_batch_us,d.back_available,d.batch_active);return 0;}
+static int cmd_scroll(int argc,char **argv)
+{
+    if(argc>1) {
+        if(sh_streq(argv[1],"live"))fbcon_scroll_live();
+        else {bool negative=argv[1][0]=='-';uint32_t n;
+            if(!parse_uint(argv[1]+negative,&n)||n>256){sh_puts("usage: scroll [-256..256|live]\n");return 1;}
+            fbcon_scroll(negative?-(int)n:(int)n);
+        }
+        task_sleep(120);
+    }
+    int lines,offset;fbcon_scroll_state(&lines,&offset);
+    SH_PRINTF("scroll: retained=%d offset=%d\n",lines,offset);return 0;
+}
 static int cmd_osk(int argc, char **argv)
 {
     if (!osk_available()) { sh_puts("osk: no touch controller\n"); return 0; }
@@ -510,6 +525,9 @@ static int cmd_osk(int argc, char **argv)
     tab5_touch_stats(&frames, &errors, &rx, &ry, &mx, &my);
     SH_PRINTF("osk: %s, touch map %d, %u frames, %u i2c errors, last raw %d,%d, controller resolution %d x %d\n",
               osk_visible() ? "visible" : "hidden", tab5_touch_map(), frames, errors, rx, ry, mx, my);
+    int retained,offset;
+    fbcon_scroll_state(&retained,&offset);
+    SH_PRINTF("console: %d retained lines, %d lines back from live output\n",retained,offset);
     return 0;
 }
 #endif
@@ -980,6 +998,8 @@ static const command_t s_commands[] = {
     { "keys",    cmd_keys,    "keyboard statistics (bring-up diagnostics)" },
 #if M5OS_BOARD_TAB5
     { "fptest", cmd_fptest, "audit floating point task isolation" },
+    { "displaystatus", cmd_displaystatus, "display update diagnostics" },
+    { "scroll", cmd_scroll, "scroll [N|live]  console history (positive: older)" },
     { "osk",     cmd_osk,     "osk [on|off|map N|debug]  on-screen keyboard (touch); no argument: status" },
 #endif
 #endif

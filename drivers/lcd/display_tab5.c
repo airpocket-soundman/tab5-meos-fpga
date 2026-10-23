@@ -11,7 +11,7 @@
  *
  * Bring-up (power the DSI PHY, start the DSI bus, send the panel's init commands over DSI, start the
  * DPI video stream) uses ESP-IDF's esp_lcd DSI driver ONCE at boot, before the scheduler runs, and
- * then never again: after display_init() returns, scan-out is pure hardware.  This is the one place
+ * then only its own-framebuffer selection path for buffered updates; scan-out remains hardware. This is the one place
  * where the kernel leans on an IDF driver for more than register headers, because the DSI PHY/host
  * bring-up is hundreds of registers of timing that has nothing to teach about an OS.
  * Panel-specific values (init sequence, video timing) are from M5Stack's board support package.
@@ -22,6 +22,9 @@
 #include <m5os/hal_gpio.h>
 #include <m5os/hal_mem.h>
 #include <m5os/kprintf.h>
+#include <m5os/mutex.h>
+#include <m5os/hal_time.h>
+#include <m5os/arch.h>
 #include <m5os/tab5.h>
 #include "font8x8.h"
 #include "font_ja16.h"
@@ -36,6 +39,7 @@
 #include "esp_cache.h"
 #include "esp_heap_caps.h"
 #include "esp_heap_caps_init.h"
+#include "soc/dw_gdma_struct.h"
 
 #define PANEL_W            720          /* physical, portrait */
 #define PANEL_H            1280
@@ -83,6 +87,32 @@ static volatile uint32_t s_frames;       /* refresh-done interrupts seen: proves
 static uint16_t *s_fb;                  /* physical layout: PANEL_H rows of PANEL_W pixels - what the panel scans out */
 static uint16_t *s_draw;                /* where drawing goes: s_fb, or an off-screen buffer of the same layout (display_set_target) */
 static esp_lcd_panel_io_handle_t s_io;
+static esp_lcd_panel_handle_t s_dpi_panel;
+static uint16_t *s_back;
+static uint8_t s_fb_count;
+
+#ifndef M5OS_DISPLAY_FB_COUNT
+#define M5OS_DISPLAY_FB_COUNT 2
+#endif
+
+/* Read only the DMA source address; never change channel ownership or reset DMA.
+ * Discover the DPI channel by its framebuffer, since CSI can own another channel. */
+static int s_scanout_channel = -1;
+static uintptr_t display_scanout_address(void) {
+    if (s_scanout_channel >= 0)
+        return DW_GDMA.ch[s_scanout_channel].sar0.sar0;
+    for (int ch = 0; ch < 4; ch++) {
+        uintptr_t a = DW_GDMA.ch[ch].sar0.sar0;
+        uintptr_t base = (uintptr_t)s_fb;
+        uintptr_t back = (uintptr_t)s_back;
+        if ((base && a >= base && a - base < DISPLAY_BUFFER_BYTES) ||
+            (back && a >= back && a - back < DISPLAY_BUFFER_BYTES)) {
+            s_scanout_channel = ch;
+            return a;
+        }
+    }
+    return 0;
+}
 
 static bool on_refresh_done(esp_lcd_panel_handle_t panel, esp_lcd_dpi_panel_event_data_t *ev, void *ctx)
 {
@@ -200,14 +230,25 @@ bool display_init(void)
     esp_lcd_panel_handle_t panel = NULL;
     esp_lcd_dpi_panel_config_t dpi = {
         .virtual_channel = 0, .dpi_clk_src = MIPI_DSI_DPI_CLK_SRC_DEFAULT,
-        .dpi_clock_freq_mhz = pi->dpi_mhz, .pixel_format = LCD_COLOR_PIXEL_FORMAT_RGB565, .num_fbs = 1,
+        .dpi_clock_freq_mhz = pi->dpi_mhz, .pixel_format = LCD_COLOR_PIXEL_FORMAT_RGB565, .num_fbs = M5OS_DISPLAY_FB_COUNT,
         .video_timing = pi->timing,
     };
-    if (esp_lcd_new_panel_dpi(bus, &dpi, &panel) != ESP_OK) { kprintf("display: DPI panel failed\n"); return false; }
-    void *fb = NULL;
-    if (esp_lcd_dpi_panel_get_frame_buffer(panel, 1, &fb) != ESP_OK || !fb) { kprintf("display: no framebuffer\n"); return false; }
-    s_fb = fb;
+    esp_err_t created = esp_lcd_new_panel_dpi(bus, &dpi, &panel);
+    if (created == ESP_ERR_NO_MEM) {
+        dpi.num_fbs = 1;
+        created = esp_lcd_new_panel_dpi(bus, &dpi, &panel);
+        if (created == ESP_OK) kprintf("display: one framebuffer, buffered updates unavailable\n");
+    }
+    if (created != ESP_OK) { kprintf("display: DPI panel failed\n"); return false; }
+    void *fb = NULL, *back = NULL;
+    esp_err_t got = dpi.num_fbs == 2 ? esp_lcd_dpi_panel_get_frame_buffer(panel, 2, &fb, &back)
+                                   : esp_lcd_dpi_panel_get_frame_buffer(panel, 1, &fb);
+    if (got != ESP_OK || !fb) { kprintf("display: no framebuffer\n"); return false; }
+    s_dpi_panel = panel;
+    s_fb_count = dpi.num_fbs;
+    s_fb = fb; s_back = back;
     s_draw = fb;
+    kprintf("display: %u framebuffers, buffered console %s\n", (unsigned)dpi.num_fbs, back ? "available" : "off");
     display_clear(COLOR_BLACK);                       /* black before the stream starts */
     esp_lcd_dpi_panel_event_callbacks_t cbs = { .on_refresh_done = on_refresh_done };
     esp_lcd_dpi_panel_register_event_callbacks(panel, &cbs, NULL);
@@ -226,7 +267,7 @@ bool display_init(void)
     return true;
 }
 
-void display_fill_rect(int x, int y, int w, int h, uint16_t color)
+static void display_fill_rect_unlocked(int x, int y, int w, int h, uint16_t color)
 {
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
@@ -238,12 +279,12 @@ void display_fill_rect(int x, int y, int w, int h, uint16_t color)
     fb_flush_rows(DISPLAY_WIDTH - x - w, DISPLAY_WIDTH - 1 - x);
 }
 
-void display_clear(uint16_t color)
+static void display_clear_unlocked(uint16_t color)
 {
     display_fill_rect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, color);
 }
 
-void display_draw_rect(int x, int y, int w, int h, uint16_t color)
+static void display_draw_rect_unlocked(int x, int y, int w, int h, uint16_t color)
 {
     display_fill_rect(x, y, w, 1, color);
     display_fill_rect(x, y + h - 1, w, 1, color);
@@ -297,7 +338,7 @@ static void glyph_cp_at(int x, int y, uint16_t cp, uint16_t fg, uint16_t bg, int
     }
 }
 
-void display_draw_char(int x, int y, char c, uint16_t fg, uint16_t bg, int scale)
+static void display_draw_char_unlocked(int x, int y, char c, uint16_t fg, uint16_t bg, int scale)
 {
     if (scale < 1) scale = 1;
     int size = GLYPH_SIZE * scale;
@@ -306,7 +347,7 @@ void display_draw_char(int x, int y, char c, uint16_t fg, uint16_t bg, int scale
     fb_flush_rows(DISPLAY_WIDTH - x - size, DISPLAY_WIDTH - 1 - x);
 }
 
-void display_draw_codepoints(int x, int y, const uint16_t *cps, int count, uint16_t fg, uint16_t bg, int scale)
+static void display_draw_codepoints_unlocked(int x, int y, const uint16_t *cps, int count, uint16_t fg, uint16_t bg, int scale)
 {
     if (scale < 1) scale = 1;
     int cell = GLYPH_SIZE * scale;
@@ -320,7 +361,7 @@ void display_draw_codepoints(int x, int y, const uint16_t *cps, int count, uint1
     fb_flush_rows(DISPLAY_WIDTH - x - len * cell, DISPLAY_WIDTH - 1 - x);
 }
 
-void display_draw_text(int x, int y, const char *s, uint16_t fg, uint16_t bg, int scale)
+static void display_draw_text_unlocked(int x, int y, const char *s, uint16_t fg, uint16_t bg, int scale)
 {
     if (scale < 1) scale = 1;
     int cell = GLYPH_SIZE * scale;
@@ -348,7 +389,7 @@ void display_draw_text(int x, int y, const char *s, uint16_t fg, uint16_t bg, in
     display_draw_codepoints(x, y, cps, len, fg, bg, scale);
 }
 
-void display_draw_bitmap(int x, int y, int w, int h, const uint16_t *px)
+static void display_draw_bitmap_unlocked(int x, int y, int w, int h, const uint16_t *px)
 {
     if (!s_fb || !px || w <= 0 || h <= 0) return;
     int x0 = x < 0 ? -x : 0, y0 = y < 0 ? -y : 0;
@@ -375,12 +416,13 @@ void display_draw_bitmap(int x, int y, int w, int h, const uint16_t *px)
 
 /* Off-screen drawing (double buffering): everything drawn afterwards goes to `buf`, which must be DISPLAY_BUFFER_BYTES
  * of memory (PSRAM is fine) and is laid out like the framebuffer.  display_present() copies a rectangle of it to the
- * panel in one go, so the picture never shows a half-drawn state.  NULL = draw on the screen again. */
+ * panel as a completed CPU-rendered rectangle. Scanout may still tear during the copy.
+ * The console instead uses begin_frame/end_frame for a whole-frame buffer switch. NULL = direct draw. */
 /* Lines and triangles, for 3D.  Coordinates may lie outside the screen: everything is clipped.  Triangles are filled
  * column by column because a column is contiguous in the (rotated) framebuffer. */
 static inline void put_clip(int x, int y, uint16_t c) { if ((unsigned)x < DISPLAY_WIDTH && (unsigned)y < DISPLAY_HEIGHT) put(x, y, c); }
 
-void display_draw_line(int x0, int y0, int x1, int y1, uint16_t color)
+static void display_draw_line_unlocked(int x0, int y0, int x1, int y1, uint16_t color)
 {
     if (!s_fb) return;
     int dx = x1 > x0 ? x1 - x0 : x0 - x1, dy = y1 > y0 ? y0 - y1 : y1 - y0;      /* dy <= 0 */
@@ -399,7 +441,7 @@ void display_draw_line(int x0, int y0, int x1, int y1, uint16_t color)
     if (minx <= maxx) fb_flush_rows(DISPLAY_WIDTH - 1 - maxx, DISPLAY_WIDTH - 1 - minx);
 }
 
-void display_fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint16_t color)
+static void display_fill_triangle_unlocked(int x0, int y0, int x1, int y1, int x2, int y2, uint16_t color)
 {
     if (!s_fb) return;
     int t;
@@ -423,9 +465,9 @@ void display_fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint1
     fb_flush_rows(DISPLAY_WIDTH - 1 - xe, DISPLAY_WIDTH - 1 - xs);
 }
 
-void display_set_target(uint16_t *buf) { s_draw = buf ? buf : s_fb; }
+static void display_set_target_unlocked(uint16_t *buf) { s_draw = buf ? buf : s_fb; }
 
-void display_present(int x, int y, int w, int h)
+static void display_present_unlocked(int x, int y, int w, int h)
 {
     if (!s_fb || s_draw == s_fb) return;
     if (x < 0) { w += x; x = 0; }
@@ -438,7 +480,7 @@ void display_present(int x, int y, int w, int h)
     fb_flush_real(r0, r1);
 }
 
-void display_read_bitmap(int x, int y, int w, int h, uint16_t *out)
+static void display_read_bitmap_unlocked(int x, int y, int w, int h, uint16_t *out)
 {
     if (!s_fb || !out || w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > DISPLAY_WIDTH || y + h > DISPLAY_HEIGHT) return;
     for (int i = 0; i < w; i++) {
@@ -447,7 +489,7 @@ void display_read_bitmap(int x, int y, int w, int h, uint16_t *out)
     }
 }
 
-void display_draw_bitmap_scaled(int x, int y, int w, int h, const uint16_t *px, int scale)
+static void display_draw_bitmap_scaled_unlocked(int x, int y, int w, int h, const uint16_t *px, int scale)
 {
     if (scale <= 1) { display_draw_bitmap(x, y, w, h, px); return; }
     if (!s_fb || !px || w <= 0 || h <= 0) return;
@@ -467,3 +509,5 @@ void display_draw_bitmap_scaled(int x, int y, int w, int h, const uint16_t *px, 
     }
     fb_flush_rows(DISPLAY_WIDTH - (x + x1), DISPLAY_WIDTH - 1 - (x + x0));
 }
+
+#include "display_frame.inc"

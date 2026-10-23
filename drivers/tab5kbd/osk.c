@@ -80,7 +80,7 @@ static const key_t ROW4[] = {
     { "v", "v", U_DOWN, 2 }, { ">", ">", U_RIGHT, 2 }, { "Hide", "Hide", U_HIDE, 3 }, { 0 } };
 static const key_t *const ROWS_[KEY_ROWS] = { ROW0, ROW1, ROW2, ROW3, ROW4 };
 
-static bool s_avail, s_visible = true, s_debug;
+static bool s_avail, s_visible = false, s_debug;
 static int  s_top;                                /* y of the keyboard area (visible) or of the bar (hidden) */
 static int  s_shift, s_ctrl;                      /* 0 off, 1 one-shot, 2 locked (shift only) */
 static const key_t *s_down;                       /* the key under the finger, if any */
@@ -185,24 +185,41 @@ static void osk_task(void *arg)
 {
     (void)arg;
     bool paused_before = fbcon_is_paused(), down_before = false;
+    bool console_touch = false, dragged = false;
+    int gesture_y = 0, gesture_start_y = 0;
     uint64_t pressed_at = 0, last_repeat = 0;
     layout();
     for (;;) {
         task_sleep(POLL_MS);
         bool paused = fbcon_is_paused();
-        if (paused) { paused_before = true; s_down = NULL; down_before = false; continue; }
+        if (paused) { paused_before = true; s_down = NULL; down_before = false; console_touch = false; continue; }
         if (paused_before) { paused_before = false; task_sleep(60); layout(); }     /* the console repainted: draw again */
         int x = 0, y = 0;
         bool down = tab5_touch_read(&x, &y);
         uint64_t now = hal_time_now_us();
         if (down && !down_before) {
             if (s_debug) { uint32_t f, e; int rx, ry, mx, my; tab5_touch_stats(&f, &e, &rx, &ry, &mx, &my); kprintf("osk: touch raw %d,%d -> %d,%d (map %d)\n", rx, ry, x, y, tab5_touch_map()); }
-            if (!s_visible) { if (y >= s_top) osk_show(true); }
+            console_touch = y < s_top;
+            dragged = false;
+            gesture_y = gesture_start_y = y;
+            if (console_touch) { /* The gesture stays owned by the console until release. */ }
+            else if (!s_visible) { if (y >= s_top) osk_show(true); }
             else {
                 int r;
                 const key_t *k = hit(x, y, &r);
                 if (k) { s_down = k; s_down_row = r; s_down_x = x; s_down_y = y; press(k, r); pressed_at = last_repeat = now; }
             }
+        } else if (down && console_touch) {
+            int cell = fbcon_cell_px();
+            int movement = y - gesture_start_y;
+            if (!dragged && (movement >= cell || movement <= -cell)) dragged = true;
+            if (dragged) {
+                int lines = (y - gesture_y) / cell;
+                if (lines) { fbcon_scroll(lines); gesture_y += lines * cell; }
+            }
+        } else if (!down && down_before && console_touch) {
+            if (!dragged) fbcon_scroll_live();
+            console_touch = false;
         } else if (!down && down_before && s_down) {
             if (s_visible && s_down->usage < U_SHIFT) draw_key(ROWS_[s_down_row], s_down_row, s_down, false);
             s_down = NULL;
@@ -229,7 +246,10 @@ void osk_set_debug(bool on) { s_debug = on; }
 void osk_start(void)
 {
     if (!tab5_touch_init()) return;
+    if (task_create_stack("osk", osk_task, NULL, TASK_PRIO_DEFAULT + 2, TASK_STACK) < 0) {
+        kprintf("osk: cannot create touch/input task\n");
+        return;
+    }
     s_avail = true;
-    task_create_stack("osk", osk_task, NULL, TASK_PRIO_DEFAULT + 2, TASK_STACK);
     kprintf("osk: on-screen keyboard ready (shell: osk on|off|map N|debug)\n");
 }

@@ -36,3 +36,6 @@ int  fbcon_cell_px(void);
  * output usable. Neither API sends keys or escape sequences to an application. */
 void fbcon_scroll(int rows);
 void fbcon_scroll_live(void);
+
+/* Snapshot used by input diagnostics; offset zero follows current output. */
+void fbcon_scroll_state(int *history_lines,int *offset);

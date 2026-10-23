@@ -282,13 +282,61 @@ static void flush_rows(void)
     }
 }
 
-static void fbcon_task(void *arg)
-{
+/* Multi-row redraws stay off scanout until the whole viewport is ready. */
+static void render_console(bool moved, bool *blink, uint32_t *last_blink) {
+    if (s_view_offset == 0)
+        ovl_prepare();
+    bool frame = false;
+#if M5OS_BOARD_TAB5
+    int dirty = 0;
+    for (int r = 0; r < s_rows; r++)
+        if (s_dirty[r])
+            dirty++;
+    if (dirty > 1)
+        frame = display_begin_frame();
+#endif
+    flush_rows();
+    if (s_view_offset > 0)
+        goto present; /* Historical text has no live cursor/overlay. */
+
+    uint32_t now = (uint32_t)(hal_time_now_us() / 1000u);
+    if (moved) {
+        *blink = true;
+        *last_blink = now;
+    } else if (now - *last_blink >= BLINK_MS) {
+        *blink = !*blink;
+        *last_blink = now;
+        moved = true;
+    }
+
+    int cur_c = s_col < COLS ? s_col : COLS - 1;
+    if (moved || s_cursor_row != s_row || s_cursor_col != cur_c) {
+        if (s_cursor_row >= 0 && (s_cursor_row != s_row || s_cursor_col != cur_c) && s_cursor_on &&
+            !ovl_covers(s_cursor_row, s_cursor_col)) {
+            uint16_t under = s_scr[s_cursor_row][s_cursor_col];
+            display_draw_codepoints(s_cursor_col * CELL, s_cursor_row * CELL, &under, 1,
+                                    s_fg[s_cursor_row][s_cursor_col],
+                                    s_bg[s_cursor_row][s_cursor_col], SCALE);
+        }
+        draw_cursor(*blink);
+    }
+    ovl_paint(); /* on top of everything else, every pass: it is small */
+present:
+#if M5OS_BOARD_TAB5
+    if (frame && !display_end_frame())
+        dirty_all();
+#else
+    (void)frame;
+#endif
+}
+
+static void fbcon_task(void *arg) {
     (void)arg;
 #if M5OS_BOARD_TAB5
     s_history = kmalloc_psram(sizeof(*s_history) * SCROLLBACK_LINES);
 #endif
-    for (int r = 0; r < s_rows; r++) clear_row(r);
+    for (int r = 0; r < s_rows; r++)
+        clear_row(r);
     uint32_t end = kconsole_log_end();
     uint32_t pos = end > HISTORY ? end - HISTORY : 0;
     uint32_t last_blink = (uint32_t)(hal_time_now_us() / 1000u);
@@ -302,26 +350,7 @@ static void fbcon_task(void *arg)
         if (s_paused) { task_sleep(POLL_MS); continue; }
         apply_scroll_request();
         if (s_view_offset > 0 && moved) dirty_all();
-        if (s_view_offset == 0) ovl_prepare();
-        flush_rows();
-        if (s_view_offset > 0) {
-            task_sleep(POLL_MS);
-            continue; /* No live cursor or input-method overlay on historical text. */
-        }
-
-        uint32_t now = (uint32_t)(hal_time_now_us() / 1000u);
-        if (moved) { blink = true; last_blink = now; }
-        else if (now - last_blink >= BLINK_MS) { blink = !blink; last_blink = now; moved = true; }
-
-        int cur_c = s_col < COLS ? s_col : COLS - 1;
-        if (moved || s_cursor_row != s_row || s_cursor_col != cur_c) {
-            if (s_cursor_row >= 0 && (s_cursor_row != s_row || s_cursor_col != cur_c) && s_cursor_on && !ovl_covers(s_cursor_row, s_cursor_col)) {
-                uint16_t under = s_scr[s_cursor_row][s_cursor_col];
-                display_draw_codepoints(s_cursor_col * CELL, s_cursor_row * CELL, &under, 1, s_fg[s_cursor_row][s_cursor_col], s_bg[s_cursor_row][s_cursor_col], SCALE);
-            }
-            draw_cursor(blink);
-        }
-        ovl_paint();                                            /* on top of everything else, every pass: it is small */
+        render_console(moved, &blink, &last_blink);
         task_sleep(POLL_MS);
     }
 }
@@ -391,4 +420,12 @@ void fbcon_start(void)
 {
     if (!fbcon_alloc_screen()) { kprintf("fbcon: no external RAM for screen\n"); return; }
     task_create_stack("fbcon", fbcon_task, NULL, TASK_PRIO_DEFAULT + 1, 4096);
+}
+
+void fbcon_scroll_state(int *history_lines,int *offset)
+{
+    uint32_t irq=arch_irq_disable();
+    if (history_lines) *history_lines=s_history_count;
+    if (offset) *offset=s_view_offset;
+    arch_irq_restore(irq);
 }

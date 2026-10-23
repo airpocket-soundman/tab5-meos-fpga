@@ -653,6 +653,7 @@ const char *ime_status(void)
 
 void ime_feed(const char *key)
 {
+    if (key && key[0] && !fbcon_is_paused()) fbcon_scroll_live();
     if (!g.inited) ime_init();
     if (!B || g.bypass) { out_str(key); return; }                   /* no memory, or an app wants the raw keys */
     char ch;
