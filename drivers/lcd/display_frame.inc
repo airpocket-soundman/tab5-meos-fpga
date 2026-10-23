@@ -112,6 +112,13 @@ bool display_end_frame(void) {
             }
             task_sleep(1);
         }
+        /* A higher-priority task can keep us off-CPU beyond the deadline even
+         * though scanout switched successfully. Check hardware once more after
+         * waiting; elapsed task time alone must not disable buffered updates. */
+        uintptr_t final_source = display_scanout_address();
+        uintptr_t final_base = (uintptr_t)new_front;
+        retired = retired || (final_source >= final_base &&
+                              final_source - final_base < DISPLAY_BUFFER_BYTES);
         s_display_stats.last_wait_us = (uint32_t)(hal_time_now_us() - start);
         s_fb = new_front;
         if (retired) {

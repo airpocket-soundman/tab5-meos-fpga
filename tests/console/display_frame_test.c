@@ -33,6 +33,7 @@ static uint8_t s_fb_count = 2;
 static uintptr_t display_scanout_address(void) { return (uintptr_t)scanout; }
 static uint64_t now_us;
 static bool stalled, queue_error, source_stalled;
+static uint32_t sleep_extra_us;
 static unsigned locks, unlocks, sleeps, presents;
 static jmp_buf killed;
 static bool die_on_submit, die_on_sleep;
@@ -54,7 +55,7 @@ static void kprintf(const char *fmt, ...) { (void)fmt; }
 static void task_sleep(uint32_t ms) {
     if (die_on_sleep)
         longjmp(killed, 1);
-    now_us += (uint64_t)ms * 1000;
+    now_us += (uint64_t)ms * 1000 + sleep_extra_us;
     sleeps++;
     if (!stalled) {
         if (pending && !source_stalled)
@@ -255,6 +256,18 @@ int main(void) {
     display_get_status(&status);
     display_get_status(NULL);
     assert(status.orphaned == 2 && !status.batch_active && !status.pending);
+    /* UVC can temporarily preempt the rendering task longer than its deadline.
+     * Hardware has retired the old buffer despite delayed software service. */
+    s_back = s_fb == buffers[0] ? buffers[1] : buffers[0];
+    scanout = s_fb;
+    pending = NULL;
+    sleep_extra_us = 150000;
+    uint32_t retire_before = status.retired, timeout_before = status.timeouts;
+    assert(display_begin_frame());
+    assert(display_end_frame());
+    display_get_status(&status);
+    assert(status.last_wait_us >= 150000 && status.retired == retire_before + 1);
+    assert(status.timeouts == timeout_before && status.back_available);
     puts("PASS: atomic frame publication, old buffer retirement, preserved pixels, nested locks, "
          "queue failure, timeout, external target, killed owner recovery");
 }
