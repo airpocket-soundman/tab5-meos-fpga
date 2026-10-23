@@ -21,16 +21,28 @@
         "en": "1. USB receivers and storage"
       },
       "detail": {
-        "ja": "無線受信機の入力成功（83回・転送エラー0）。USBメモリのFATマウントと /usb の一覧取得を実機確認。書き込み・取り外し・再接続は未確認。",
-        "en": "Wireless receiver input verified (83 presses, zero transfer errors). USB memory FAT mount and /usb directory listing verified on hardware. Writes, removal and reconnection remain unverified."
+        "ja": "無線受信機の入力成功（83回・転送エラー0）。FATマウントと /usb 一覧取得を実機確認。512バイトOUT転送で書き込みタイムアウトを確認、調査中。USBハブ・複数メモリ・キーボード併用を追加実装予定。",
+        "en": "Wireless receiver verified (83 presses, zero errors). FAT mount and /usb listing verified. Writes time out on 512-byte OUT transfers; investigating. Hub support, multiple drives and simultaneous keyboard use are planned."
+      }
+    },
+    {
+      "id": "microsd",
+      "status": "verified",
+      "title": {
+        "ja": "2. microSD",
+        "en": "2. microSD"
+      },
+      "detail": {
+        "ja": "SPI接続、/sd FATマウント、一覧取得、新規38バイト書き込み・読み戻し・再起動後保持、/usbとの同時マウントを実機確認。高速化・抜き差しは未検証。",
+        "en": "Verified on hardware: SPI access, /sd FAT mount, listing, 38-byte test file write/read and persistence after reset, simultaneous /usb mount. Speed optimization and hot-plug unverified."
       }
     },
     {
       "id": "ssh",
       "status": "planned",
       "title": {
-        "ja": "2. SSHサーバー・クライアント同時動作",
-        "en": "2. Concurrent SSH server and client"
+        "ja": "3. SSHサーバー・クライアント同時動作",
+        "en": "3. Concurrent SSH server and client"
       },
       "detail": {
         "ja": "SSHからシェル操作・ファイル転送・開発。接続を維持して既存SSHクライアントをテスト。",
@@ -41,8 +53,8 @@
       "id": "touch",
       "status": "planned",
       "title": {
-        "ja": "3. タッチ入力・コンソールスクロール",
-        "en": "3. Touch and console scrolling"
+        "ja": "4. タッチ入力・コンソールスクロール",
+        "en": "4. Touch and console scrolling"
       },
       "detail": {
         "ja": "ST7123対応、上下スワイプによる過去出力の閲覧と最新位置への復帰。",
@@ -53,8 +65,8 @@
       "id": "bt",
       "status": "planned",
       "title": {
-        "ja": "4. Bluetoothキーボード・マウス",
-        "en": "4. Bluetooth keyboard and mouse"
+        "ja": "5. Bluetoothキーボード・マウス",
+        "en": "5. Bluetooth keyboard and mouse"
       },
       "detail": {
         "ja": "C6経路を調査し、BLE HIDの探索・ペアリング・再接続・入力を実装。Classicは別途可否確認。",
