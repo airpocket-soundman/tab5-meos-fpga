@@ -21,3 +21,7 @@ No device or serial port is used. The runner checks:
 
 The hardware-facing HAL/LL register backend is not emulated by these tests.
 Physical capture, ISP output, DMA/LCD coexistence, and timing need target tests.
+
+BMP readback statistics are checked against a fixed RGB565 FNV-1a fixture,
+all-zero and uniform nonzero images, and truncated/null input. A successfully
+decoded uniform image is reported as uniform, without treating it as malformed.

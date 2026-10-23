@@ -184,3 +184,31 @@ done:
         kfree(pixels);
     return ok;
 }
+
+bool camera_verify_bmp_file(const char *path, camera_bmp_stats_t *out)
+{
+    if (!out) return false;
+    memset(out, 0, sizeof *out);
+    if (!path) return false;
+    uint16_t *pixels = NULL;
+    int width = 0, height = 0;
+    if (!camera_load_bmp(path, &pixels, &width, &height)) return false;
+    camera_bmp_stats_t stats = {0};
+    stats.width = (uint32_t)width;
+    stats.height = (uint32_t)height;
+    stats.pixel_count = stats.width * stats.height; /* loader bounds: <=1920*1080 */
+    stats.minimum = UINT16_MAX;
+    stats.fnv1a = 2166136261u;
+    for (uint32_t i = 0; i < stats.pixel_count; i++) {
+        uint16_t pixel = pixels[i];
+        if (pixel < stats.minimum) stats.minimum = pixel;
+        if (pixel > stats.maximum) stats.maximum = pixel;
+        if (pixel) stats.nonzero_pixels++;
+        stats.fnv1a = (stats.fnv1a ^ (uint8_t)pixel) * 16777619u;
+        stats.fnv1a = (stats.fnv1a ^ (uint8_t)(pixel >> 8)) * 16777619u;
+    }
+    stats.nonuniform = stats.minimum != stats.maximum;
+    kfree(pixels);
+    *out = stats;
+    return true;
+}

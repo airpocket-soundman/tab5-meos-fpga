@@ -1,4 +1,5 @@
 #include <m5os/camera.h>
+#include "../../user/camera/camera_app.h"
 #include <m5os/errno.h>
 #include <m5os/vfs.h>
 #include <stdio.h>
@@ -88,6 +89,24 @@ int main(void) {
     CHECK(camera_load_bmp("x", &pixels, &w, &h));
     CHECK(w == 3 && h == 2 && !memcmp(pixels, original, sizeof(original)));
     free(pixels);
+    camera_bmp_stats_t stats;
+    CHECK(camera_verify_bmp_file("x", &stats));
+    CHECK(stats.width == 3 && stats.height == 2 && stats.pixel_count == 6);
+    CHECK(stats.nonzero_pixels == 5 && stats.minimum == 0 && stats.maximum == 0xffff);
+    CHECK(stats.nonuniform && stats.fnv1a == 0xd22a7743u);
+    uint16_t uniform[] = {0, 0, 0, 0};
+    CHECK(camera_image_save_rgb565("x", uniform, 2, 2));
+    CHECK(camera_verify_bmp_file("x", &stats) && !stats.nonuniform && !stats.nonzero_pixels);
+    CHECK(stats.minimum == 0 && stats.maximum == 0);
+    for (unsigned i=0;i<4;i++) uniform[i]=0x1234;
+    CHECK(camera_image_save_rgb565("x", uniform, 2, 2));
+    CHECK(camera_verify_bmp_file("x", &stats) && !stats.nonuniform && stats.nonzero_pixels == 4);
+    CHECK(stats.minimum == 0x1234 && stats.maximum == 0x1234);
+    file_len=0;
+    memset(&stats, 0xaa, sizeof stats);
+    CHECK(!camera_verify_bmp_file("x", &stats));
+    CHECK(!stats.width && !stats.fnv1a && !stats.nonuniform);
+    CHECK(!camera_verify_bmp_file(NULL, &stats) && !camera_verify_bmp_file("x", NULL));
     /* Decoder must honor padded BGR rows and bottom-up order. */
     base24(3, 2);
     file[54 + 2] = 255;

@@ -630,6 +630,13 @@ static int cmd_edit(int argc, char **argv)
 
 static int cmd_camera(int argc, char **argv)
 {
+    if(argc==3 && sh_streq(argv[1],"verify")) {
+        camera_bmp_stats_t st;
+        if(!camera_verify_bmp_file(argv[2],&st)){sh_puts("camera: invalid or unreadable BMP\n");return 1;}
+        SH_PRINTF("BMP: %ux%u pixels=%u nonzero=%u min=%04x max=%04x FNV1a=%08x varied=%u\n",st.width,st.height,st.pixel_count,st.nonzero_pixels,st.minimum,st.maximum,st.fnv1a,st.nonuniform);
+        return 0;
+    }
+
     if(argc>1 && (sh_streq(argv[1],"probe")||sh_streq(argv[1],"status"))) {
         bool ok=!sh_streq(argv[1],"probe")||camera_probe();
         camera_status_t st;camera_get_status(&st);
