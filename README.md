@@ -20,7 +20,7 @@ USB Ethernet (RTL8153 CDC-ECM) passed link, DHCP, ping and SSH tests. The SSH se
 - USB mouse, touch integration including ST7123, and BLE keyboard/mouse support after feasibility checks.
 - Tab5 microSD, USB mass storage and FAT support; evaluate exFAT.
 - Access Tab5 SD/USB through SFTP and a portable Linux helper; use existing SSHFS/FUSE for mounting or fall back to file transfer. See [storage helper](docs/STORAGE_HELPER.md) for verification scope and limitations.
-- MicroPython REPL, scripts and VFS integration; GPIO access from MicroPython and the native shell through shared pin management.
+- Initial native MicroPython v1.26.1 port with REPL/scripts/VFS and machine.Pin/ADC bindings implemented; complete build and hardware REPL, Pin/ADC input and GC pressure checks passed; SD file/import, exception cleanup, MemoryError recovery and Ctrl-C/restart also passed; sustained operation and external output fixtures remain unverified. See [MicroPython scope and limitations](docs/MICROPYTHON.md).
 - Investigate porting CPython and Pyxel to run existing games without source or asset preprocessing; validate compatibility and memory first, then FPGA rendering acceleration.
 - Small TUI application ports; investigate nano/Vim dependencies. Linux executables do not run directly on MeOS.
 

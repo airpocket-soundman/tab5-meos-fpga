@@ -177,8 +177,20 @@
         "en": "9. External GPIO, ADC, PWM, I2C, SPI and UART"
       },
       "detail": {
-        "ja": "共通C APIとGPIO／未校正ADC／PWM／SoftI2C／SoftSPI／UART1のシェル操作を実装。ホスト試験・全体ビルドに成功。実機で予約ピン拒否、GPIO16入力・解放・reset、ADC16／53生値取得、UART内部ループバックに成功。ADC35は非対応として拒否。外部機器・基準電圧・PWM波形・I2C／SPI／UART配線試験は未確認。MicroPython未統合、汎用DACは対象外。",
-        "en": "Shared C services and shell control for GPIO, uncalibrated ADC, PWM, SoftI2C/SoftSPI and UART1 are implemented; host tests and the complete target build passed. Hardware checks passed reserved-pin rejection, GPIO16 input/release/reset, raw ADC16/53 sampling and internal UART loopback; ADC35 was rejected as unsupported. External devices, reference voltage, PWM waveforms and wired I2C/SPI/UART remain unverified. MicroPython is not integrated; general-purpose DAC is excluded."
+        "ja": "共通C APIとGPIO／未校正ADC／PWM／SoftI2C／SoftSPI／UART1のシェル操作を実装。ホスト試験・全体ビルドに成功。実機で予約ピン拒否、GPIO16入力・解放・reset、ADC16／53生値取得、UART内部ループバックに成功。ADC35は非対応として拒否。外部機器・基準電圧・PWM波形・I2C／SPI／UART配線試験は未確認。Python側Pin／ADCは項目10を参照。汎用DACは対象外。",
+        "en": "Shared C services and shell control for GPIO, uncalibrated ADC, PWM, SoftI2C/SoftSPI and UART1 are implemented; host tests and the complete target build passed. Hardware checks passed reserved-pin rejection, GPIO16 input/release/reset, raw ADC16/53 sampling and internal UART loopback; ADC35 was rejected as unsupported. External devices, reference voltage, PWM waveforms and wired I2C/SPI/UART remain unverified. See item 10 for the Python Pin/ADC bindings. General-purpose DAC is excluded."
+      }
+    },
+    {
+      "id": "micropython",
+      "status": "verified",
+      "title": {
+        "ja": "10. MicroPython・machine.Pin／ADC",
+        "en": "10. MicroPython and machine.Pin / ADC"
+      },
+      "detail": {
+        "ja": "MicroPython v1.26.1をMeOSへ直接組み込む初期ポート、REPL・スクリプト・VFS連携、machine.Pin／ADCを実装。GCヒープはPSRAM 512 KiB、タスクスタックは32 KiB。共通IO所有権を使用し、VM終了時にファイルとピンを回収する。全体ビルド・書込みに成功。実機REPLで2**80・math.sqrt(9)・GCを確認し、GPIO16入力・ADC16/53・予約/重複/解放済みオブジェクト拒否・40回GC負荷のsmoke.pyが成功。実機SDスクリプトで隣接モジュールimport、排他的1024バイト新規ファイルの読み書き・seek/tell・closeに成功。意図的例外後のPin再確保、MemoryError後のVM再起動、無限ループCtrl-C後のシェル復帰と次VM実行も確認。初期機能の限定検証であり、長時間動作は未評価。外部出力波形は未確認。Python側PWM／I2C／SPI／UART／IRQ、CPython・Pyxel互換は含まない。",
+        "en": "Implemented the initial native MeOS port of MicroPython v1.26.1, REPL/scripts/VFS integration and machine.Pin / ADC. The GC heap uses 512 KiB PSRAM with a 32 KiB task stack. Shared IO ownership and VM-exit file/pin cleanup are provided. The complete target build and flashing passed. Hardware REPL checks passed 2**80, math.sqrt(9) and GC; smoke.py passed GPIO16 input, ADC16/53, reserved/duplicate/released-object rejection and 40 GC pressure cycles. An SD script passed sibling-module import and exclusive 1024-byte file write/read, seek/tell and close. Pin reclaim after an intentional exception, VM restart after MemoryError and Ctrl-C interruption of an infinite loop followed by shell return/new VM execution also passed. These verify the initial feature scope; long-duration operation is unmeasured. External output waveforms remain unverified. Python PWM/I2C/SPI/UART/IRQ bindings and CPython/Pyxel compatibility are not included."
       }
     }
   ]
