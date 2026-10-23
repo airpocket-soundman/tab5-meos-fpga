@@ -2304,8 +2304,8 @@ static int ssh_connect_and_run(const char *user, const char *host, uint16_t port
 
 typedef struct {
     uint16_t ch;
-    uint8_t  fg;
-    uint8_t  bg;
+    uint16_t fg;
+    uint16_t bg;
 } term_cell_t;
 
 typedef struct {
@@ -2331,15 +2331,25 @@ typedef struct {
     /* VT100 / ANSI Escape Sequence + UTF-8 parser state */
     int            cx;
     int            cy;
-    uint8_t        cur_fg;
-    uint8_t        cur_bg;
+    uint16_t       cur_fg;
+    uint16_t       cur_bg;
     bool           bold;
     bool           reverse;
+    int            margin_top, margin_bottom, saved_cx, saved_cy;
+    uint16_t       saved_fg, saved_bg;
+    bool           origin, autowrap, cursor_visible, app_cursor, insert_mode, alternate;
+    bool           saved_bold, saved_reverse, saved_origin, saved_wrap;
+    bool           g0_graphics, g1_graphics, use_g1;
+    uint8_t        charset_target;
+    term_line_t   *primary;
+    int            primary_cx, primary_cy;
+    char           reply[128];
+    size_t         reply_len;
     int            esc_state;
-    int            csi_params[8];
+    int            csi_params[16];
     int            csi_nparams;
     bool           csi_priv;
-    uint32_t       utf8_cp;
+    uint32_t       utf8_cp, utf8_min;
     uint8_t        utf8_rem;
 
     /* Per-row dirty flags for fast LCD rendering */
@@ -2366,7 +2376,7 @@ static const uint16_t s_ansi_palette[16] = {
     RGB565(255, 255, 255),   /* 15: Bright White */
 };
 
-static void term_clear_line(term_line_t *ln, uint8_t fg, uint8_t bg)
+static void term_clear_line(term_line_t *ln, uint16_t fg, uint16_t bg)
 {
     for (int x = 0; x < SSH_TERM_COLS; x++) {
         ln->cells[x].ch = ' ';
@@ -2377,12 +2387,20 @@ static void term_clear_line(term_line_t *ln, uint8_t fg, uint8_t bg)
 
 static void tab_reset_term(ssh_tab_t *tab)
 {
+    if (tab->primary) { kfree(tab->primary); tab->primary = NULL; }
+    tab->margin_top=0; tab->margin_bottom=SSH_TERM_ROWS-1;
+    tab->saved_cx=tab->saved_cy=0; tab->saved_fg=s_ansi_palette[7]; tab->saved_bg=s_ansi_palette[0];
+    tab->saved_bold=tab->saved_reverse=tab->saved_origin=false; tab->saved_wrap=true;
+    tab->origin=tab->app_cursor=tab->insert_mode=tab->alternate=false;
+    tab->g0_graphics=tab->g1_graphics=tab->use_g1=false;
+    tab->autowrap=tab->cursor_visible=true;
     tab->cx = 0;
     tab->cy = 0;
-    tab->cur_fg = 7;
+    tab->cur_fg = s_ansi_palette[7];
     tab->cur_bg = 0;
     tab->bold = false;
     tab->reverse = false;
+    tab->reply_len=0;
     tab->esc_state = 0;
     tab->csi_nparams = 0;
     tab->csi_priv = false;
@@ -2392,91 +2410,33 @@ static void tab_reset_term(ssh_tab_t *tab)
     tab->hist_count = 0;
     tab->scroll_offset = 0;
     for (int y = 0; y < SSH_TERM_ROWS; y++) {
-        term_clear_line(&tab->screen[y], 7, 0);
+        term_clear_line(&tab->screen[y], s_ansi_palette[7], s_ansi_palette[0]);
         tab->dirty_rows[y] = true;
     }
     tab->all_dirty = true;
 }
 
-static void tab_scroll_up(ssh_tab_t *tab)
-{
-    /* Save top screen line into scrollback ring buffer */
-    if (tab->hist) {
-        tab->hist[tab->hist_head] = tab->screen[0];
-        tab->hist_head = (tab->hist_head + 1) % SSH_HIST_LINES;
-        if (tab->hist_count < SSH_HIST_LINES) {
-            tab->hist_count++;
-        }
-        if (tab->scroll_offset > 0 && tab->scroll_offset < tab->hist_count) {
-            tab->scroll_offset++;
-        }
-    }
-
-    for (int y = 0; y < SSH_TERM_ROWS - 1; y++) {
-        tab->screen[y] = tab->screen[y + 1];
-        tab->dirty_rows[y] = true;
-    }
-    uint8_t fg = tab->reverse ? tab->cur_bg : (tab->bold ? (uint8_t)(tab->cur_fg | 8u) : tab->cur_fg);
-    uint8_t bg = tab->reverse ? (tab->bold ? (uint8_t)(tab->cur_fg | 8u) : tab->cur_fg) : tab->cur_bg;
-    term_clear_line(&tab->screen[SSH_TERM_ROWS - 1], fg, bg);
-    tab->dirty_rows[SSH_TERM_ROWS - 1] = true;
-}
-
-static void tab_newline(ssh_tab_t *tab)
-{
-    tab->dirty_rows[tab->cy] = true;
-    if (tab->cy + 1 < SSH_TERM_ROWS) {
-        tab->cy++;
-        tab->dirty_rows[tab->cy] = true;
-    } else {
-        tab_scroll_up(tab);
-    }
-}
+#include "ssh_terminal_modes.inc"
 
 static void tab_handle_sgr(ssh_tab_t *tab)
 {
-    if (tab->csi_nparams == 0) {
-        tab->cur_fg = 7;
-        tab->cur_bg = 0;
-        tab->bold = false;
-        tab->reverse = false;
-        return;
-    }
-    for (int i = 0; i < tab->csi_nparams; i++) {
-        int p = tab->csi_params[i];
-        if (p == 0) {
-            tab->cur_fg = 7;
-            tab->cur_bg = 0;
-            tab->bold = false;
-            tab->reverse = false;
-        } else if (p == 1) {
-            tab->bold = true;
-        } else if (p == 22) {
-            tab->bold = false;
-        } else if (p == 7) {
-            tab->reverse = true;
-        } else if (p == 27) {
-            tab->reverse = false;
-        } else if (p >= 30 && p <= 37) {
-            tab->cur_fg = (uint8_t)(p - 30);
-        } else if (p == 39) {
-            tab->cur_fg = 7;
-        } else if (p >= 40 && p <= 47) {
-            tab->cur_bg = (uint8_t)(p - 40);
-        } else if (p == 49) {
-            tab->cur_bg = 0;
-        } else if (p >= 90 && p <= 97) {
-            tab->cur_fg = (uint8_t)(p - 90 + 8);
-        } else if (p >= 100 && p <= 107) {
-            tab->cur_bg = (uint8_t)(p - 100 + 8);
-        } else if (p == 38 && i + 2 < tab->csi_nparams && tab->csi_params[i + 1] == 5) {
-            int c256 = tab->csi_params[i + 2];
-            if (c256 >= 0 && c256 < 16) tab->cur_fg = (uint8_t)c256;
-            i += 2;
-        } else if (p == 48 && i + 2 < tab->csi_nparams && tab->csi_params[i + 1] == 5) {
-            int c256 = tab->csi_params[i + 2];
-            if (c256 >= 0 && c256 < 16) tab->cur_bg = (uint8_t)c256;
-            i += 2;
+    if(!tab->csi_nparams){tab->cur_fg=s_ansi_palette[7];tab->cur_bg=0;tab->bold=tab->reverse=false;return;}
+    for(int i=0;i<tab->csi_nparams;i++){
+        int v=tab->csi_params[i];
+        if(v==0){tab->cur_fg=s_ansi_palette[7];tab->cur_bg=0;tab->bold=tab->reverse=false;}
+        else if(v==1)tab->bold=true;else if(v==22)tab->bold=false;
+        else if(v==7)tab->reverse=true;else if(v==27)tab->reverse=false;
+        else if(v>=30&&v<=37)tab->cur_fg=s_ansi_palette[v-30];
+        else if(v>=40&&v<=47)tab->cur_bg=s_ansi_palette[v-40];
+        else if(v>=90&&v<=97)tab->cur_fg=s_ansi_palette[v-90+8];
+        else if(v>=100&&v<=107)tab->cur_bg=s_ansi_palette[v-100+8];
+        else if(v==39)tab->cur_fg=s_ansi_palette[7];else if(v==49)tab->cur_bg=0;
+        else if((v==38||v==48)&&i+2<tab->csi_nparams&&tab->csi_params[i+1]==5){
+            uint16_t color=tab_color256(tab->csi_params[i+2]);
+            if(v==38)tab->cur_fg=color;else tab->cur_bg=color;i+=2;
+        }else if((v==38||v==48)&&i+4<tab->csi_nparams&&tab->csi_params[i+1]==2){
+            uint16_t color=RGB565(tab_clamp(tab->csi_params[i+2],0,255),tab_clamp(tab->csi_params[i+3],0,255),tab_clamp(tab->csi_params[i+4],0,255));
+            if(v==38)tab->cur_fg=color;else tab->cur_bg=color;i+=4;
         }
     }
 }
@@ -2485,26 +2445,47 @@ static void tab_handle_csi(ssh_tab_t *tab, char final_ch)
 {
     int p0 = (tab->csi_nparams >= 1) ? tab->csi_params[0] : 0;
     int p1 = (tab->csi_nparams >= 2) ? tab->csi_params[1] : 0;
-    uint8_t fg = tab->reverse ? tab->cur_bg : (tab->bold && tab->cur_fg < 8 ? (uint8_t)(tab->cur_fg + 8) : tab->cur_fg);
-    uint8_t bg = tab->reverse ? (tab->bold && tab->cur_fg < 8 ? (uint8_t)(tab->cur_fg + 8) : tab->cur_fg) : tab->cur_bg;
+    uint16_t fg = tab->reverse ? tab->cur_bg : tab_effective_fg(tab);
+    uint16_t bg = tab->reverse ? tab_effective_fg(tab) : tab->cur_bg;
 
     tab->dirty_rows[tab->cy] = true;
-
+    if (tab->csi_priv) {
+        if (final_ch=='h' || final_ch=='l') tab_private_modes(tab,final_ch=='h');
+        return;
+    }
+    if(final_ch!='m') tab->cx=tab_clamp(tab->cx,0,SSH_TERM_COLS-1);
+    int lo=tab->origin?tab->margin_top:0;
+    int hi=tab->origin?tab->margin_bottom:SSH_TERM_ROWS-1;
     switch (final_ch) {
+    case 'r': {
+        int top=p0?p0-1:0,bottom=p1?p1-1:SSH_TERM_ROWS-1;
+        if(top>=0&&top<bottom&&bottom<SSH_TERM_ROWS){tab->margin_top=top;tab->margin_bottom=bottom;tab->cy=tab->origin?top:0;tab->cx=0;}
+        break;
+    }
+    case 's':tab_save_cursor(tab);break;
+    case 'u':tab_restore_cursor(tab);break;
+    case 'h':case 'l':if(p0==4)tab->insert_mode=final_ch=='h';break;
+    case 'L':case 'M':
+        if(tab->cy>=tab->margin_top&&tab->cy<=tab->margin_bottom)
+            tab_scroll_region(tab,tab->cy,tab->margin_bottom,p0?p0:1,final_ch=='L');
+        break;
+    case 'S':case 'T':tab_scroll_region(tab,tab->margin_top,tab->margin_bottom,p0?p0:1,final_ch=='T');break;
+    case 'E':case 'F':tab->cy=tab_clamp(tab->cy+(final_ch=='E'?1:-1)*(p0?p0:1),lo,hi);tab->cx=0;break;
+    case 'n':tab_status_reply(tab,p0);break;
     case 'm':
         tab_handle_sgr(tab);
         break;
     case 'A': { /* Cursor Up */
         int n = (p0 > 0) ? p0 : 1;
         tab->cy -= n;
-        if (tab->cy < 0) tab->cy = 0;
+        if (tab->cy < lo) tab->cy = lo;
         tab->dirty_rows[tab->cy] = true;
         break;
     }
     case 'B': { /* Cursor Down */
         int n = (p0 > 0) ? p0 : 1;
         tab->cy += n;
-        if (tab->cy >= SSH_TERM_ROWS) tab->cy = SSH_TERM_ROWS - 1;
+        if (tab->cy > hi) tab->cy = hi;
         tab->dirty_rows[tab->cy] = true;
         break;
     }
@@ -2528,19 +2509,19 @@ static void tab_handle_csi(ssh_tab_t *tab, char final_ch)
         break;
     }
     case 'd': { /* Line Position Absolute */
-        int row = (p0 > 0) ? (p0 - 1) : 0;
-        if (row < 0) row = 0;
-        if (row >= SSH_TERM_ROWS) row = SSH_TERM_ROWS - 1;
+        int row = ((p0 > 0) ? (p0 - 1) : 0) + lo;
+        if (row < lo) row = lo;
+        if (row > hi) row = hi;
         tab->cy = row;
         tab->dirty_rows[tab->cy] = true;
         break;
     }
     case 'H':
     case 'f': { /* Cursor Position */
-        int row = (p0 > 0) ? (p0 - 1) : 0;
+        int row = ((p0 > 0) ? (p0 - 1) : 0) + lo;
         int col = (p1 > 0) ? (p1 - 1) : 0;
-        if (row < 0) row = 0;
-        if (row >= SSH_TERM_ROWS) row = SSH_TERM_ROWS - 1;
+        if (row < lo) row = lo;
+        if (row > hi) row = hi;
         if (col < 0) col = 0;
         if (col >= SSH_TERM_COLS) col = SSH_TERM_COLS - 1;
         tab->cy = row;
@@ -2549,13 +2530,12 @@ static void tab_handle_csi(ssh_tab_t *tab, char final_ch)
         break;
     }
     case 'J': { /* Erase in Display */
-        if (p0 == 2 || p0 == 3) {
+        if(p0==3){tab->hist_head=tab->hist_count=tab->scroll_offset=0;tab->all_dirty=true;break;}
+        if (p0 == 2) {
             for (int y = 0; y < SSH_TERM_ROWS; y++) {
                 term_clear_line(&tab->screen[y], fg, bg);
                 tab->dirty_rows[y] = true;
             }
-            tab->cx = 0;
-            tab->cy = 0;
         } else if (p0 == 0) {
             for (int x = tab->cx; x < SSH_TERM_COLS; x++) {
                 tab->screen[tab->cy].cells[x].ch = ' ';
@@ -2646,11 +2626,13 @@ static void tab_handle_csi(ssh_tab_t *tab, char final_ch)
 static void tab_put_codepoint(ssh_tab_t *tab, uint32_t cp)
 {
     if (tab->cx >= SSH_TERM_COLS) {
-        tab->cx = 0;
-        tab_newline(tab);
+        tab->cx = tab->autowrap ? 0 : SSH_TERM_COLS-1;
+        if(tab->autowrap) tab_newline(tab);
     }
-    uint8_t fg = tab->reverse ? tab->cur_bg : (tab->bold && tab->cur_fg < 8 ? (uint8_t)(tab->cur_fg + 8) : tab->cur_fg);
-    uint8_t bg = tab->reverse ? (tab->bold && tab->cur_fg < 8 ? (uint8_t)(tab->cur_fg + 8) : tab->cur_fg) : tab->cur_bg;
+    if(tab->insert_mode)for(int x=SSH_TERM_COLS-1;x>tab->cx;x--)tab->screen[tab->cy].cells[x]=tab->screen[tab->cy].cells[x-1];
+    cp=tab_graphic(tab,cp);
+    uint16_t fg = tab->reverse ? tab->cur_bg : tab_effective_fg(tab);
+    uint16_t bg = tab->reverse ? tab_effective_fg(tab) : tab->cur_bg;
     tab->screen[tab->cy].cells[tab->cx].ch = (uint16_t)(cp <= 0xFFFFu ? cp : 0xFFFDu);
     tab->screen[tab->cy].cells[tab->cx].fg = fg;
     tab->screen[tab->cy].cells[tab->cx].bg = bg;
@@ -2660,6 +2642,13 @@ static void tab_put_codepoint(ssh_tab_t *tab, uint32_t cp)
 
 static void tab_feed_byte(ssh_tab_t *tab, uint8_t b)
 {
+    if(b==0x18||b==0x1a){tab->esc_state=0;tab->utf8_rem=0;return;}
+    if(tab->esc_state==3||tab->esc_state==5){
+        if(b==7||(tab->esc_state==5&&b=='\\'))tab->esc_state=0;
+        else tab->esc_state=b==27?5:3;
+        return;
+    }
+    if(b==27){tab->utf8_rem=0;tab->esc_state=1;return;}
     /* State 0: Normal characters */
     if (tab->esc_state == 0) {
         if (b == 0x1B) {
@@ -2673,18 +2662,18 @@ static void tab_feed_byte(ssh_tab_t *tab, uint8_t b)
                     tab->utf8_cp = (tab->utf8_cp << 6) | (uint32_t)(b & 0x3Fu);
                     tab->utf8_rem--;
                     if (tab->utf8_rem == 0) {
-                        tab_put_codepoint(tab, tab->utf8_cp);
+                        tab_put_codepoint(tab, tab->utf8_cp>=tab->utf8_min?tab->utf8_cp:0xfffd);
                     }
                 }
             } else if ((b & 0xE0u) == 0xC0u) {
                 tab->utf8_cp  = (uint32_t)(b & 0x1Fu);
-                tab->utf8_rem = 1;
+                tab->utf8_rem = 1; tab->utf8_min=0x80;
             } else if ((b & 0xF0u) == 0xE0u) {
                 tab->utf8_cp  = (uint32_t)(b & 0x0Fu);
-                tab->utf8_rem = 2;
+                tab->utf8_rem = 2; tab->utf8_min=0x800;
             } else if ((b & 0xF8u) == 0xF0u) {
                 tab->utf8_cp  = (uint32_t)(b & 0x07u);
-                tab->utf8_rem = 3;
+                tab->utf8_rem = 3; tab->utf8_min=0x10000;
             } else {
                 tab->utf8_rem = 0;
             }
@@ -2696,7 +2685,9 @@ static void tab_feed_byte(ssh_tab_t *tab, uint8_t b)
             tab->dirty_rows[tab->cy] = true;
             return;
         }
-        if (b == '\n') {
+        if(b==14){tab->use_g1=true;return;}
+        if(b==15){tab->use_g1=false;return;}
+        if (b == '\n' || b=='\v' || b=='\f') {
             tab_newline(tab);
             return;
         }
@@ -2727,17 +2718,20 @@ static void tab_feed_byte(ssh_tab_t *tab, uint8_t b)
             tab->esc_state = 2;
             tab->csi_nparams = 0;
             tab->csi_priv = false;
-            for (int i = 0; i < 8; i++) tab->csi_params[i] = 0;
+            for (int i = 0; i < 16; i++) tab->csi_params[i] = 0;
             return;
         }
-        if (b == ']') { /* OSC sequence: skip until BEL (0x07) or ST (ESC \) */
+        if (b == ']' || b=='P' || b=='^' || b=='_' || b=='X') { /* bounded control-string skip */
             tab->esc_state = 3;
             return;
         }
-        if (b == '(' || b == ')' || b == '*' || b == '+') { /* Charset designation: skip 1 byte */
+        if (b == '(' || b == ')' || b == '*' || b == '+' || b == '%' || b == '#') { /* Charset designation: skip 1 byte */
+            tab->charset_target=(b==')')?1:(b=='('?0:2);
             tab->esc_state = 4;
             return;
         }
+        if(b=='7'){tab_save_cursor(tab);tab->esc_state=0;return;}
+        if(b=='8'){tab_restore_cursor(tab);tab->esc_state=0;return;}
         if (b == 'c') { /* Full reset */
             tab_reset_term(tab);
             return;
@@ -2749,7 +2743,8 @@ static void tab_feed_byte(ssh_tab_t *tab, uint8_t b)
             return;
         }
         if (b == 'M') { /* Reverse index */
-            if (tab->cy > 0) tab->cy--;
+            if(tab->cy==tab->margin_top)tab_scroll_region(tab,tab->margin_top,tab->margin_bottom,1,true);
+            else if (tab->cy > 0) tab->cy--;
             tab->dirty_rows[tab->cy] = true;
             tab->esc_state = 0;
             return;
@@ -2762,22 +2757,23 @@ static void tab_feed_byte(ssh_tab_t *tab, uint8_t b)
     if (tab->esc_state == 2) {
         if (b == '?' || b == '>' || b == '=') {
             tab->csi_priv = true;
+            if(b!='?')tab->esc_state=6;
             return;
         }
         if (b >= '0' && b <= '9') {
             if (tab->csi_nparams == 0) tab->csi_nparams = 1;
             int idx = tab->csi_nparams - 1;
-            if (idx < 8) {
-                tab->csi_params[idx] = tab->csi_params[idx] * 10 + (b - '0');
+            if (idx < 16) {
+                tab->csi_params[idx] = tab_clamp(tab->csi_params[idx]*10+(b-'0'),0,9999);
             }
             return;
         }
         if (b == ';') {
             if (tab->csi_nparams == 0) tab->csi_nparams = 1;
-            if (tab->csi_nparams < 8) {
+            if (tab->csi_nparams < 16) {
                 tab->csi_nparams++;
                 tab->csi_params[tab->csi_nparams - 1] = 0;
-            }
+            } else tab->esc_state=6;
             return;
         }
         if (b >= 0x40 && b <= 0x7E) {
@@ -2785,6 +2781,7 @@ static void tab_feed_byte(ssh_tab_t *tab, uint8_t b)
             tab->esc_state = 0;
             return;
         }
+        if(b>=0x20)tab->esc_state=6;
         return;
     }
 
@@ -2798,7 +2795,10 @@ static void tab_feed_byte(ssh_tab_t *tab, uint8_t b)
         return;
     }
 
-    /* State 4: Consume 1 trailing byte */
+    if(tab->esc_state==6){if(b>=0x40&&b<=0x7e)tab->esc_state=0;return;}
+    /* Charset designation final. */
+    if(tab->charset_target==0)tab->g0_graphics=b=='0';
+    else if(tab->charset_target==1)tab->g1_graphics=b=='0';
     tab->esc_state = 0;
 }
 
@@ -2945,7 +2945,7 @@ static void gui_render_bars(ssh_tab_t tabs[SSH_MAX_TABS], int active_tab, bool s
 
 static void gui_render_terminal(ssh_tab_t *tab)
 {
-    bool show_cursor = (tab->scroll_offset == 0 && tab->connected);
+    bool show_cursor = (tab->cursor_visible && tab->scroll_offset == 0 && tab->connected);
     for (int r = 0; r < SSH_TERM_ROWS; r++) {
         if (!tab->all_dirty && !tab->dirty_rows[r]) continue;
         const term_line_t *ln = tab_get_view_line(tab, r);
@@ -2955,10 +2955,10 @@ static void gui_render_terminal(ssh_tab_t *tab)
         int x = 0;
         while (x < SSH_TERM_COLS) {
             bool is_cur = (show_cursor && r == tab->cy && x == tab->cx);
-            uint8_t fg_idx = ln->cells[x].fg & 15u;
-            uint8_t bg_idx = ln->cells[x].bg & 15u;
-            uint16_t fg = is_cur ? s_ansi_palette[bg_idx] : s_ansi_palette[fg_idx];
-            uint16_t bg = is_cur ? COLOR_GREEN            : s_ansi_palette[bg_idx];
+            uint16_t fg_idx = ln->cells[x].fg;
+            uint16_t bg_idx = ln->cells[x].bg;
+            uint16_t fg = is_cur ? bg_idx : fg_idx;
+            uint16_t bg = is_cur ? COLOR_GREEN            : bg_idx;
 
             uint16_t run[SSH_TERM_COLS];
             int run_len = 0;
@@ -2966,10 +2966,10 @@ static void gui_render_terminal(ssh_tab_t *tab)
 
             while (x < SSH_TERM_COLS) {
                 bool cur_here = (show_cursor && r == tab->cy && x == tab->cx);
-                uint8_t f2 = ln->cells[x].fg & 15u;
-                uint8_t b2 = ln->cells[x].bg & 15u;
-                uint16_t fg2 = cur_here ? s_ansi_palette[b2] : s_ansi_palette[f2];
-                uint16_t bg2 = cur_here ? COLOR_GREEN         : s_ansi_palette[b2];
+                uint16_t f2 = ln->cells[x].fg;
+                uint16_t b2 = ln->cells[x].bg;
+                uint16_t fg2 = cur_here ? b2 : f2;
+                uint16_t bg2 = cur_here ? COLOR_GREEN         : b2;
                 if (fg2 != fg || bg2 != bg) break;
                 uint16_t ch = ln->cells[x].ch;
                 run[run_len++] = (ch >= 0x20u && ch != 0x7Fu) ? ch : ' ';
@@ -3251,6 +3251,7 @@ static bool tab_poll_rx(ssh_tab_t *tab, bool is_active_tab, uint32_t first_timeo
                     /* Also mirror to serial console when fbcon is paused */
                     kconsole_write((const char *)data, dlen);
                 }
+                if(tab->reply_len){tab_send_bytes(tab,tab->reply,tab->reply_len);tab->reply_len=0;}
                 got_output = true;
                 tab->s->local_win_consumed += (uint32_t)dlen;
                 if (tab->s->local_win_consumed >= 16384u) {
@@ -3610,12 +3611,12 @@ void ssh_app_run(void)
         }
 
         /* Global hotkeys in live terminal mode (Note: ^B is NOT intercepted so remote tmux works) */
-        if (c == 0x0F) { /* Ctrl-O: Open Host Manager GUI */
+        if (c == 0x0F && !act->alternate) { /* Ctrl-O: Open Host Manager GUI */
             show_manager = true;
             need_ui_redraw = true;
             continue;
         }
-        if (c == 0x14) { /* Ctrl-T: Next Tab */
+        if (c == 0x14 && !act->alternate) { /* Ctrl-T: Next Tab */
             active_tab = (active_tab + 1) % SSH_MAX_TABS;
             tabs[active_tab].all_dirty = true;
             need_ui_redraw = true;
@@ -3626,7 +3627,7 @@ void ssh_app_run(void)
             need_ui_redraw = true;
             continue;
         }
-        if (c == 0x15) { /* Ctrl-U: Scroll up history */
+        if (c == 0x15 && !act->alternate) { /* Ctrl-U: Scroll up history */
             if (act->hist_count > 0) {
                 act->scroll_offset = (act->hist_count >= 15) ? 15 : act->hist_count;
                 act->all_dirty = true;
@@ -3665,7 +3666,7 @@ void ssh_app_run(void)
                 task_sleep(10);
                 c3 = kconsole_getc();
             }
-            if (c2 == 'O' && c3 >= 'P' && c3 < 'P' + SSH_MAX_TABS) {
+            if (!act->alternate && c2 == 'O' && c3 >= 'P' && c3 < 'P' + SSH_MAX_TABS) {
                 /* F1..F4 -> Switch to Tab 1..4 */
                 active_tab = c3 - 'P';
                 tabs[active_tab].all_dirty = true;
@@ -3678,7 +3679,7 @@ void ssh_app_run(void)
                     task_sleep(10);
                     c4 = kconsole_getc();
                 }
-                if (c4 == '~' && c3 == '5') {
+                if (!act->alternate && c4 == '~' && c3 == '5') {
                     /* PageUp -> Scroll up history */
                     if (act->hist_count > 0) {
                         act->scroll_offset = (act->hist_count >= 15) ? 15 : act->hist_count;
@@ -3692,6 +3693,7 @@ void ssh_app_run(void)
                 tab_send_bytes(act, seq, c4 > 0 ? 4 : 3);
                 continue;
             }
+            if(c2=='[' && c3>='A' && c3<='D' && act->app_cursor)c2='O';
             uint8_t seq[3] = { 0x1B, (uint8_t)c2, (uint8_t)(c3 > 0 ? c3 : 0) };
             tab_send_bytes(act, seq, c3 > 0 ? 3 : 2);
             continue;
@@ -3724,6 +3726,7 @@ void ssh_app_run(void)
     /* Cleanup all tabs and free PSRAM buffers */
     for (int t = 0; t < SSH_MAX_TABS; t++) {
         tab_disconnect(&tabs[t], NULL);
+        if(tabs[t].primary){kfree(tabs[t].primary);tabs[t].primary=NULL;}
         if (tabs[t].hist) {
             kfree(tabs[t].hist);
             tabs[t].hist = NULL;

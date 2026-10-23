@@ -1,7 +1,7 @@
 #pragma once
 #include <m5os/types.h>
 /* Text console on the LCD: shows everything the console prints (the shell, kernel messages),
- * scrolling, with a blinking cursor.  For boards without a touch screen, where the GUI cannot run. */
+ * scrolling, with a blinking cursor. Tab5 touch gestures can inspect retained output. */
 void fbcon_start(void);
 
 /* Full-screen programs (the filer) own the display while they run: pause stops fbcon from drawing,
@@ -30,3 +30,9 @@ void fbcon_get_geometry(int *rows, int *cols, int *cur_row, int *cur_col);
 void fbcon_set_rows(int rows);
 int  fbcon_max_rows(void);
 int  fbcon_cell_px(void);
+
+/* LCD-only viewport; positive rows show older output, negative rows approach live.
+ * Tab5 retains up to 256 rendered lines in PSRAM. Allocation failure leaves live
+ * output usable. Neither API sends keys or escape sequences to an application. */
+void fbcon_scroll(int rows);
+void fbcon_scroll_live(void);
