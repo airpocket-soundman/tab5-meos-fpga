@@ -83,3 +83,7 @@ Reviewed carrier remote main 7929491 after fetching. The previous ESD continuity
 ## Review update: carrier third report (2026-10-24)
 
 Reviewed remote main 91dc3b42a8ee5e1ef7b48def237f4a86175f5239. Prior escape-path, separate P/N branch and combined-sensitivity requests are implemented; DRC, positive/negative continuity, numerical reproduction and manifest verification passed. Additional checker gaps were reproduced with altered placed-pad dimensions and trace width; the D2 RGB-channel description also needs correction. See [third-report audit and explicit remediation instructions](CARRIER_R3_AUDIT_HANDOFF_2026-10-24.md). 3D calibration and MeOS transport/electrical requirements remain incomplete.
+
+## Checker remediation verified (2026-10-24)
+
+Fetched carrier main and implemented the R3 checker/document fixes through 851adf4. All24 regression cases passed; all55 manifest hashes matched. Electrical design, PCB and channel model are unchanged. [Fix verification](CARRIER_R3_FIX_VERIFICATION_2026-10-24.md) records the commits and bounded completion scope. Carrier transport, power-off behavior, final pin/CST table and MeOS IO ownership remain unverified.
