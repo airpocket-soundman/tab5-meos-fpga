@@ -53,3 +53,5 @@ The bilingual site lives in `docs/site/`. Run `python tools/build_pages.py` afte
 - [FPGA carrier compatibility and pre-fabrication requirements](docs/FPGA_CARRIER_REQUIREMENTS.md)
 
 - [Carrier second-report review and executed 2D/3D calibration](docs/CARRIER_R2_REVIEW_2026-10-24.md)
+
+- [Carrier third-report audit and remediation instructions](docs/CARRIER_R3_AUDIT_HANDOFF_2026-10-24.md)

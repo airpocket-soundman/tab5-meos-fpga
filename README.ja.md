@@ -53,3 +53,5 @@ USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSH
 - [FPGAキャリアの適合性・製作前要求](docs/FPGA_CARRIER_REQUIREMENTS.md)
 
 - [キャリア第2レポートのレビューと2D・3D解析](docs/CARRIER_R2_REVIEW_2026-10-24.md)
+
+- [キャリア第3レポートの監査結果・修正指示](docs/CARRIER_R3_AUDIT_HANDOFF_2026-10-24.md)

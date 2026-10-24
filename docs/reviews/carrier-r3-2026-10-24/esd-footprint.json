@@ -1,0 +1,188 @@
+{
+ "ok": true,
+ "failed": [],
+ "checks": [
+  {
+   "name": "library footprint DFN2510-10L_RCLAMP0524P exists",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "library: 10 pads numbered 1..10",
+   "ok": true,
+   "detail": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10"
+   ]
+  },
+  {
+   "name": "library: pitch 0.50 mm, pin n opposite pin 11-n",
+   "ok": true,
+   "detail": [
+    -1.0,
+    -0.5,
+    0.0,
+    0.5,
+    1.0
+   ]
+  },
+  {
+   "name": "library: land 1 covers the lead length (0.12-0.50) with toe",
+   "ok": true,
+   "detail": [
+    0.10999999999999999,
+    0.66
+   ]
+  },
+  {
+   "name": "library: land 6 covers the lead length (0.12-0.50) with toe",
+   "ok": true,
+   "detail": [
+    0.10999999999999999,
+    0.66
+   ]
+  },
+  {
+   "name": "library: signal land 1 width >= lead 0.20 and gap to neighbours >= 0.15",
+   "ok": true,
+   "detail": 0.28
+  },
+  {
+   "name": "library: signal land 2 width >= lead 0.20 and gap to neighbours >= 0.15",
+   "ok": true,
+   "detail": 0.28
+  },
+  {
+   "name": "library: signal land 4 width >= lead 0.20 and gap to neighbours >= 0.15",
+   "ok": true,
+   "detail": 0.28
+  },
+  {
+   "name": "library: signal land 5 width >= lead 0.20 and gap to neighbours >= 0.15",
+   "ok": true,
+   "detail": 0.28
+  },
+  {
+   "name": "library: GND land 3/8 width >= GND lead 0.40",
+   "ok": true,
+   "detail": [
+    0.42,
+    0.42
+   ]
+  },
+  {
+   "name": "U4 uses DFN2510-10L_RCLAMP0524P",
+   "ok": true,
+   "detail": "DFN2510-10L_RCLAMP0524P"
+  },
+  {
+   "name": "U4 GND pads are 3 and 8",
+   "ok": true,
+   "detail": [
+    "GND",
+    "GND"
+   ]
+  },
+  {
+   "name": "U4 I/O pins 1,2,4,5 on the TMDS lines",
+   "ok": true,
+   "detail": {
+    "1": "HDMI_D2P_C",
+    "2": "HDMI_D2N_C",
+    "4": "HDMI_D1P_C",
+    "5": "HDMI_D1N_C"
+   }
+  },
+  {
+   "name": "U4 NC pins 6/7/9/10 only joined to their line by copper (strap)",
+   "ok": true,
+   "detail": {
+    "6": "HDMI_D1N_C",
+    "7": "HDMI_D1P_C",
+    "9": "HDMI_D2N_C",
+    "10": "HDMI_D2P_C"
+   }
+  },
+  {
+   "name": "U5 uses DFN2510-10L_RCLAMP0524P",
+   "ok": true,
+   "detail": "DFN2510-10L_RCLAMP0524P"
+  },
+  {
+   "name": "U5 GND pads are 3 and 8",
+   "ok": true,
+   "detail": [
+    "GND",
+    "GND"
+   ]
+  },
+  {
+   "name": "U5 I/O pins 1,2,4,5 on the TMDS lines",
+   "ok": true,
+   "detail": {
+    "1": "HDMI_D0P_C",
+    "2": "HDMI_D0N_C",
+    "4": "HDMI_CKP_C",
+    "5": "HDMI_CKN_C"
+   }
+  },
+  {
+   "name": "U5 NC pins 6/7/9/10 only joined to their line by copper (strap)",
+   "ok": true,
+   "detail": {
+    "6": "HDMI_CKN_C",
+    "7": "HDMI_CKP_C",
+    "9": "HDMI_D0N_C",
+    "10": "HDMI_D0P_C"
+   }
+  }
+ ],
+ "placed": {
+  "U4": {
+   "nets": {
+    "1": "HDMI_D2P_C",
+    "2": "HDMI_D2N_C",
+    "3": "GND",
+    "4": "HDMI_D1P_C",
+    "5": "HDMI_D1N_C",
+    "6": "HDMI_D1N_C",
+    "7": "HDMI_D1P_C",
+    "8": "GND",
+    "9": "HDMI_D2N_C",
+    "10": "HDMI_D2P_C"
+   },
+   "pos": [
+    108.0,
+    16.75
+   ],
+   "rot": 0.0
+  },
+  "U5": {
+   "nets": {
+    "1": "HDMI_D0P_C",
+    "2": "HDMI_D0N_C",
+    "3": "GND",
+    "4": "HDMI_CKP_C",
+    "5": "HDMI_CKN_C",
+    "6": "HDMI_CKN_C",
+    "7": "HDMI_CKP_C",
+    "8": "GND",
+    "9": "HDMI_D0N_C",
+    "10": "HDMI_D0P_C"
+   },
+   "pos": [
+    108.0,
+    19.75
+   ],
+   "rot": 0.0
+  }
+ }
+}

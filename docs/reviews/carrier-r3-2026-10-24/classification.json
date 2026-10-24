@@ -1,0 +1,158 @@
+{
+ "nets": {
+  "HDMI_CKN": {
+   "main": 7,
+   "stub": 1,
+   "strap": 0,
+   "branch": 0,
+   "via_main": 0,
+   "pcb_segments": 8,
+   "pcb_vias": 0
+  },
+  "HDMI_CKN_C": {
+   "main": 8,
+   "stub": 1,
+   "strap": 1,
+   "branch": 7,
+   "via_main": 0,
+   "pcb_segments": 17,
+   "pcb_vias": 0
+  },
+  "HDMI_CKP": {
+   "main": 7,
+   "stub": 1,
+   "strap": 0,
+   "branch": 0,
+   "via_main": 0,
+   "pcb_segments": 8,
+   "pcb_vias": 0
+  },
+  "HDMI_CKP_C": {
+   "main": 8,
+   "stub": 1,
+   "strap": 1,
+   "branch": 3,
+   "via_main": 2,
+   "pcb_segments": 13,
+   "pcb_vias": 2
+  },
+  "HDMI_D0N": {
+   "main": 7,
+   "stub": 1,
+   "strap": 0,
+   "branch": 0,
+   "via_main": 0,
+   "pcb_segments": 8,
+   "pcb_vias": 0
+  },
+  "HDMI_D0N_C": {
+   "main": 8,
+   "stub": 1,
+   "strap": 1,
+   "branch": 6,
+   "via_main": 2,
+   "pcb_segments": 16,
+   "pcb_vias": 2
+  },
+  "HDMI_D0P": {
+   "main": 7,
+   "stub": 1,
+   "strap": 0,
+   "branch": 0,
+   "via_main": 0,
+   "pcb_segments": 8,
+   "pcb_vias": 0
+  },
+  "HDMI_D0P_C": {
+   "main": 8,
+   "stub": 1,
+   "strap": 1,
+   "branch": 7,
+   "via_main": 0,
+   "pcb_segments": 17,
+   "pcb_vias": 0
+  },
+  "HDMI_D1N": {
+   "main": 7,
+   "stub": 1,
+   "strap": 0,
+   "branch": 0,
+   "via_main": 0,
+   "pcb_segments": 8,
+   "pcb_vias": 0
+  },
+  "HDMI_D1N_C": {
+   "main": 8,
+   "stub": 1,
+   "strap": 1,
+   "branch": 11,
+   "via_main": 2,
+   "pcb_segments": 21,
+   "pcb_vias": 2
+  },
+  "HDMI_D1P": {
+   "main": 7,
+   "stub": 1,
+   "strap": 0,
+   "branch": 0,
+   "via_main": 0,
+   "pcb_segments": 8,
+   "pcb_vias": 0
+  },
+  "HDMI_D1P_C": {
+   "main": 8,
+   "stub": 1,
+   "strap": 1,
+   "branch": 7,
+   "via_main": 2,
+   "pcb_segments": 17,
+   "pcb_vias": 2
+  },
+  "HDMI_D2N": {
+   "main": 7,
+   "stub": 1,
+   "strap": 0,
+   "branch": 0,
+   "via_main": 0,
+   "pcb_segments": 8,
+   "pcb_vias": 0
+  },
+  "HDMI_D2N_C": {
+   "main": 8,
+   "stub": 1,
+   "strap": 1,
+   "branch": 9,
+   "via_main": 2,
+   "pcb_segments": 19,
+   "pcb_vias": 2
+  },
+  "HDMI_D2P": {
+   "main": 7,
+   "stub": 1,
+   "strap": 0,
+   "branch": 0,
+   "via_main": 0,
+   "pcb_segments": 8,
+   "pcb_vias": 0
+  },
+  "HDMI_D2P_C": {
+   "main": 8,
+   "stub": 1,
+   "strap": 1,
+   "branch": 4,
+   "via_main": 0,
+   "pcb_segments": 14,
+   "pcb_vias": 0
+  }
+ },
+ "unclassified": [],
+ "stale_roles": [],
+ "counts": {
+  "main": 120,
+  "stub": 16,
+  "strap": 8,
+  "branch": 54,
+  "via_main": 10
+ },
+ "ok": true
+}

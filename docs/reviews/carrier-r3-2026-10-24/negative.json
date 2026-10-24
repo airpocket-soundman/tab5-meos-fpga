@@ -1,0 +1,53 @@
+{
+ "cases": {
+  "D2P": {
+   "detected_as_discontinuous": [
+    "D2P"
+   ],
+   "ok": true
+  },
+  "D2N": {
+   "detected_as_discontinuous": [
+    "D2N"
+   ],
+   "ok": true
+  },
+  "D1P": {
+   "detected_as_discontinuous": [
+    "D1P"
+   ],
+   "ok": true
+  },
+  "D1N": {
+   "detected_as_discontinuous": [
+    "D1N"
+   ],
+   "ok": true
+  },
+  "D0P": {
+   "detected_as_discontinuous": [
+    "D0P"
+   ],
+   "ok": true
+  },
+  "D0N": {
+   "detected_as_discontinuous": [
+    "D0N"
+   ],
+   "ok": true
+  },
+  "CKP": {
+   "detected_as_discontinuous": [
+    "CKP"
+   ],
+   "ok": true
+  },
+  "CKN": {
+   "detected_as_discontinuous": [
+    "CKN"
+   ],
+   "ok": true
+  }
+ },
+ "ok": true
+}

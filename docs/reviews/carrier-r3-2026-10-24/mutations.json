@@ -1,0 +1,20 @@
+{
+  "placed_ground_pad_shrunk_to_0_1mm": {
+    "exit_code": 0,
+    "unexpected_pass": true,
+    "output": "ESD footprint check: OK (18 checks)\n  ok   library footprint DFN2510-10L_RCLAMP0524P exists\n  ok   library: 10 pads numbered 1..10\n  ok   library: pitch 0.50 mm, pin n opposite pin 11-n\n  ok   library: land 1 covers the lead length (0.12-0.50) with toe\n  ok   library: land 6 covers the lead length (0.12-0.50) with toe\n  ok   library: signal land 1 width >= lead 0.20 and gap to neighbours >= 0.15\n  ok   library: signal land 2 width >= lead 0.20 and gap to neighbours >= 0.15\n  ok   library: signal land 4 width >= lead 0.20 and gap to neighbours >= 0.15\n  ok   library: signal land 5 width >= lead 0.20 and gap to neighbours >= 0.15\n  ok   library: GND land 3/8 width >= GND lead 0.40\n  ok   U4 uses DFN2510-10L_RCLAMP0524P\n  ok   U4 GND pads are 3 and 8\n  ok   U4 I/O pins 1,2,4,5 on the TMDS lines\n  ok   U4 NC pins 6/7/9/10 only joined to their line by copper (strap)\n  ok   U5 uses DFN2510-10L_RCLAMP0524P\n  ok   U5 GND pads are 3 and 8\n  ok   U5 I/O pins 1,2,4,5 on the TMDS lines\n  ok   U5 NC pins 6/7/9/10 only joined to their line by copper (strap)\n"
+  },
+  "trace_width_0_2_to_0_18mm": {
+    "exit_code": 0,
+    "unexpected_pass": true,
+    "output": "TMDS classification: {'main': 120, 'stub': 16, 'strap': 8, 'branch': 54, 'via_main': 10} unclassified: 0 stale roles: 0\n"
+  },
+  "actual_placed_pads_match_library": {
+    "U4": {
+      "size_mismatches": []
+    },
+    "U5": {
+      "size_mismatches": []
+    }
+  }
+}
