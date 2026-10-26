@@ -1,11 +1,11 @@
 {
   "before": "upstream-before-fork-size-optimized",
-  "after": "current-with-resource-telemetry",
+  "after": "tailscale-default-down",
   "delta_bytes": {
-    "flash_bin_bytes": 333840,
-    "static_hp_sram_including_arena_bytes": 17736,
+    "flash_bin_bytes": 334048,
+    "static_hp_sram_including_arena_bytes": 17744,
     "internal_heap_arena_bytes": 0,
-    "static_hp_sram_excluding_arena_bytes": 17736
+    "static_hp_sram_excluding_arena_bytes": 17744
   },
   "same_recorded_sdk_configuration": true,
   "changed_cmake_features": {

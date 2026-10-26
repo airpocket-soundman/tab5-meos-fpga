@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "label": "current-with-resource-telemetry",
+  "revision_declared": "91a9d16",
+  "artifact_project_version": "b1e9249-dirty",
+  "target": "esp32p4",
+  "idf_version": "v5.4.4",
+  "compiler_version": "riscv32-esp-elf-gcc.exe (crosstool-NG esp-14.2.0_20260121) 14.2.0",
+  "sdkconfig_sha256": "454f29671513b8596af3b4da25d7821312ed971384f5ebadb8e3cdfb19201194",
+  "selected_sdkconfig": {
+    "CONFIG_IDF_TARGET": "\"esp32p4\"",
+    "CONFIG_COMPILER_OPTIMIZATION_SIZE": "y",
+    "CONFIG_COMPILER_OPTIMIZATION_DEBUG": null,
+    "CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ": "360",
+    "CONFIG_CACHE_L2_CACHE_SIZE": "0x20000",
+    "CONFIG_SPIRAM_SPEED_200M": "y"
+  },
+  "cmake_features": {
+    "M5OS_USB_BACKEND": "native_dma",
+    "M5OS_BLUETOOTH": "ON",
+    "M5OS_MICROPYTHON": "ON",
+    "M5OS_SL": "ON"
+  },
+  "elf_sha256": "7367bbf3623b4404cb0a1ae369f397e2b9feade15492391a7648593bd5de703a",
+  "bin_sha256": "d9f0527263fd2493646edc18907bc9343ea1baef8f350dbe8d402f06ec5de0e7",
+  "flash_bin_bytes": 1410672,
+  "static_hp_sram_including_arena_bytes": 463110,
+  "internal_heap_arena_bytes": 196608,
+  "static_hp_sram_excluding_arena_bytes": 266502,
+  "linker_hp_sram_capacity_bytes": 576464,
+  "size_tool_summary": {
+    "dram_data": 0,
+    "dram_bss": 0,
+    "dram_rodata": 0,
+    "dram_other": 0,
+    "used_dram": 0,
+    "dram_total": 0,
+    "used_dram_ratio": 0,
+    "dram_remain": 0,
+    "iram_vectors": 0,
+    "iram_text": 0,
+    "iram_other": 0,
+    "used_iram": 0,
+    "iram_total": 0,
+    "used_iram_ratio": 0,
+    "iram_remain": 0,
+    "diram_data": 14957,
+    "diram_bss": 396584,
+    "diram_text": 51566,
+    "diram_vectors": 0,
+    "diram_rodata": 0,
+    "diram_other": 3,
+    "diram_total": 576464,
+    "used_diram": 463110,
+    "used_diram_ratio": 0.8033632629270865,
+    "diram_remain": 113354,
+    "flash_code": 696590,
+    "flash_rodata": 646824,
+    "flash_other": 504,
+    "used_flash_non_ram": 1343918,
+    "total_size": 1410441
+  },
+  "notes": [
+    "Declared revision is a label, not proof of build/source identity.",
+    "BIN size includes image overhead; IDF total_size is a different metric.",
+    "Static RAM includes the entire internal heap arena, used or free.",
+    "PSRAM allocations and task stacks need workload-specific runtime measurements.",
+    "Runtime image/build association is supplied by the operator, not proven by a mem capture."
+  ],
+  "runtime_workload": "Idle shell after verified flash and boot; no MicroPython VM, no SSH server, no BLE scan requested; device USB setup as attached",
+  "runtime_capture_sha256": "3bc2ddb3cb1877dc6b9064e4e5b7043b8c2473ad921cb368e9f8b746dee368bb",
+  "runtime_heap_bytes": {
+    "internal": {
+      "total": 196608,
+      "used": 111904,
+      "free": 84704,
+      "largest": 80576,
+      "peak": 116016,
+      "alloc_count": 13,
+      "fail_count": 0
+    },
+    "psram": {
+      "total": 29360128,
+      "used": 9183200,
+      "free": 20176928,
+      "largest": 20176912,
+      "peak": 9183200,
+      "alloc_count": 11,
+      "fail_count": 0
+    }
+  }
+}

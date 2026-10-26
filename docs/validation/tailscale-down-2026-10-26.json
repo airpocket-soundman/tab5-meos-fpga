@@ -1,0 +1,7 @@
+{
+  "login_wait_reached": true,
+  "down_ack": true,
+  "stopped_status_after_down": true,
+  "auth_notices_after_down_ack": 0,
+  "observation_after_status_seconds": 24
+}
