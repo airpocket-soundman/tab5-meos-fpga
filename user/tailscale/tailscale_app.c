@@ -975,6 +975,7 @@ static ts_peer_slot_t s_peers[TAILSCALE_MAX_PEERS];
 
 static volatile bool  s_daemon_running;
 static volatile bool  s_want_up;
+static volatile uint32_t s_control_generation;
 static uint32_t       s_next_wg_index = 0x100u;
 
 /* Ping tracking state */
@@ -1383,7 +1384,7 @@ static bool ts_tun_tx_callback(const uint8_t *ipv4_pkt, size_t len)
 /* Virtual MagicDNS hostname resolver invoked by wifi_resolve_host() */
 static bool ts_tun_resolve_callback(const char *host, uint8_t out_ip[4])
 {
-    if (!host || !host[0] || !out_ip) return false;
+    if (!s_want_up || !host || !host[0] || !out_ip) return false;
     /* Strip optional .ts.net suffix or trailing dot */
     char short_name[48];
     size_t i = 0;
@@ -1396,10 +1397,9 @@ static bool ts_tun_resolve_callback(const char *host, uint8_t out_ip[4])
 
     ts_ensure_lock();
     ts_lock();
-    if (s_peer_count == 0 && s_state != TS_STATE_RUNNING) {
-        uint32_t saved_d = ts_unlock_all();
-        tailscale_up(NULL);
-        ts_relock_all(saved_d);
+    if (!s_want_up || s_state != TS_STATE_RUNNING) {
+        ts_unlock();
+        return false;
     }
 
     if (s_my_ip[0] != 0 && (str_ieq(host, s_hostname) || str_ieq(short_name, s_hostname))) {
@@ -1751,6 +1751,7 @@ static void ts_udp_rx_callback(const uint8_t src_ip[4], uint16_t src_port,
 
 typedef struct {
     int      sock;
+    uint32_t generation;
     uint8_t  tx_key[32];
     uint8_t  rx_key[32];
     uint64_t tx_nonce;
@@ -1763,6 +1764,11 @@ typedef struct {
     size_t   plain_pos;
 } ts_ctrl_conn_t;
 
+static bool ctrl_active(const ts_ctrl_conn_t *c)
+{
+    return s_want_up && c->generation == s_control_generation;
+}
+
 static bool ctrl_raw_recv_exact(ts_ctrl_conn_t *c, uint8_t *out, size_t n, uint32_t timeout_ms)
 {
     size_t got = 0;
@@ -1770,19 +1776,20 @@ static bool ctrl_raw_recv_exact(ts_ctrl_conn_t *c, uint8_t *out, size_t n, uint3
         out[got++] = c->pre_rx[c->pre_pos++];
     }
     uint64_t deadline = hal_time_now_us() + (uint64_t)timeout_ms * 1000ULL;
-    while (got < n && hal_time_now_us() < deadline) {
+    while (ctrl_active(c) && got < n && hal_time_now_us() < deadline) {
         int r = wifi_tcp_recv_sock(c->sock, out + got, n - got, 250);
         if (r < 0) return false;
         got += (size_t)r;
     }
-    return got == n;
+    return ctrl_active(c) && got == n;
 }
 
 static bool ctrl_noise_write(ts_ctrl_conn_t *c, const void *data, size_t len)
 {
+    if (!ctrl_active(c)) return false;
     const uint8_t *p = (const uint8_t *)data;
     static uint8_t s_frame_buf[2060];
-    while (len > 0) {
+    while (len > 0 && ctrl_active(c)) {
         size_t chunk = (len > 2000u) ? 2000u : len;
         size_t ct_len = chunk + 16u;
         s_frame_buf[0] = 0x04u;
@@ -1799,7 +1806,7 @@ static bool ctrl_noise_write(ts_ctrl_conn_t *c, const void *data, size_t len)
         p   += chunk;
         len -= chunk;
     }
-    return true;
+    return ctrl_active(c) && len == 0;
 }
 
 static bool ctrl_noise_read_exact(ts_ctrl_conn_t *c, uint8_t *out, size_t want, uint32_t timeout_ms)
@@ -1807,7 +1814,7 @@ static bool ctrl_noise_read_exact(ts_ctrl_conn_t *c, uint8_t *out, size_t want, 
     size_t got = 0;
     static uint8_t s_ct_buf[4112];
 
-    while (got < want) {
+    while (ctrl_active(c) && got < want) {
         while (got < want && c->plain_pos < c->plain_len) {
             out[got++] = c->plain_buf[c->plain_pos++];
         }
@@ -1827,13 +1834,15 @@ static bool ctrl_noise_read_exact(ts_ctrl_conn_t *c, uint8_t *out, size_t want, 
         c->plain_len = (size_t)ct_len - 16u;
         c->plain_pos = 0;
     }
-    return true;
+    return ctrl_active(c) && got == want;
 }
 
-static bool ctrl_connect_and_handshake(ts_ctrl_conn_t *c)
+static bool ctrl_connect_and_handshake(ts_ctrl_conn_t *c, uint32_t generation)
 {
     mem_zero(c, sizeof(*c));
     c->sock = TS_SOCK_CTRL;
+    c->generation = generation;
+    if (!ctrl_active(c)) return false;
 
     uint8_t ctrl_ip[4];
     if (!wifi_resolve_host("controlplane.tailscale.com", ctrl_ip)) {
@@ -1841,7 +1850,7 @@ static bool ctrl_connect_and_handshake(ts_ctrl_conn_t *c)
         return false;
     }
 
-    if (!wifi_tcp_connect_sock(c->sock, ctrl_ip, 80, 5000)) {
+    if (!ctrl_active(c) || !wifi_tcp_connect_sock(c->sock, ctrl_ip, 80, 5000)) {
         ts_set_msg("TCP connect controlplane.tailscale.com:80 failed");
         return false;
     }
@@ -1903,7 +1912,7 @@ static bool ctrl_connect_and_handshake(ts_ctrl_conn_t *c)
     size_t hdr_len = 0;
     int body_start = -1;
     uint64_t deadline = hal_time_now_us() + 5000000ULL;
-    while (hal_time_now_us() < deadline && hdr_len < sizeof(hdr_buf)) {
+    while (ctrl_active(c) && hal_time_now_us() < deadline && hdr_len < sizeof(hdr_buf)) {
         int r = wifi_tcp_recv_sock(c->sock, hdr_buf + hdr_len, sizeof(hdr_buf) - hdr_len, 300);
         if (r < 0) break;
         hdr_len += (size_t)r;
@@ -2065,6 +2074,7 @@ static bool ctrl_h2_post(ts_ctrl_conn_t *c, uint32_t stream_id, const char *path
     static uint8_t s_h2_scratch[2048];
 
     for (int iter = 0; iter < 1000; iter++) {
+        if (!ctrl_active(c)) return false;
         uint8_t fhdr[9];
         if (!ctrl_noise_read_exact(c, fhdr, 9, 8000)) break;
 
@@ -2408,10 +2418,15 @@ static bool parse_map_response(const char *json, size_t len)
 /* Perform `/machine/register` and `/machine/map` with controlplane.tailscale.com */
 static bool ts_sync_control_plane(void)
 {
+    ts_lock();
+    uint32_t generation = s_control_generation;
+    bool wanted = s_want_up;
+    ts_unlock();
+    if (!wanted) return false;
     wifi_status_t wst;
     wifi_get_network_status(&wst);
     if (wst.state == WIFI_STATE_CONNECTED && wst.ip[0] == 0) {
-        for (int i = 0; i < 50 && wst.ip[0] == 0; i++) {
+        for (int i = 0; i < 50 && s_want_up && generation == s_control_generation && wst.ip[0] == 0; i++) {
             task_sleep(100);
             wifi_get_network_status(&wst);
         }
@@ -2421,6 +2436,7 @@ static bool ts_sync_control_plane(void)
         return false;
     }
 
+    if (!s_want_up || generation != s_control_generation) return false;
     ts_ctrl_conn_t *ctrl = (ts_ctrl_conn_t *)kmalloc_psram(sizeof(ts_ctrl_conn_t));
     if (!ctrl) ctrl = (ts_ctrl_conn_t *)kmalloc(sizeof(ts_ctrl_conn_t));
     if (!ctrl) return false;
@@ -2437,7 +2453,8 @@ static bool ts_sync_control_plane(void)
     }
 
     ts_set_msg("Connecting to controlplane.tailscale.com:80...");
-    if (!ctrl_connect_and_handshake(ctrl)) {
+    if (!ctrl_connect_and_handshake(ctrl, generation)) {
+        wifi_tcp_close_sock(ctrl->sock);
         kfree(resp_buf);
         kfree(ctrl);
         return false;
@@ -2480,11 +2497,19 @@ static bool ts_sync_control_plane(void)
 
     if (auth_url[0] != 0 && !authorized) {
         ts_lock();
+        if (!ctrl_active(ctrl)) {
+            ts_unlock();
+            wifi_tcp_close_sock(ctrl->sock);
+            kfree(resp_buf);
+            kfree(ctrl);
+            return false;
+        }
+        bool changed = !str_eq(s_auth_url, auth_url);
         str_copy(s_auth_url, sizeof(s_auth_url), auth_url);
         s_state = TS_STATE_NEEDS_LOGIN;
         ksnprintf(s_last_msg, sizeof(s_last_msg), "Login required: %s", auth_url);
+        if (changed) kprintf("tailscale: Authorize node at: %s\n", auth_url);
         ts_unlock();
-        kprintf("tailscale: Authorize node at: %s\n", auth_url);
 
         /* Follow up with /machine/register (Followup: auth_url) on stream 3 to wait for user approval */
         ksnprintf(reg_json, sizeof(reg_json),
@@ -2536,6 +2561,13 @@ static bool ts_sync_control_plane(void)
     resp_buf[4u + json_len] = 0;
 
     ts_lock();
+    if (!ctrl_active(ctrl)) {
+        ts_unlock();
+        wifi_tcp_close_sock(ctrl->sock);
+        kfree(resp_buf);
+        kfree(ctrl);
+        return false;
+    }
     bool parsed = parse_map_response((const char *)(resp_buf + 4), json_len);
     if (parsed) {
         s_auth_url[0] = 0;
@@ -2575,7 +2607,17 @@ static void tailscale_daemon_task(void *arg)
 {
     (void)arg;
     uint32_t tick = 0;
-    while (s_want_up) {
+    for (;;) {
+        if (!s_want_up) {
+            wifi_tcp_close_sock(TS_SOCK_CTRL);
+            ts_lock();
+            if (!s_want_up) {
+                s_daemon_running = false;
+                ts_unlock();
+                return;
+            }
+            ts_unlock();
+        }
         if (s_state != TS_STATE_RUNNING) {
             ts_sync_control_plane();
             for (int i = 0; i < 8 && s_want_up && s_state != TS_STATE_RUNNING; i++) {
@@ -2605,8 +2647,6 @@ static void tailscale_daemon_task(void *arg)
             task_sleep(100);
         }
     }
-    wifi_tcp_close_sock(TS_SOCK_CTRL);
-    s_daemon_running = false;
 }
 
 void tailscale_boot_start(void)
@@ -2614,14 +2654,7 @@ void tailscale_boot_start(void)
     ts_ensure_lock();
     ts_lock();
     ts_load_or_gen_keys();
-    /* Register MagicDNS & TUN callbacks immediately so any hostname lookup can auto-sync Tailscale */
-    wifi_set_udp_rx_callback(TS_WG_PORT, ts_udp_rx_callback);
-    wifi_set_tun_callbacks(s_my_ip, ts_tun_tx_callback, ts_tun_resolve_callback);
-    s_want_up = true;
-    if (!s_daemon_running) {
-        s_daemon_running = true;
-        task_create_stack("tailscaled", tailscale_daemon_task, NULL, TASK_PRIO_DEFAULT, 24576);
-    }
+    /* Shell startup initializes saved identity only. Connecting is explicit. */
     ts_unlock();
 }
 
@@ -2635,19 +2668,27 @@ bool tailscale_up(const char *auth_key)
         ts_save_keys();
     }
     if (s_state != TS_STATE_RUNNING) {
+        s_control_generation++;
+        s_auth_url[0] = 0;
         s_state = TS_STATE_CONNECTING;
         ts_set_msg("Starting Tailscale...");
     }
     s_want_up = true;
     if (!s_daemon_running) {
         s_daemon_running = true;
-        task_create_stack("tailscaled", tailscale_daemon_task, NULL, TASK_PRIO_DEFAULT, 24576);
+        if (task_create_stack("tailscaled", tailscale_daemon_task, NULL, TASK_PRIO_DEFAULT, 24576) < 0) {
+            s_daemon_running = false;
+            s_want_up = false;
+            s_state = TS_STATE_STOPPED;
+            ts_set_msg("Unable to start Tailscale task");
+        }
     }
     ts_unlock();
 
     /* Wait up to 18 seconds for either RUNNING or NEEDS_LOGIN */
     uint64_t deadline = hal_time_now_us() + 18000000ULL;
     while (hal_time_now_us() < deadline) {
+        if (!s_want_up) return false;
         if (s_state == TS_STATE_RUNNING || s_state == TS_STATE_NEEDS_LOGIN) {
             return true;
         }
@@ -2659,8 +2700,10 @@ bool tailscale_up(const char *auth_key)
 void tailscale_down(void)
 {
     ts_ensure_lock();
-    s_want_up = false;
     ts_lock();
+    s_want_up = false;
+    s_control_generation++;
+    s_auth_url[0] = 0;
     wifi_set_udp_rx_callback(0, NULL);
     wifi_set_tun_callbacks(NULL, NULL, NULL);
     s_state = TS_STATE_STOPPED;
@@ -2997,19 +3040,7 @@ void tailscale_app_main(void)
     int sel = 0;
     char status_bar[96] = "Enter/P:Ping  U:Up/Sync  W:Wi-Fi  K:AuthKey  D:Down  Q/Esc:Quit";
 
-    ts_ensure_lock();
-    ts_lock();
-    ts_load_or_gen_keys();
-    if (s_state == TS_STATE_STOPPED) {
-        s_state = TS_STATE_CONNECTING;
-        ts_set_msg("Starting Tailscale...");
-    }
-    s_want_up = true;
-    if (!s_daemon_running) {
-        s_daemon_running = true;
-        task_create_stack("tailscaled", tailscale_daemon_task, NULL, TASK_PRIO_DEFAULT, 24576);
-    }
-    ts_unlock();
+    tailscale_boot_start();
 
     uint64_t last_draw_us = 0;
     bool full_redraw = true;
@@ -3147,7 +3178,7 @@ void tailscale_app_main(void)
                 dirty = true;
             } else if (k == 'u' || k == 'U') {
                 str_copy(status_bar, sizeof(status_bar), "Syncing with controlplane.tailscale.com...");
-                s_want_up = true;
+                tailscale_up(NULL);
                 dirty = true;
             } else if (k == 'w' || k == 'W') {
                 dq_clear();

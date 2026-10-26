@@ -37,7 +37,7 @@ typedef struct {
     ts_peer_info_t peers[TAILSCALE_MAX_PEERS];
 } ts_status_t;
 
-/* Auto-start background Tailscale daemon on boot once Wi-Fi connects */
+/* Initialize saved identity; boot/shell startup leaves Tailscale down. */
 void tailscale_boot_start(void);
 
 /* Start background Tailscale daemon and connect to control plane + WireGuard data plane */
