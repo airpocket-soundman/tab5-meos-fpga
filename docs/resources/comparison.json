@@ -1,8 +1,8 @@
 {
   "before": "upstream-before-fork-size-optimized",
-  "after": "tailscale-default-down",
+  "after": "native-fpga-mock-bmp-viewer",
   "delta_bytes": {
-    "flash_bin_bytes": 334048,
+    "flash_bin_bytes": 339200,
     "static_hp_sram_including_arena_bytes": 17744,
     "internal_heap_arena_bytes": 0,
     "static_hp_sram_excluding_arena_bytes": 17744

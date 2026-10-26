@@ -1,0 +1,61 @@
+{
+  "fixture_path": "/home/iv-c4852f9589.bmp",
+  "fixture_crc32": "45747db2",
+  "info": {
+    "format": "bmp",
+    "width": 2,
+    "height": 2,
+    "decoded_bytes": 8,
+    "fnv1a": 2792162461,
+    "nonuniform": true
+  },
+  "memory_before": {
+    "schema": 1,
+    "units": "bytes",
+    "internal": {
+      "total": 196608,
+      "used": 86208,
+      "free": 110400,
+      "largest": 106272,
+      "peak": 118992,
+      "alloc_count": 13,
+      "fail_count": 0
+    },
+    "psram": {
+      "total": 29360128,
+      "used": 8588864,
+      "free": 20771264,
+      "largest": 20771248,
+      "peak": 9114400,
+      "alloc_count": 10,
+      "fail_count": 0
+    }
+  },
+  "viewer_started": true,
+  "viewer_closed": true,
+  "memory_after": {
+    "schema": 1,
+    "units": "bytes",
+    "internal": {
+      "total": 196608,
+      "used": 86208,
+      "free": 110400,
+      "largest": 106272,
+      "peak": 118992,
+      "alloc_count": 14,
+      "fail_count": 0
+    },
+    "psram": {
+      "total": 29360128,
+      "used": 8588864,
+      "free": 20771264,
+      "largest": 20771248,
+      "peak": 9114400,
+      "alloc_count": 12,
+      "fail_count": 0
+    }
+  },
+  "display_status": "display: buffers=2 refreshes=22248 batches=26 submitted=26 retired=26 errors=0 timeouts=0 max_us=297271 back=1 active=0",
+  "invalid_file_rejected": true,
+  "physical_visual_inspection": false
+}

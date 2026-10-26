@@ -87,3 +87,9 @@ Reviewed remote main 91dc3b42a8ee5e1ef7b48def237f4a86175f5239. Prior escape-path
 ## Checker remediation verified (2026-10-24)
 
 Fetched carrier main and implemented the R3 checker/document fixes through 851adf4. All24 regression cases passed; all55 manifest hashes matched. Electrical design, PCB and channel model are unchanged. [Fix verification](CARRIER_R3_FIX_VERIFICATION_2026-10-24.md) records the commits and bounded completion scope. Carrier transport, power-off behavior, final pin/CST table and MeOS IO ownership remain unverified.
+
+## Review update: 2026-10-26
+
+Fetched and reviewed carrier main 2af05a985cbf572ad954fd8727c42415be8d544b, including the hardware specification, final core pin CSV, generator and single-sided-r4 record. F_CLK moved from Core SODIMM pin80 to pin52 (generator: K14 / IOT30A / GCLKT_1); pin80 is now P2_6. P4 clock remains GPIO16. These source assignments are not electrical validation. r4 removes the main and FPGA-only SW3 switches; there is no carrier external-power switch and Tab5 battery power is not controlled. Power isolation/sequencing and fabrication readiness remain unverified; EasyEDA migration/Spark publication are incomplete.
+
+MeOS now has an explicit software-only bringup-v0 codec/mock diagnostic, with no physical pin allocation. See [FPGA link scope](FPGA_LINK.md). The new BMP shell viewer uses the existing P4 LCD path and changes no carrier signal allocation.

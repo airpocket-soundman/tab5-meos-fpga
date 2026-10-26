@@ -6,6 +6,9 @@ FPGAによる描画支援を組み込んだ、M5Stack Tab5向けMeOSのGUI環境
 
 **[開発目的・実装状況・ロードマップ — 日本語 / English](https://airpocket-soundman.github.io/tab5-meos-fpga/ja/)**
 
+
+`image FILE.bmp` / `image --info FILE.bmp` によるBMP表示・情報取得を追加しました。[対応範囲と検証](docs/IMAGE_VIEWER.md)。FPGA通信のコーデック・mock診断も追加済みですが、[物理通信は未実装](docs/FPGA_LINK.md)です。
+
 ## 現在の状態
 
 基準版とサイズ最適化版のビルド・書き込み、Tab5の起動とシリアルシェルを確認済みです。microSDと、Full-Speedハブ経由のUSBメモリ2台（exFAT・FAT）で読み書き・再起動後保持を確認しました。ハブ配下キーボードのコマンド入力とUSBカードリーダーのマウント・一覧取得も確認。`lsusb`で接続とマウント先を表示できます。[接続診断](docs/USB_DIAGNOSTICS.md)、[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照してください。入力中の長時間負荷、High-Speed異速度混在、FPGA通信、GUI拡張、周辺機能全体の回帰は未検証です。

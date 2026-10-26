@@ -204,7 +204,7 @@ def progress_html(lang):
 
 def implementation_records(lang):
     title = '今回の検証と実装記録' if lang == 'ja' else 'Implementation and validation records'
-    commits = [('4be8303', 'FP context'), ('79ac3ce', 'Touch / display'),
+    commits = [('39f5686', 'BMP viewer'), ('13e7211', 'FPGA mock protocol'), ('4be8303', 'FP context'), ('79ac3ce', 'Touch / display'),
                ('6d58268', 'Display retirement under load'), ('cd262af', 'Native CSI / ISP camera'),
                ('5f74e3e', 'Native USB camera'), ('b7b8e6c', 'BLE transport / scan'),
                ('e22d8bf', 'Shared external IO services'), ('8b26e52', 'External IO shell')]

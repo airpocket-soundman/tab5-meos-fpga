@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-23",
+  "updated": "2026-10-26",
   "items": [
     {
       "id": "baseline",
@@ -215,6 +215,30 @@
       "detail": {
         "ja": "上流SL 5.03のコード・素材・ライセンスを保持し、MeOS用最小ANSI/curses互換層とPSRAM描画・煙状態へ移植。ホスト90回超反復と全体ビルド・書込みに成功。実機シリアルで標準slが15.30秒・95329バイト出力で完走し、代替画面の開始/終了とシェル復帰を確認。sl -aFのCtrl-C、sl -lcのEscはいずれも約0.86秒で復帰し再実行成功。目視画質・LCD見え方・SSH経由描画は未評価。",
         "en": "Ported upstream SL 5.03 with original code/assets/license retained, a minimal MeOS ANSI/curses-shaped adapter and PSRAM canvas/smoke state. More than 90 host runs and full target build/flash passed. On hardware serial, default sl completed in 15.30 seconds with 95329 output bytes, alternate-screen enter/exit and shell return. Ctrl-C during sl -aF and Esc during sl -lc each returned in about 0.86 seconds and reruns passed. Visual quality, LCD appearance and SSH rendering remain unassessed."
+      }
+    },
+    {
+      "id": "fpga-link-mock",
+      "status": "host-tested",
+      "title": {
+        "ja": "FPGA通信：ソフトウェア基盤",
+        "en": "FPGA protocol software groundwork"
+      },
+      "detail": {
+        "ja": "583件の互換ベクトル、分割・異常系とTab5上mock自己試験に合格。物理通信・GPIO・DDR3・DMAは未実装。",
+        "en": "583 compatibility vectors, fragmented/fault tests and Tab5 mock selftest passed. Physical link, GPIO, DDR3 and DMA are not implemented."
+      }
+    },
+    {
+      "id": "image-viewer",
+      "status": "verified",
+      "title": {
+        "ja": "BMP画像表示",
+        "en": "BMP image viewer"
+      },
+      "detail": {
+        "ja": "image / image --infoを追加。実機で2x2 BMPの検査・表示開始・終了・RAM解放、描画エラーなしを確認。目視・大画像は未確認。JPEG/PNG未対応。",
+        "en": "Added image / image --info. A 2x2 BMP passed device inspection, viewer start/close, memory release and display error checks. Visual/large-image checks pending; JPEG/PNG unsupported."
       }
     }
   ]

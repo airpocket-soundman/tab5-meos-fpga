@@ -1,0 +1,16 @@
+{
+  "before": "tailscale-default-down",
+  "after": "native-fpga-mock-bmp-viewer",
+  "delta_bytes": {
+    "flash_bin_bytes": 5152,
+    "static_hp_sram_including_arena_bytes": 0,
+    "internal_heap_arena_bytes": 0,
+    "static_hp_sram_excluding_arena_bytes": 0
+  },
+  "same_recorded_sdk_configuration": true,
+  "changed_cmake_features": {},
+  "notes": [
+    "Differences between multi-feature checkpoints are cumulative, not per-feature costs.",
+    "Runtime counters are workload-dependent and intentionally not subtracted automatically."
+  ]
+}

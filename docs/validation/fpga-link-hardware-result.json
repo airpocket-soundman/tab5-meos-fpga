@@ -1,0 +1,80 @@
+{
+  "memory_before": {
+    "schema": 1,
+    "units": "bytes",
+    "internal": {
+      "total": 196608,
+      "used": 86208,
+      "free": 110400,
+      "largest": 106272,
+      "peak": 90320,
+      "alloc_count": 11,
+      "fail_count": 0
+    },
+    "psram": {
+      "total": 29360128,
+      "used": 8588864,
+      "free": 20771264,
+      "largest": 20771248,
+      "peak": 8588864,
+      "alloc_count": 7,
+      "fail_count": 0
+    }
+  },
+  "status": {
+    "protocol": "bringup-v0",
+    "backend": "none",
+    "mock_available": true,
+    "physical_backend": false,
+    "physical_link_tested": false
+  },
+  "id": {
+    "backend": "mock",
+    "physical_link_tested": false,
+    "result": "ok",
+    "data": [
+      84,
+      80
+    ]
+  },
+  "echo": {
+    "backend": "mock",
+    "physical_link_tested": false,
+    "result": "ok",
+    "data": [
+      85,
+      170
+    ]
+  },
+  "selftest": {
+    "backend": "mock",
+    "physical_link_tested": false,
+    "transactions": 513,
+    "fault_checks": 12,
+    "result": "ok"
+  },
+  "hardware_mode_rejected": true,
+  "memory_after": {
+    "schema": 1,
+    "units": "bytes",
+    "internal": {
+      "total": 196608,
+      "used": 86208,
+      "free": 110400,
+      "largest": 106272,
+      "peak": 90320,
+      "alloc_count": 11,
+      "fail_count": 0
+    },
+    "psram": {
+      "total": 29360128,
+      "used": 8588864,
+      "free": 20771264,
+      "largest": 20771248,
+      "peak": 8588864,
+      "alloc_count": 7,
+      "fail_count": 0
+    }
+  },
+  "tailscale_stopped": true
+}
