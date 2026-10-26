@@ -20,6 +20,9 @@ def function(source,name):
     return source[hit.start():end]
 
 PREAMBLE=r'''
+#ifdef NDEBUG
+#error Regression assertions must be enabled
+#endif
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -106,5 +109,5 @@ if __name__=='__main__':
     with tempfile.TemporaryDirectory(prefix='tailscale-lifecycle-') as temp:
         c=Path(temp)/'test.c';exe=Path(temp)/'test.exe'
         c.write_text(pre+'\n'+'\n'.join(function(source,n) for n in names)+'\n'+MAIN)
-        subprocess.run([args.cc,'cc','-std=c11','-O1',str(c),'-o',str(exe)],check=True)
+        subprocess.run([args.cc,'cc','-std=c11','-O1','-UNDEBUG',str(c),'-o',str(exe)],check=True)
         subprocess.run([str(exe)],check=True)
