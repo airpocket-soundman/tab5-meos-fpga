@@ -18,6 +18,7 @@
 #include "../wifi/wifi_app.h"
 #include "../bluetooth/bt_app.h"
 #include "../io/io_app.h"
+#include "../fpga/fpga_app.h"
 #if M5OS_SL
 #include "../sl/sl_app.h"
 #endif
@@ -1036,6 +1037,7 @@ static int cmd_history(int argc, char **argv)
 }
 
 static const command_t s_commands[] = {
+    { "fpga", fpga_cmd_main, "fpga status | --mock id/echo/invert/selftest (no hardware)" },
 #if M5OS_SL
     { "sl", sl_cmd_main, "sl [-aFlc]  native steam locomotive animation" },
 #endif

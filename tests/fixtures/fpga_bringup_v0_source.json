@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/airpocket-soundman/tab5-fpga-gpu",
+  "revision": "3b1ace3d91c6305ec0e32378f8819fce208c2aa7",
+  "path": "bringup/tests/link_vectors.json",
+  "sha256": "20993e7583dcf60ffb5934956972c821985072674ada5646ad417fd742520356",
+  "note": "Test-vector data copied unchanged. Driver implementation is independent; no source-code license is inferred.",
+  "git_blob_sha256": "8b1d8e2a9339ffcee6c8dfcb015786e170506c257c2209dea6f7901058e0d998"
+}
