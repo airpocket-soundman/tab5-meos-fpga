@@ -19,6 +19,7 @@
 #include "../bluetooth/bt_app.h"
 #include "../io/io_app.h"
 #include "../fpga/fpga_app.h"
+#include "../image/image_app.h"
 #if M5OS_SL
 #include "../sl/sl_app.h"
 #endif
@@ -649,6 +650,21 @@ static int cmd_edit(int argc, char **argv)
     return 0;
 }
 
+static int cmd_image(int argc,char **argv)
+{
+    bool info=argc==3&&sh_streq(argv[1],"--info");
+    if((!info&&argc!=2)||(argc==2&&argv[1][0]=='-')) {
+        sh_puts("usage: image [--info] FILE.bmp\n");return 1;
+    }
+    char path[VFS_PATH_MAX];
+    if(!resolve(argv[info?2:1],path))return fail("image","bad path",ERR_INVAL);
+    if(info)return image_file_info(path);
+    fbcon_pause(true);task_sleep(FILER_PAUSE_SETTLE_MS);
+    int result=image_view_file(path);
+    dq_clear();fbcon_pause(false);
+    return result;
+}
+
 static int cmd_io(int argc,char **argv){return io_app_command(argc,argv,sh_puts);}
 
 static int cmd_bt(int argc,char **argv){return bt_app_command(argc,argv,sh_puts);}
@@ -1038,6 +1054,7 @@ static int cmd_history(int argc, char **argv)
 
 static const command_t s_commands[] = {
     { "fpga", fpga_cmd_main, "fpga status | --mock id/echo/invert/selftest (no hardware)" },
+    { "image", cmd_image, "image [--info] FILE.bmp  display/inspect BMP on LCD" },
 #if M5OS_SL
     { "sl", sl_cmd_main, "sl [-aFlc]  native steam locomotive animation" },
 #endif
