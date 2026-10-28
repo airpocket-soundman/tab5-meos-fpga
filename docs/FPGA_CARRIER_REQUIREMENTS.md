@@ -4,7 +4,7 @@ Date: 2026-10-24. Status: design requirements; no FPGA link, DDR3 access or PARL
 
 ## Conclusion / 結論
 
-Tang Primer 20K Core（128 MiB DDR3）と専用キャリアをMeOS GUIの前提にする。現在の8bit案は利用候補になるが、双方向通信、起動時の出力制御、MeOS向けPARLIO/GDMA実装を確認するまで接続互換・速度・RAM削減を保証しない。FPGA RTLとMeOS側ドライバは本プロジェクトで開発する。
+Tang Primer 20K Core（128 MiB DDR3）と専用キャリアをMeOS GUIの前提にする。現在の8bit案は利用候補になるが、双方向通信、起動時の出力制御、MeOS向けPARLIO/GDMA実装を確認するまで接続互換・速度・RAM削減を保証しない。MeOS側ドライバは本プロジェクトで開発する。FPGA RTLとビットストリームは2026-10-28からキャリアリポジトリで開発・管理し、本書のRTL要求はキャリア側デバイス仕様への要求として扱う。
 
 共通ハード仕様の起点は [tab5-tang-primer20k-carrier](https://github.com/airpocket-soundman/tab5-tang-primer20k-carrier)。今後FPGA・GUI・GPIO・表示経路を変更する作業の開始時と仕様確定前に最新リモート版を確認し、参照SHAと差分を本記録へ追記する。これは開発時の確認手順であり、無人の定期監視ジョブは作成していない。
 
@@ -71,7 +71,7 @@ Start with dirty rectangles and FPGA-local assets/scroll copies. A640x360 RGB565
 ## Implementation sequence
 
 1. Freeze versioned electrical pin table, clock/handshake timing and recovery contract with the carrier project.
-2. Develop synthesizable link RTL and MeOS native transfer driver; simulation covers contention, timeouts and malformed messages.
+2. Develop the MeOS native transfer driver here, and the synthesizable link RTL in the carrier repository (`fpga/`); simulation covers contention, timeouts and malformed messages.
 3. On hardware: low-speed identity/loopback, DDR test, CRC read/write, then10/20/40MHz evaluation. Frequency is an experimental sweep.
 4. Implement fill/copy/font commands and dirty rectangles; compare CPU and FPGA including transfer and LCD presentation.
 5. Integrate GUI only after resource, cancellation and peripheral-concurrency checks pass. Publish measured limits and update the shared carrier specification if a physical change is needed.
@@ -93,3 +93,11 @@ Fetched carrier main and implemented the R3 checker/document fixes through 851ad
 Fetched and reviewed carrier main 2af05a985cbf572ad954fd8727c42415be8d544b, including the hardware specification, final core pin CSV, generator and single-sided-r4 record. F_CLK moved from Core SODIMM pin80 to pin52 (generator: K14 / IOT30A / GCLKT_1); pin80 is now P2_6. P4 clock remains GPIO16. These source assignments are not electrical validation. r4 removes the main and FPGA-only SW3 switches; there is no carrier external-power switch and Tab5 battery power is not controlled. Power isolation/sequencing and fabrication readiness remain unverified; EasyEDA migration/Spark publication are incomplete.
 
 MeOS now has an explicit software-only bringup-v0 codec/mock diagnostic, with no physical pin allocation. See [FPGA link scope](FPGA_LINK.md). The new BMP shell viewer uses the existing P4 LCD path and changes no carrier signal allocation.
+
+## Review update: 2026-10-28 (FPGA device ownership)
+
+Reviewed carrier `d9a2618ffc33ae84c4fdd98e517cb2517827d13f` (branch `claude/tab5-tang-primer-test-64f0c5`, not yet merged to main): `AGENTS.md`, `README.md`, `docs/リポジトリ分担と参照ルール.md`, `docs/FPGAデバイス構成_ビットストリームと機能.md`, `fpga/README.md`, `docs/Dockジャンパ試験_配線とFPGA構成_2026-10-28.md`.
+
+- The carrier repository now owns the FPGA device: bitstreams split by function (LINK, GFX, NPU, MEM), RTL, constraints, and the link/command specification. GFX, NPU, HDMI and RAMdisk are intended for every host (ESP-IDF, MeOS, NOMMU Linux). This repository keeps the MeOS host driver and GUI integration; the "MeOS and RTL contract" above is a requirement on the carrier device specification.
+- Default bitstream plan before measurement: GFX with HDMI and RAMdisk, NPU with RAMdisk, MEM alone; split further if an option costs 5-10% or more performance, fails timing or forces fewer MACs/tiles. GFX output to the Tab5 LCD uses the readback route described above.
+- A Dock jumper bench (Tab5 M5-Bus to Dock J12/J5/J14, same P4 GPIO assignment, CLK on T7 GCLKT_3) was documented for pre-carrier tests. The link v0 bitstream is shared by ESP-IDF, MeOS and Linux; MeOS still needs its physical GPIO/PARLIO backend. Nothing in this update was synthesized or tested on hardware.
