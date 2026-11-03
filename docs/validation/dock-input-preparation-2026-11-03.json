@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-03",
+  "port": "COM4",
+  "configured_inputs_no_pull": [
+    18,
+    19,
+    5,
+    3,
+    4,
+    2,
+    48,
+    47,
+    16,
+    45,
+    51,
+    17,
+    52,
+    6,
+    7
+  ],
+  "ownership": "shell retained until IO reset",
+  "software_command_confirmation": true,
+  "physical_hi_z_measurement": false,
+  "user_report": "Header pins 1/2=3.3V and 3/4=GND confirmed by user; exact board revision not supplied",
+  "physical_link_tested": false
+}
