@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-03",
+  "initial_after_flash": "shell alive, display buffers=0; no FPGA transaction attempted",
+  "recovery": "ROM/esptool reset without flash",
+  "boot": "ST7123 firmware3, two framebuffers, LCD ok, 13 refresh interrupts, 0 command failures",
+  "display_status": "display: buffers=2 refreshes=3942 batches=17 submitted=17 retired=17 errors=0 timeouts=0 max_us=295906 back=1 active=0",
+  "all_15_pins_inputs_no_pull": true,
+  "visual_confirmation": true,
+  "cause": "undetermined",
+  "physical_link_tested": false,
+  "user_confirmation": "screen OK",
+  "io_owner_released_inputs_preserved": true
+}
