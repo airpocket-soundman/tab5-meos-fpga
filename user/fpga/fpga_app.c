@@ -93,9 +93,18 @@ int fpga_cmd_main(int argc,char **argv)
         } else error=fpga_link_exchange(&link,op,a,b,result,100000);
         if(gpio.error)error=gpio.error;
         fpga_gpio_close(&gpio);
+        char txhex[17],rxhex[17];
+        static const char hex[]="0123456789abcdef";
+        for(unsigned i=0;i<8;i++) {
+            txhex[2*i]=hex[gpio.request[i]>>4];txhex[2*i+1]=hex[gpio.request[i]&15];
+            rxhex[2*i]=hex[gpio.response[i]>>4];rxhex[2*i+1]=hex[gpio.response[i]&15];
+        }
+        txhex[16]=rxhex[16]=0;
         kprintf("{\"backend\":\"dock-gpio\",\"profile\":\"dock-jumper-v0\",\"result\":\"%s\","
-                "\"transactions\":%u,\"data\":[%u,%u],\"reset_required\":%s}\n",
-                fpga_link_error(error),link.completed,result[0],result[1],error?"true":"false");
+                "\"transactions\":%u,\"data\":[%u,%u],\"reset_required\":%s,"
+                "\"sent\":%u,\"received\":%u,\"request_hex\":\"%s\",\"response_hex\":\"%s\",\"elapsed_us\":%u}\n",
+                fpga_link_error(error),link.completed,result[0],result[1],error?"true":"false",
+                gpio.sent,gpio.received,txhex,rxhex,(unsigned)gpio.elapsed_us);
         return error?1:0;
     }
 #endif

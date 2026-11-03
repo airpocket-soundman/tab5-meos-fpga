@@ -92,6 +92,9 @@ static int begin(void *ctx,uint64_t end)
     fpga_gpio_t *g=ctx;
     if(!g->claimed || g->failed) {g->error=FPGA_LINK_IO;return -1;}
     g->error=0;
+    g->sent=0;g->received=0;g->elapsed_us=0;
+    memset(g->request,0,sizeof g->request);memset(g->response,0,sizeof g->response);
+    g->started_us=hal_time_now_us();
     if(check(g,end) || data_input(g) || config(g,CLK,true,0) || config(g,DIR,true,0)
        || wait_ready(g,0,end) || pause_us(g,200,end)) return -1;
     for(unsigned i=0;i<8;i++) if(config(g,pins[i],true,0)) return -1;
@@ -110,6 +113,7 @@ static int send(void *ctx,const uint8_t *data,size_t n,uint64_t end)
         if(check(g,end)) return -1;
         for(unsigned i=0;i<8;i++) if(write_pin(g,pins[i],(data[j]>>i)&1)) return -1;
         if(pause_us(g,100,end) || pulse(g,end)) return -1;
+        if(g->sent<8)g->request[g->sent++]=data[j];
     }
     return (int)n;
 }
@@ -132,6 +136,7 @@ static int receive(void *ctx,uint8_t *data,size_t n,uint64_t end)
             if(io_gpio_read(g->owner,pins[i],&value)) {g->error=FPGA_LINK_IO;return -1;}
             data[j]|=(uint8_t)(value<<i);
         }
+        if(g->received<8)g->response[g->received++]=data[j];
         if(pulse(g,end)) return -1;
     }
     if(write_pin(g,DIR,0) || pause_us(g,200,end) || wait_ready(g,0,end)) return -1;
@@ -141,6 +146,7 @@ static void finish(void *ctx,bool failed)
 {
     fpga_gpio_t *g=ctx;
     g->failed=failed;
+    g->elapsed_us=hal_time_now_us()-g->started_us;
     safe(g);
 }
 static uint64_t now(void *ctx) {(void)ctx;return hal_time_now_us();}

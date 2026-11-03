@@ -12,6 +12,8 @@ typedef struct {
     io_owner_t owner;
     int error;
     bool claimed, failed;
+    uint8_t request[8], response[8], sent, received;
+    uint64_t started_us, elapsed_us;
     bool (*cancel)(void *);
     void *cancel_context;
 } fpga_gpio_t;

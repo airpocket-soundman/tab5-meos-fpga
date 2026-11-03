@@ -27,6 +27,8 @@ if __name__ == "__main__":
                 [str(exe), "fpga", "--dock", "dock-jumper-v0", *command], text=True))
             assert report["result"] == "ok" and report["transactions"] == count
             assert report["reset_required"] is False
+            assert report["sent"] == 8 and report["received"] == 8
+            assert len(bytes.fromhex(report["request_hex"])) == len(bytes.fromhex(report["response_hex"])) == 8
         for command in [["--dock"], ["--dock", "carrier", "id"],
                         ["--dock", "dock-jumper-v0", "echo", "256", "0"]]:
             assert subprocess.run([str(exe), "fpga", *command], capture_output=True).returncode

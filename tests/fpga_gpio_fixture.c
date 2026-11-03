@@ -159,6 +159,9 @@ int main(int argc,char **argv)
     assert(fpga_gpio_open(&g,"dock-jumper-v0")==FPGA_LINK_BUSY&&claimed);
     fpga_link_t l={.ops=&fpga_gpio_ops,.context=&g};
     assert(!fpga_link_exchange(&l,1,0,0,r,100000));
+    assert(g.sent==8&&g.received==8&&g.elapsed_us>0);
+    assert(g.request[0]==0xa5&&g.request[1]==1&&g.response[0]==0x5a&&g.response[4]==0x54&&g.response[5]==0x50);
+    assert(fpga_link_response(g.response,g.request)==0);
     for(unsigned i=0;i<256;i++)for(unsigned op=2;op<=3;op++) {
         assert(!fpga_link_exchange(&l,(uint8_t)op,(uint8_t)i,(uint8_t)(i^255),r,100000));inputs();
     }
