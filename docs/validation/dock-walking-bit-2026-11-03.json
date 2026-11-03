@@ -1,0 +1,208 @@
+{
+  "date": "2026-11-03",
+  "backend": "physical Dock LINK v0",
+  "method": "CRC-validated remote echo, not a direct electrical pin measurement",
+  "cases": [
+    {
+      "pattern": 0,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          0,
+          0
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a50200020000da86",
+        "response_hex": "5a0000020000e696",
+        "elapsed_us": 5318
+      },
+      "passed": true
+    },
+    {
+      "pattern": 1,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          1,
+          1
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a50200020101caa5",
+        "response_hex": "5a0000020101f6b5",
+        "elapsed_us": 5314
+      },
+      "passed": true
+    },
+    {
+      "pattern": 2,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          2,
+          2
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a50200020202fac0",
+        "response_hex": "5a0000020202c6d0",
+        "elapsed_us": 5317
+      },
+      "passed": true
+    },
+    {
+      "pattern": 4,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          4,
+          4
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a502000204049a0a",
+        "response_hex": "5a0000020404a61a",
+        "elapsed_us": 5312
+      },
+      "passed": true
+    },
+    {
+      "pattern": 8,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          8,
+          8
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a502000208087b8e",
+        "response_hex": "5a0000020808479e",
+        "elapsed_us": 5316
+      },
+      "passed": true
+    },
+    {
+      "pattern": 16,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          16,
+          16
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a502000210109897",
+        "response_hex": "5a0000021010a487",
+        "elapsed_us": 5312
+      },
+      "passed": true
+    },
+    {
+      "pattern": 32,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          32,
+          32
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a502000220205ea4",
+        "response_hex": "5a000002202062b4",
+        "elapsed_us": 5317
+      },
+      "passed": true
+    },
+    {
+      "pattern": 64,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          64,
+          64
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a50200024040d2c3",
+        "response_hex": "5a0000024040eed3",
+        "elapsed_us": 5311
+      },
+      "passed": true
+    },
+    {
+      "pattern": 128,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          128,
+          128
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a50200028080ca0c",
+        "response_hex": "5a0000028080f61c",
+        "elapsed_us": 5315
+      },
+      "passed": true
+    },
+    {
+      "pattern": 255,
+      "response": {
+        "backend": "dock-gpio",
+        "profile": "dock-jumper-v0",
+        "result": "ok",
+        "transactions": 1,
+        "data": [
+          255,
+          255
+        ],
+        "reset_required": false,
+        "sent": 8,
+        "received": 8,
+        "request_hex": "a5020002ffffd59b",
+        "response_hex": "5a000002ffffe98b",
+        "elapsed_us": 5314
+      },
+      "passed": true
+    }
+  ],
+  "passed": true
+}

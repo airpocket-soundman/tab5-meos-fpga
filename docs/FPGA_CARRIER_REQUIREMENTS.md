@@ -265,3 +265,7 @@ The user's firmware-write authorization and reported wiring checks permit prepar
 ### First physical ID failure and trace preparation
 
 Re-fetched carrier a277b683302017271a22d3cb37b3e164ff11d25f. With user SW0 ON, one ID attempt returned CRC mismatch; no automatic retry. User returned SW0 OFF. GPIO trace additions record the last transmitted/received bytes, counts and elapsed time without changing pins, timing, wire format or FPGA source. Raw bytes are diagnostic only, never substituted for validated result. Cause remains unresolved until a subsequent explicitly coordinated single trial.
+
+## Low-speed physical LINK verification after wiring correction
+
+On 2026-11-03, user corrected a cable insertion and enabled printed DIP1 (reviewed schematic: first pole SW_01 -> SW0/C7). MeOS and the recorded LINK image passed ID, 8 walking bits plus00/FF, and513 CRC-validated transactions. See [physical suite](validation/dock-physical-suite-2026-11-03.json). Previous constant0x28 failure ceased with unchanged firmware/image. No GPIO/pin/RTL specification change was needed. The full5kHz electrical limit, higher-speed transport, power-off isolation, DDR3 and GUI acceleration remain unverified. Physical board silkscreen revision remains unreported; compatibility is limited to the user-confirmed wiring/header arrangement tested.

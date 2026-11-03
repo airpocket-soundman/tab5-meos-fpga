@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-03",
+  "user_report": "Cable correction completed; DIP1 ON",
+  "command": "fpga --dock dock-jumper-v0 id",
+  "response": {
+    "backend": "dock-gpio",
+    "profile": "dock-jumper-v0",
+    "result": "ok",
+    "transactions": 1,
+    "data": [
+      84,
+      80
+    ],
+    "reset_required": false,
+    "sent": 8,
+    "received": 8,
+    "request_hex": "a501000200000868",
+    "response_hex": "5a0000025450680e",
+    "elapsed_us": 5314
+  },
+  "automatic_retry": false
+}

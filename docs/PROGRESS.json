@@ -219,14 +219,14 @@
     },
     {
       "id": "fpga-link-mock",
-      "status": "host-tested",
+      "status": "verified",
       "title": {
-        "ja": "FPGA通信：ソフトウェア基盤",
-        "en": "FPGA protocol software groundwork"
+        "ja": "FPGA低速LINK：実通信",
+        "en": "FPGA low-speed LINK: physical communication"
       },
       "detail": {
-        "ja": "GPIOモデル513通信・LINK 583件・GFX 1442件・NPU CPU 567件を確認。試験版を実機へ書込み。物理ID初回はCRC不一致で停止し、受信バイト診断を追加。物理通信の成功、DDR3/DMAは未確認。",
-        "en": "GPIO-model 513 exchanges, LINK 583 vectors, GFX 1442 vectors and NPU CPU 567 cases passed. Trial firmware flashed. First physical ID failed CRC; stopped and added raw-byte diagnostics. Physical link success, DDR3 and DMA remain unverified."
+        "ja": "公式Dockとの実通信でID・8bit walking-bit・全0/全1・ID＋全256値echo/反転（513通信）がCRC一致で成功。ケーブル差し間違い修正後に確認。ビットバング最大5kHzの限定試験。DDR3・DMA・高速/長時間負荷は未確認。",
+        "en": "Official Dock physical ID, eight walking bits, all-zero/all-one and 513 exchanges (ID + 256 echo/invert pairs) passed CRC after cable correction. Limited bitbang trial, max 5kHz; DDR3, DMA, high-speed and sustained-load checks pending."
       }
     },
     {

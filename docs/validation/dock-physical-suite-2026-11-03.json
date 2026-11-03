@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-03",
+  "command": "fpga --dock dock-jumper-v0 test",
+  "cases": "1 ID + 256 echo + 256 invert",
+  "physical_link_tested": true,
+  "response": {
+    "backend": "dock-gpio",
+    "profile": "dock-jumper-v0",
+    "result": "ok",
+    "transactions": 513,
+    "data": [
+      0,
+      255
+    ],
+    "reset_required": false,
+    "sent": 8,
+    "received": 8,
+    "request_hex": "a5030002ff00742f",
+    "response_hex": "5a00000200ff1688",
+    "elapsed_us": 5261
+  },
+  "passed": true,
+  "automatic_retry": false,
+  "firmware_sha256": "9362cbe12ac4e9490f95b18b8a2c06a2e5ae30f4e84d22470aa2243b32a45be7",
+  "fpga_fs_sha256": "b403c0879c8c867ae716b231361a88e9ea0642fd0bb1ac17bd943cf2470e3e3f",
+  "display_status_after": "display: buffers=2 refreshes=69446 batches=39 submitted=39 retired=39 errors=0 timeouts=0 max_us=377093 back=1 active=0",
+  "memory_after": {
+    "schema": 1,
+    "units": "bytes",
+    "internal": {
+      "total": 196608,
+      "used": 94416,
+      "free": 102192,
+      "largest": 98064,
+      "peak": 98528,
+      "alloc_count": 12,
+      "fail_count": 0
+    },
+    "psram": {
+      "total": 29360128,
+      "used": 8588864,
+      "free": 20771264,
+      "largest": 20771248,
+      "peak": 8588864,
+      "alloc_count": 7,
+      "fail_count": 0
+    }
+  },
+  "scope_note": "Single low-speed suite; no long-duration/load/DDR3/DMA/electrical-waveform validation"
+}

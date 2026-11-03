@@ -7,11 +7,13 @@ An experimental MeOS fork for a graphical M5Stack Tab5 environment with FPGA-ass
 **[Development plan & feature status — English / 日本語](https://airpocket-soundman.github.io/tab5-meos-fpga/)**
 
 
-BMP shell viewing is available with `image FILE.bmp` and `image --info FILE.bmp`; see [scope and validation](docs/IMAGE_VIEWER.md). FPGA protocol/mock diagnostics are implemented; [physical communication remains pending](docs/FPGA_LINK.md).
+BMP shell viewing is available with `image FILE.bmp` and `image --info FILE.bmp`; see [scope and validation](docs/IMAGE_VIEWER.md). FPGA protocol/mock diagnostics are implemented; [physical LINK validation scope](docs/FPGA_LINK.md).
+
+Physical low-speed LINK to the official Dock passed ID, eight walking bits and a 513-exchange echo/inversion suite after correcting a cable connection. DDR3/DMA/high-speed/GFX hardware remain pending; see [physical LINK results](docs/FPGA_LINK.md).
 
 ## Current status
 
-Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard command input and USB card-reader mounting/listing also passed limited checks. `lsusb` shows native USB topology and mounts; see [diagnostics](docs/USB_DIAGNOSTICS.md) and [USB implementation](docs/USB_IMPLEMENTATION.md). Sustained input under load, high-speed mixed-speed hubs, FPGA communication, GUI extensions and full peripheral regression remain unverified.
+Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard command input and USB card-reader mounting/listing also passed limited checks. `lsusb` shows native USB topology and mounts; see [diagnostics](docs/USB_DIAGNOSTICS.md) and [USB implementation](docs/USB_IMPLEMENTATION.md). Sustained input under load, high-speed mixed-speed hubs, higher-speed FPGA communication, GUI extensions and full peripheral regression remain unverified.
 
 USB Ethernet (RTL8153 CDC-ECM) passed link, DHCP, ping and SSH tests. The SSH server and client ran concurrently on hardware. Console ANSI/DEC extensions passed host tests; touch is being rechecked after adding ST7123/ST7121 input. USB storage reads and writes now pass alongside Ethernet ping without packet loss in the tested runs. C6 was updated to the official MCU application. Wi-Fi initialization, scanning, WPA2 association, DHCP, DNS and HTTP traffic passed on hardware with Ethernet unplugged. See [Ethernet](docs/USB_ETHERNET_IMPLEMENTATION.md), [SSH server](docs/SSH_SERVER_IMPLEMENTATION.md) and [terminal](docs/TERMINAL_IMPLEMENTATION.md) implementation records.
 

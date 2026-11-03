@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-03",
+  "command": "fpga --dock dock-jumper-v0 id",
+  "user_sw0": "ON",
+  "response": {
+    "backend": "dock-gpio",
+    "profile": "dock-jumper-v0",
+    "result": "crc",
+    "transactions": 0,
+    "data": [
+      0,
+      0
+    ],
+    "reset_required": true,
+    "sent": 8,
+    "received": 8,
+    "request_hex": "a501000200000868",
+    "response_hex": "2828282828282828",
+    "elapsed_us": 5316
+  },
+  "transactions_requested": 1,
+  "automatic_retry": false,
+  "user_report_after_test": "Cable insertion error found and corrected by user; subsequent retry pending manual DIP1 ON",
+  "cause": "Unresolved; constant 0x28 received. Cable correction reported; JTAG hypothesis not established."
+}

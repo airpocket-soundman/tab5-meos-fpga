@@ -177,3 +177,14 @@ Integrated build passed with ESP-IDF 5.4.4 and `M5OS_MODULES=fpga`, review gate 
 The first single physical ID attempt returned `crc`, completed transactions0; validated data remained untouched. No automatic retry followed; user returned SW0 OFF. [First result](validation/dock-physical-id-2026-11-03.json). Do not treat the returned zero data as raw wire bytes.
 
 The GPIO session now retains the last request/response (up to eight bytes), successful transmit count, sampled receive count and elapsed time. LINK CLI prints `request_hex`, `response_hex`, `sent`, `received`, `elapsed_us` after cleanup. Bytes are zero-padded after partial transfers; interpret only the recorded count. Failed/partial bytes remain diagnostics, never accepted payload. Pins, wire format and clock/guard timing are unchanged. Model tests assert valid ID trace and counters; LINK/GFX/NPU regressions and minimal native build passed. [Trace firmware preparation](validation/dock-trace-flash-2026-11-03.json).
+
+## Physical LINK passed after cable correction (2026-11-03)
+
+User found and corrected a cable insertion error, then set physical DIP position1 ON. The previously named RTL `SW0` corresponds to position1 of the five-position DIP in the reviewed Dock_3714 schematic (sheet9, SW_01 to SW0); future instructions use the printed position. No MeOS firmware or FPGA image changed between the constant-0x28 trace and the successful retry. This supports the reported wiring fault as the cause; individual physical wire voltages were not measured by software.
+
+- One ID: received `5a0000025450680e`, validated TP and CRC.
+- Ten echo cases: 00, 01, 02, 04, 08, 10, 20, 40, 80, FF (hex), sent in both payload bytes; all values/CRCs matched. This is remote echo validation, not direct electrical sampling of each pad.
+- One native suite: 1 ID + all256 echo + all256 inversion = 513 successful transactions, stopping on first failure and without automatic retry.
+- Afterwards LCD retained two buffers, all39 submitted batches retired, display errors/timeouts0. Internal heap free102192 B; PSRAM free20771264 B; allocation-failure counters0. This is a post-test snapshot, not a before/after leak proof.
+
+[ID evidence](validation/dock-id-after-cable-fix-2026-11-03.json), [walking bits](validation/dock-walking-bit-2026-11-03.json), [suite/artifact hashes/runtime](validation/dock-physical-suite-2026-11-03.json). Firmware9362cbe12ac4e9490f95b18b8a2c06a2e5ae30f4e84d22470aa2243b32a45be7; FPGA FS b403c0879c8c867ae716b231361a88e9ea0642fd0bb1ac17bd943cf2470e3e3f (LINK only). The GPIO service releases ownership and returns pins to inputs at command completion; host cleanup tests cover this path. No physical Hi-Z waveform measurement, long-duration/load test, PARLIO/GDMA, DDR3 or hardware GFX validation is implied. `fpga status` still contains a build-time `physical_link_tested:false` literal; it does not persist these externally recorded hardware results.

@@ -2,6 +2,8 @@
 
 Baseline measured 2026-10-24; latest snapshot updated 2026-10-26. KiB = 1,024 bytes; MiB = 1,048,576 bytes.
 
+2026-11-03の実機は、LINK試験用の最小fpgaモジュール構成です。[実機試験後のヒープ値](validation/dock-physical-suite-2026-11-03.json)と[試験版のビルド資源](resources/deployed-dock-trace.json)は別に記録しています。以下の比較表は以前の全機能版の履歴であり、最小試験版との単純差分を機能追加コストとは扱いません。
+
 ## 同一条件での比較
 
 機能追加前の上流版 a6a9f23 と現在の版を、同じ ESP-IDF v5.4.4、GCC 14.2.0、サイズ最適化、SDK設定でビルドしました。フラッシュの増加率とRAMの増加率は別です。
