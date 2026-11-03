@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-03",
+  "port": "COM4",
+  "mac": "30:ed:a0:e2:fe:c0",
+  "modules": "fpga",
+  "gate": "ON",
+  "sha256": "9362cbe12ac4e9490f95b18b8a2c06a2e5ae30f4e84d22470aa2243b32a45be7",
+  "bytes": 1152624,
+  "physical_link_tested": false,
+  "automatic_arm": false,
+  "all_15_pins_inputs_no_pull": true,
+  "io_owner_released": true,
+  "display_status": "display: buffers=2 refreshes=4901 batches=18 submitted=18 retired=18 errors=0 timeouts=0 max_us=295978 back=1 active=0",
+  "gpio_trace_fields": "sent/received/request_hex/response_hex/elapsed_us",
+  "user_sw0": "OFF before flash"
+}

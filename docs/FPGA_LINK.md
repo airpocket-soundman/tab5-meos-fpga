@@ -171,3 +171,9 @@ Prepared build records created before integrating bcaf737 are historical, **not 
 Latest wiring correction: the reported physical J5 is 1/2=3.3V, 3/4=GND; do not use the old saved schematic GND pair. Follow the [second remote review](FPGA_CARRIER_REQUIREMENTS.md) and measure the actual headers before wiring. The FPGA top/SSPI packer setting must also be reconciled on the carrier side.
 
 Integrated build passed with ESP-IDF 5.4.4 and `M5OS_MODULES=fpga`, review gate OFF. [Artifact/resource snapshot](resources/integrated-dock-gpio.json). This minimal firmware excludes other optional features and has not been flashed. The merged default/full build failed in existing camera ISP LL calls with the available 5.4.4 SDK; the remote validation used 5.5.2. Do not treat the minimal pass as a full-feature build pass.
+
+## Physical trial and raw diagnostics (2026-11-03)
+
+The first single physical ID attempt returned `crc`, completed transactions0; validated data remained untouched. No automatic retry followed; user returned SW0 OFF. [First result](validation/dock-physical-id-2026-11-03.json). Do not treat the returned zero data as raw wire bytes.
+
+The GPIO session now retains the last request/response (up to eight bytes), successful transmit count, sampled receive count and elapsed time. LINK CLI prints `request_hex`, `response_hex`, `sent`, `received`, `elapsed_us` after cleanup. Bytes are zero-padded after partial transfers; interpret only the recorded count. Failed/partial bytes remain diagnostics, never accepted payload. Pins, wire format and clock/guard timing are unchanged. Model tests assert valid ID trace and counters; LINK/GFX/NPU regressions and minimal native build passed. [Trace firmware preparation](validation/dock-trace-flash-2026-11-03.json).

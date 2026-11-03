@@ -225,8 +225,8 @@
         "en": "FPGA protocol software groundwork"
       },
       "detail": {
-        "ja": "リモートbcaf737のDock GPIO・診断実装を統合。GPIOモデル513通信と583互換ベクトルを確認。追加した電気確認ゲートは既定OFFで実出力を拒否。実機未書込み・実通信未検証。",
-        "en": "Integrated remote bcaf737 Dock GPIO diagnostics. 513 GPIO-model exchanges and 583 compatibility vectors checked. Electrical-review gate defaults OFF and denies physical activation. Not flashed or physically tested."
+        "ja": "GPIOモデル513通信・LINK 583件・GFX 1442件・NPU CPU 567件を確認。試験版を実機へ書込み。物理ID初回はCRC不一致で停止し、受信バイト診断を追加。物理通信の成功、DDR3/DMAは未確認。",
+        "en": "GPIO-model 513 exchanges, LINK 583 vectors, GFX 1442 vectors and NPU CPU 567 cases passed. Trial firmware flashed. First physical ID failed CRC; stopped and added raw-byte diagnostics. Physical link success, DDR3 and DMA remain unverified."
       }
     },
     {

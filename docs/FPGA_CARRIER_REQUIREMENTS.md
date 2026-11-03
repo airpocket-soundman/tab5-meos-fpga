@@ -261,3 +261,7 @@ Re-fetched carrier main a277b683302017271a22d3cb37b3e164ff11d25f. User reports t
 Read-only programmer checks returned status0x6020 and UserCode0x9E2D, matching D:/tmp/tab5-dock-link-waiting/hardware-programming.json. Recorded FPGA FS SHA256 b403c0879c8c867ae716b231361a88e9ea0642fd0bb1ac17bd943cf2470e3e3f matches the present file and build manifest. This is LINK only, not GFX/DDR3. No FPGA reprogramming was performed by this session.
 
 The user's firmware-write authorization and reported wiring checks permit preparing the explicit-command-only M5OS_FPGA_DOCK_VERIFIED=ON bench build. This gate grants controlled trial access; it is not proof of complete electrical compatibility or successful physical communication. No automatic test/ARM is added. SW0 stays OFF until inputs are re-established after P4 flash and the user is instructed to ARM manually.
+
+### First physical ID failure and trace preparation
+
+Re-fetched carrier a277b683302017271a22d3cb37b3e164ff11d25f. With user SW0 ON, one ID attempt returned CRC mismatch; no automatic retry. User returned SW0 OFF. GPIO trace additions record the last transmitted/received bytes, counts and elapsed time without changing pins, timing, wire format or FPGA source. Raw bytes are diagnostic only, never substituted for validated result. Cause remains unresolved until a subsequent explicitly coordinated single trial.

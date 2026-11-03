@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-03",
+  "command": "fpga --dock dock-jumper-v0 id",
+  "user_sw0": "ON",
+  "response": {
+    "backend": "dock-gpio",
+    "profile": "dock-jumper-v0",
+    "result": "crc",
+    "transactions": 0,
+    "data": [
+      0,
+      0
+    ],
+    "reset_required": true
+  },
+  "transactions_requested": 1,
+  "physical_link_tested": true,
+  "scope": "single ID only; no automatic retry",
+  "firmware_sha256": "8bf7c2b76ef1de337c72124f2147d9db72fa9ace8151118201925ab56ef8234d",
+  "fpga_fs_sha256": "b403c0879c8c867ae716b231361a88e9ea0642fd0bb1ac17bd943cf2470e3e3f",
+  "raw_bytes_available": false,
+  "response_data_note": "Validated result buffer, not raw bytes; unchanged on CRC failure",
+  "user_recovery": "SW0 OFF confirmed"
+}
