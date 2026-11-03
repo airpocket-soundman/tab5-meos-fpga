@@ -15,5 +15,16 @@ int main(int argc,char **argv){
  uint8_t good[]={2,0x82,9,8,7,6};assert(uvc_payload(&frame,good,sizeof good));
  uint8_t bad[]={2,0xc3,1,2,3,4};assert(!uvc_payload(&frame,bad,sizeof bad)&&frame.bad);
  uint8_t shortpts[]={2,0x86};assert(!uvc_payload(&frame,shortpts,sizeof shortpts)&&frame.bad);
- puts("PASS UVC real descriptors, truncation/mutation bounds, frame assembly/error/FID/overflow");return 0;
+ /* Motion-JPEG: variable-length frames; the camera error bit is advisory (the decoder checks the frame) */
+ uint8_t jraw[16]={0};uvc_frame_t jf={.data=jraw,.capacity=sizeof jraw,.variable=true,.ignore_error=true};
+ uint8_t j1[]={2,0x80,0xff,0xd8},j2[]={2,0x42,0xff,0xd9};
+ uint8_t jexp[]={0xff,0xd8,0xff,0xd9};
+ assert(!uvc_payload(&jf,j1,sizeof j1));assert(uvc_payload(&jf,j2,sizeof j2));assert(jf.used==4&&!memcmp(jraw,jexp,4)&&!jf.bad);
+ uint8_t jlong[]={2,0x80,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18};
+ assert(!uvc_payload(&jf,jlong,sizeof jlong)&&jf.bad);                       /* does not fit: still dropped */
+ uvc_frame_t strict={.data=jraw,.capacity=sizeof jraw,.variable=true};       /* error bit counts unless ignored */
+ assert(!uvc_payload(&strict,j2,sizeof j2)&&strict.bad);
+ uvc_frame_t empty={.data=jraw,.capacity=sizeof jraw,.variable=true};
+ uint8_t eof_only[]={2,0x82};assert(!uvc_payload(&empty,eof_only,sizeof eof_only));  /* no data: not a frame */
+ puts("PASS UVC real descriptors, truncation/mutation bounds, frame assembly/error/FID/overflow, MJPEG framing");return 0;
 }

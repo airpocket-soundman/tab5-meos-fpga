@@ -8,3 +8,6 @@ bool sd_fat_mount(blockdev_t *bd);
 bool usb_fat_mount_slot(unsigned slot, blockdev_t *bd);
 void usb_fat_detach_slot(unsigned slot);
 bool usb_fat_slot_busy(unsigned slot);
+bool usb_fat_slot_mounted(unsigned slot);
+/* Mount FAT volumes for block devices that appear in the device registry ("sd", "usb" kinds). */
+void fat_automount_init(void);

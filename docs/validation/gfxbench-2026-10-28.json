@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-28",
+  "upstream": "tab5-fpga-gpu d4d89e308b4a8aa799199b20e7d47c96b536e3fd",
+  "carrier_review": "e5a386d263d8911a490922cc2770292699a87080",
+  "host_tests": {
+    "result": "pass",
+    "reference_combinations": 60,
+    "compared": [
+      "RGB565 checksum",
+      "depth checksum",
+      "vertices",
+      "lines",
+      "triangles",
+      "iterations"
+    ],
+    "suites": {
+      "legacy_float": 24,
+      "integer_g0": 6
+    },
+    "measured_frames_per_case": 120,
+    "warmup_frames_per_case": 24,
+    "allocation_failure_points": 6,
+    "other": [
+      "buffer guards",
+      "determinism",
+      "statistics/p95",
+      "scene/load/raster/pause/bench controls",
+      "cancel",
+      "LCD error",
+      "console pause restoration",
+      "allocation cleanup",
+      "argument rejection"
+    ]
+  },
+  "firmware_renderer_symbols": "no global new/delete, malloc/free or FreeRTOS APIs; checked allocation hooks only",
+  "builds": {
+    "gfxbench": {
+      "result": "pass",
+      "application_bytes": 1253104
+    },
+    "gfxbench,fpga_gfx": {
+      "result": "pass",
+      "application_bytes": 1263824
+    },
+    "defaults (gfxbench disabled)": {
+      "result": "pass",
+      "application_bytes": 1458112
+    },
+    "stable modules + gfxbench + fpga_gfx": {
+      "result": "pass",
+      "application_bytes": 1492288
+    }
+  },
+  "ready_image": "D:\\GitHub\\tab5-meos-fpga\\build-tab5\\m5os.bin",
+  "ready_image_sha256": "11e5135ee9efd41478576bcb42f8690ea51b0f1e529c6a8fbd38190c88d0bbe6",
+  "ready_modules": "camera,uvc,mjpeg,camsrc,micropython,mp_camera,sl,gfxbench,fpga_gfx (plus fpga dependency)",
+  "hardware_flashed": false,
+  "hardware_display_tested": false,
+  "fpga_polygon_backend": false,
+  "note": "Host timings are from HAL/display stubs, not hardware performance. Firmware builds include unrelated pre-existing dirty module/camera/USB changes."
+}

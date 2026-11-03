@@ -7,6 +7,7 @@
 #include <m5os/display.h>
 #include <m5os/kmalloc.h>
 #include <m5os/device.h>
+#include <m5os/devreg.h>
 #include <m5os/errno.h>
 #include <m5os/dev_display.h>
 #include <m5os/dev_buttons.h>
@@ -419,8 +420,7 @@ void kernel_main(void)
 #if defined(M5OS_BOARD_TAB5)
     /* Keep RAM root and mount the existing FAT card separately. */
     rootfs_mount(NULL);
-    extern bool sd_fat_mount(blockdev_t *bd);
-    if (sd) sd_fat_mount(sd);
+    if (sd) devreg_add(DEVREG_BLOCK, "sd0", "sd", 0, sd);      /* mounted at /sd by the FAT automounter */
 #else
     rootfs_mount(sd);
 #endif

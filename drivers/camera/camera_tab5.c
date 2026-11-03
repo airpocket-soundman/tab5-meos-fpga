@@ -59,6 +59,7 @@ static uint16_t s_chip_id;
 static uint16_t *s_fb[2];
 static volatile int s_write_idx;
 static volatile const uint16_t *s_ready_fb;
+static uint32_t s_short_frames; /* transfers discarded because the bridge was enabled mid-frame */
 static volatile uint32_t s_frames;
 static isp_hal_context_t s_isp_context;
 static isp_hal_context_t *s_isp;
@@ -146,7 +147,7 @@ static void apply_wb_ccm(isp_hal_context_t *isp, float r_gain, float b_gain) {
     }
     isp_ll_ccm_set_clk_ctrl_mode(isp->hw, ISP_LL_PIPELINE_CLK_CTRL_AUTO);
     isp_hal_ccm_set_matrix(isp, true, matrix);
-    isp_ll_shadow_update_ccm(isp->hw, false);
+    isp_ll_shadow_update_ccm(isp->hw);
 }
 
 static void configure_isp_pipeline(isp_hal_context_t *isp) {
@@ -220,7 +221,7 @@ static void configure_isp_pipeline(isp_hal_context_t *isp) {
     };
     isp_hal_color_config(isp, &color_cfg);
     isp_ll_color_set_clk_ctrl_mode(isp->hw, ISP_LL_PIPELINE_CLK_CTRL_AUTO);
-    isp_ll_shadow_update_color(isp->hw, false);
+    isp_ll_shadow_update_color(isp->hw);
     isp_ll_color_enable(isp->hw, true);
 }
 
@@ -374,6 +375,25 @@ const uint16_t *camera_frame(uint32_t *seq_out) {
     }
     if (s_streaming) {
         int status = native_camera_poll();
+        if (status > 0) {
+            /* The CSI bridge is re-enabled at an arbitrary point of the sensor's free-running stream, so the
+             * transfer can end with the tail of the frame in progress (a few rows).  The destination address
+             * tells how much arrived: discard a short transfer and re-arm at once, which lands just after the
+             * frame boundary and so captures the next frame whole. */
+            uintptr_t written = (uintptr_t)DW_GDMA_LL_GET_HW(0)->ch[CAMERA_DMA_CH].dar0.dar0 -
+                                (uintptr_t)s_fb[s_write_idx];
+            if (written < FB_BYTES) {
+                s_short_frames++;
+                if (!native_camera_start(s_fb[s_write_idx])) {
+                    sccb_write(SC202CS_REG_STREAM, 0);
+                    if (!native_camera_stop())
+                        s_poisoned = true;
+                    s_streaming = false;
+                    ksnprintf(s_error, sizeof(s_error), "Could not rearm CSI DMA");
+                }
+                status = 0;
+            }
+        }
         if (status > 0) {
             s_ready_fb = s_fb[s_write_idx];
             s_frames++;
@@ -548,3 +568,7 @@ void camera_get_status(camera_status_t *out) {
     out->vflip = s_vflip;
     out->auto_exp = s_auto_exp;
 }
+
+/* The built-in camera is the registry device "camera0" (see m5os/devreg.h). */
+#include <m5os/devreg.h>
+void camera_dev_register(void) { devreg_add(DEVREG_CAMERA, "camera0", "onboard", 0, DEVREG_CAMERA_ONBOARD); }

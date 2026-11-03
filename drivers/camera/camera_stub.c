@@ -40,3 +40,5 @@ void camera_get_status(camera_status_t *out) {
     out->vflip = false;
     out->auto_exp = false;
 }
+
+void camera_dev_register(void) {}

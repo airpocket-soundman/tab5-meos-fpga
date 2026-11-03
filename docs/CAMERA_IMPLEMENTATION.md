@@ -82,3 +82,19 @@ or completion timeouts. These checks establish capture/save/restart operation;
 image quality and sustained frame rate have not been measured.
 
 The saved native 640×360 BMP was read back: all 230400 pixels were nonzero, pixel values varied, and the decoded RGB565 FNV checksum was `07d53fa4`. This confirms decodable nonuniform stored content, not visual scene/color/orientation correctness. A final UVC coexistence run retained both display buffers with 16/16 retirements and no errors/timeouts; maximum observed display batch duration was 1642072 microseconds under load.
+
+## Short transfers after the first frame (2026-10-27)
+
+On a Tab5 with an ST7123 panel the viewfinder showed a picture and then a black one on alternate frames. The
+frame mean was 23 and 0 in turn: the first DMA wrote the whole 1,843,200-byte frame, but every later transfer
+ended after 7,688 bytes (the destination register stopped about three rows into the buffer) and the rest of the
+buffer kept the previous contents, or zeros in the second buffer. The CSI bridge is re-armed at an arbitrary
+point of the sensor's free-running stream, so the transfer ends with the tail of the frame in progress.
+
+`camera_frame()` now compares the DMA destination address with the buffer size, discards a short transfer and
+re-arms immediately, which starts just after the frame boundary. Afterwards every delivered frame was complete
+(destination at the end of the buffer, brightness changing smoothly with auto-exposure), at roughly 7-15 frames
+per second including viewfinder drawing. The viewfinder now draws into a framebuffer-sized off-screen target
+and copies the picture rectangle with `display_present()`; switching whole frames at video rate was tried
+first and did not help. Earlier BMP snapshots taken after the sixth frame (`snap`, `camera` capture, Python
+`onboard_capture`) came from a mostly stale buffer; retake them.

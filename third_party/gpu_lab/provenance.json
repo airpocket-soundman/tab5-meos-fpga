@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/airpocket-soundman/tab5-fpga-gpu",
+  "commit": "d4d89e308b4a8aa799199b20e7d47c96b536e3fd",
+  "files": {
+    "main/lab.hpp": {
+      "source_sha256": "e202d6945344264a6cf54dcb34404458b416efbb295eeaea6b76fb03697bf785",
+      "adapted_sha256": "6862d02d6c3759b20211639b6cb5bc15a11e2fdb400dbfe8674de9bcda43c619"
+    },
+    "main/lab.cpp": {
+      "source_sha256": "e6451685fb21acce881537bc4160e67fbe4b7d63b0fa1f5ea2774322617e7ea7",
+      "adapted_sha256": "dd13ac5f8f4aec27a64c8ea18b54a28c417a267177452ca424e49aa9bf4d6d71"
+    },
+    "reference/cpp/integer_raster.hpp": {
+      "source_sha256": "98fb0d8bd773bc6efadf11f309b8651b56bf86c9c72ee5e90587c1b88eb43e25",
+      "adapted_sha256": "f9c08e4ea68101116f04bc786bf42f1674638ab65679c072c1286692dcc7afa2"
+    }
+  }
+}

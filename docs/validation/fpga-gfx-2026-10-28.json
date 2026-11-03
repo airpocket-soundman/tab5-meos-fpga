@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-28",
+  "carrier_remote_main": "e5a386d263d8911a490922cc2770292699a87080",
+  "contract": "uncommitted codex/dock-jumper-gfx files, SHA256 pinned in FPGA_CARRIER_REQUIREMENTS.md and tests/fixtures/fpga_dock_gfx_v0.json",
+  "modules": ["fpga_gfx", "fpga (dependency)"],
+  "host_tests": {
+    "result": "pass",
+    "stateful_carrier_vectors": 1442,
+    "fragment_sizes": [1, 2, 3, 4, 5, 6, 7, 8],
+    "readback_pixels_per_diagnostic": 1024,
+    "transactions_per_diagnostic": 1040,
+    "checks": ["RGB565 endian", "asymmetric pattern", "range before mutation", "uninitialized device", "device reset", "LINK-only unsupported", "CRC", "sequence", "data mismatch", "cancellation during GFX read request", "timeout", "allocation failure", "LCD failure", "no display on failed readback", "GPIO release", "heap release"],
+    "command": "python tests/test_fpga_gfx.py --cc PATH_TO_ZIG"
+  },
+  "link_regression": {
+    "result": "pass",
+    "golden_vectors": 583,
+    "pattern_exchanges": 4104,
+    "injected_cases": 96,
+    "gpio_pattern_exchanges": 513
+  },
+  "esp_idf": "5.5.2",
+  "builds": {
+    "M5OS_MODULES=fpga_gfx": "pass",
+    "M5OS_MODULES=fpga": "pass; all GFX sources excluded",
+    "M5OS_MODULES= (defaults)": "pass; all FPGA sources excluded"
+  },
+  "configuration_restored": "M5OS_MODULES empty (defaults)",
+  "note": "Builds include the pre-existing unrelated dirty module/camera/USB changes. LCD tests use the real command and a display stub; they are not physical LCD tests.",
+  "hardware_tested": false,
+  "hardware_flashed": false,
+  "fpga_rtl_changed": false,
+  "bitstream_used": null,
+  "ddr3_dma_hdmi_npu": "not implemented by this change"
+}

@@ -6,7 +6,7 @@
     "fpga/platform/dock_link_top.v": "e9724d6fa063747ac00bef8bb2b9387241b91b25ecea83e4787dfdced211b4db",
     "fpga/constraints/dock/tab5_dock_link_v0.cst": "4b980a510a9c6c2972dbd732fc426d13f9e9b6cf6de64a9caa0a51f8d6ac6745",
     "fpga/link/rtl/link_bringup.v": "344f0bcb45ebf8ff1c659d6e2f5e3af337d919928a5a49fa98909970a4bfccc2",
-    "docs/Dock初回書き込み_2026-11-03.md": "658e57a2590af8f1e494d68865bf2d9af9c910d4420b7de3699e6e19450b7470"
+    "docs/Dock蛻晏屓譖ｸ縺崎ｾｼ縺ｿ_2026-11-03.md": "658e57a2590af8f1e494d68865bf2d9af9c910d4420b7de3699e6e19450b7470"
   },
   "profile_verified": false,
   "flashed": false,
@@ -22,6 +22,55 @@
     "final input cleanup"
   ],
   "existing_golden_vectors_passed": 583,
-  "native_build": "passed",
-  "resource_note": "Unverified profile is compile-time disabled; optimizer may discard physical backend. Enabled-profile size/runtime cost remains unmeasured."
+  "native_build": {
+    "result": "passed",
+    "idf": "5.4.4",
+    "modules": "fpga",
+    "gate": "OFF",
+    "optional_features_excluded": [
+      "camera",
+      "uvc",
+      "mjpeg",
+      "camsrc",
+      "micropython",
+      "mp_camera",
+      "bluetooth",
+      "sl",
+      "fpga_gfx",
+      "gfxbench",
+      "fpga_npu",
+      "fpga_diag"
+    ],
+    "artifact": "build-tab5-dock-prepared/m5os.bin",
+    "sha256": "623e8aab77d37827e54c7266fe53b486fcb23e06cf340beb52c8633d6c40c9b0",
+    "bytes": 1152064
+  },
+  "resource_note": "Historical prepared-dock-gpio snapshot predates merge. Integrated minimal-module snapshot is separate; not directly comparable to full-feature deployed firmware, and no runtime measurement exists.",
+  "supersedes_initial_prototype": true,
+  "integrated_remote_meos": "bcaf737",
+  "implementation": "remote session-based GPIO/CLI retained; added default-OFF electrical-review gate, double-open rejection and HAL disable-before-mux ordering",
+  "claims": "15 pins including input-only AUX",
+  "full_default_build": {
+    "result": "failed",
+    "reason": "Existing camera code uses ISP LL API incompatible with available ESP-IDF 5.4.4 (isp_ll_shadow_update_ccm/color arguments); remote validation previously used IDF 5.5.2. Not changed in this task."
+  },
+  "host_regression": {
+    "gpio_patterns": 513,
+    "gfx_vectors": 1442,
+    "npu_cpu_cases": 567,
+    "link_vectors": 583,
+    "unverified_profile": "no IO activation",
+    "double_open": "rejected without losing owner",
+    "common_io_service": "passed"
+  },
+  "latest_spec_corrections": [
+    "Physical J5 per user silk report: 1/2 3.3V, 3/4 GND; measure before connecting",
+    "SW0 C7 Bank6 1.5V",
+    "T10 SSPI SI/D2; FPGA packer settings require reconciliation before next SRAM program"
+  ],
+  "gfx_source_check": {
+    "vectors_equal": 1442,
+    "five_pinned_source_hashes_equal": true,
+    "strict_check": "base revision changed; no vector/source-byte drift found"
+  }
 }

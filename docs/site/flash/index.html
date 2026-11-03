@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab5 MeOS - Firmware</title>
+<meta name="description" content="Write MeOS firmware to an M5Stack Tab5 from the browser: small, medium or large.">
+<link rel="stylesheet" href="../style.css">
+<style>
+.sizes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin:18px 0}
+.size{display:block;border:2px solid #bdcbc1;background:#fff;padding:16px 18px;border-radius:6px;cursor:pointer}
+.size:has(input:checked){border-color:#086957;background:#eef6f0}
+.size strong{font-size:20px}.size small{display:block;color:#527066;margin-top:6px}
+.size ul{margin:8px 0 0;padding-left:20px;font-size:14px}
+button{font:inherit;padding:10px 20px;border:0;border-radius:5px;background:#086957;color:#fff;cursor:pointer}
+button:disabled{background:#99aaa0;cursor:not-allowed}
+button.secondary{background:#fff;color:#086957;border:1px solid #086957}
+progress{width:100%;height:18px}
+#log{background:#10231f;color:#d8efe2;font:13px/1.5 monospace;padding:12px;border-radius:5px;height:220px;overflow:auto;white-space:pre-wrap}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.warn{border-left:4px solid #b36b20;background:#fff6df;padding:14px 18px;margin:16px 0}
+.bad{border-left-color:#a33}.ok{border-left:4px solid #287052;background:#e8f3e9;padding:14px 18px;margin:16px 0}
+[hidden]{display:none!important}
+</style></head>
+<body>
+<header><strong>Tab5 MeOS FPGA</strong>
+<nav aria-label="Navigation"><a href="../reference/" data-i="nav_ref">Reference</a><a href="../" data-i="nav_road">Roadmap</a><a href="https://github.com/airpocket-soundman/tab5-meos-fpga">GitHub ↗</a><a href="#" id="langToggle">日本語</a></nav></header>
+<main>
+<div class="hero"><h1 data-i="title">Write firmware to a Tab5</h1>
+<p class="lead" data-i="lead">Pick a size, connect the Tab5 with USB-C, and write it from this page. Needs Chrome or Edge on a computer (Web Serial).</p></div>
+
+<section id="s1"><h2 data-i="h1">1. Choose a size</h2>
+<p data-i="sizes_note">Each size is built from the same sources with a different set of optional modules (see the module list). The smaller sizes leave the other features out.</p>
+<div class="sizes" id="sizes"></div>
+<p id="manifestInfo"></p>
+<div class="warn bad" id="noManifest" hidden data-i="no_manifest">The firmware files are not published here yet. They are built by GitHub Actions and added to this site; try again after the next build.</div>
+</section>
+
+<section id="s2"><h2 data-i="h2">2. Connect</h2>
+<div class="warn" id="noSerial" hidden data-i="no_serial">This browser has no Web Serial. Use Chrome or Edge on a computer.</div>
+<div class="row"><button id="connect" disabled data-i="connect">Connect…</button>
+<label><input type="checkbox" id="allPorts"> <span data-i="all_ports">Show all serial ports (not only Espressif USB)</span></label></div>
+<p data-i="connect_note">The browser asks which port to use, so the right COM port is the one you choose in its list. Ports of Espressif USB devices (VID 303A) are the Tab5 or other ESP32 boards. After connecting, the chip is read back and checked.</p>
+<div id="chipInfo"></div>
+</section>
+
+<section id="s3"><h2 data-i="h3">3. Write</h2>
+<div class="warn" data-i="what_it_writes">It writes the bootloader (0x2000), the partition table (0x8000) and the application (0x10000), and verifies each by MD5. It does <strong>not</strong> erase the whole flash and does not touch the ESP32-C6 (Wi-Fi) firmware. Settings that live in other partitions are kept. Do not unplug the Tab5 while it writes.</div>
+<div class="row"><label><input type="checkbox" id="confirm"> <span data-i="confirm">I want to replace the firmware on this Tab5</span></label></div>
+<div class="row"><button id="write" disabled data-i="write">Write</button><button id="disconnect" class="secondary" disabled data-i="disconnect">Disconnect</button></div>
+<progress id="bar" value="0" max="100" hidden></progress>
+<p id="status" role="status"></p>
+<pre id="log" hidden></pre>
+</section>
+
+<section><h2 data-i="h4">Recovery</h2>
+<p data-i="recovery">If the Tab5 does not start after writing, connect it again and write another size. The ROM bootloader of the ESP32-P4 stays available, so a failed write cannot make the board unrecoverable.</p>
+</section>
+</main>
+<footer><span data-i="foot">Firmware files are built from the repository by GitHub Actions; the hashes are in manifest.json.</span> · <a href="https://github.com/airpocket-soundman/tab5-meos-fpga">tab5-meos-fpga</a></footer>
+
+<script type="module">
+const ESPTOOL = 'https://cdn.jsdelivr.net/npm/esptool-js@0.5.7/bundle.js';
+const CRYPTOJS = 'https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js';
+const TEXT = {
+  en: {
+    nav_ref: 'Reference', nav_road: 'Roadmap', title: 'Write firmware to a Tab5',
+    lead: 'Pick a size, connect the Tab5 with USB-C, and write it from this page. Needs Chrome or Edge on a computer (Web Serial).',
+    h1: '1. Choose a size', h2: '2. Connect', h3: '3. Write', h4: 'Recovery',
+    sizes_note: 'Each size is built from the same sources with a different set of optional modules (see the module list). The smaller sizes leave the other features out.',
+    no_manifest: 'The firmware files are not published here yet. They are built by GitHub Actions and added to this site; try again after the next build.',
+    no_serial: 'This browser has no Web Serial. Use Chrome or Edge on a computer.',
+    connect: 'Connect…', all_ports: 'Show all serial ports (not only Espressif USB)',
+    connect_note: 'The browser asks which port to use, so the right COM port is the one you choose in its list. Ports of Espressif USB devices (VID 303A) are the Tab5 or other ESP32 boards. After connecting, the chip is read back and checked.',
+    what_it_writes: 'It writes the bootloader (0x2000), the partition table (0x8000) and the application (0x10000), and verifies each by MD5. It does <strong>not</strong> erase the whole flash and does not touch the ESP32-C6 (Wi-Fi) firmware. Settings that live in other partitions are kept. Do not unplug the Tab5 while it writes.',
+    confirm: 'I want to replace the firmware on this Tab5', write: 'Write', disconnect: 'Disconnect',
+    recovery: 'If the Tab5 does not start after writing, connect it again and write another size. The ROM bootloader of the ESP32-P4 stays available, so a failed write cannot make the board unrecoverable.',
+    foot: 'Firmware files are built from the repository by GitHub Actions; the hashes are in manifest.json.',
+    app: 'application', modules: 'Modules', core_only: 'core only', built: 'Built', commit: 'commit',
+    connected: 'Connected', not_p4: 'This is not an ESP32-P4, so it is not a Tab5. Writing is disabled.',
+    p4_ok: 'ESP32-P4 found.', connecting: 'Connecting…', writing: 'Writing', verifying: 'Checking the download', done: 'Done. The Tab5 restarts.',
+    failed: 'Failed', hash_bad: 'The downloaded file does not match its hash; not writing.', port: 'Port (USB id)',
+  },
+  ja: {
+    nav_ref: 'リファレンス', nav_road: '開発計画', title: 'Tab5 にファームウェアを書き込む',
+    lead: 'サイズを選び、Tab5 を USB-C で接続して、このページから書き込みます。コンピューターの Chrome か Edge が必要です(Web Serial)。',
+    h1: '1. サイズを選ぶ', h2: '2. 接続', h3: '3. 書き込み', h4: '復旧',
+    sizes_note: '同じソースから、選べる機能(モジュール)の組み合わせだけを変えてビルドしたものです。小さいサイズは、ほかの機能を含みません。',
+    no_manifest: 'ファームウェアのファイルは、まだこのサイトに公開されていません。GitHub Actions がビルドして追加します。次のビルドの後に、もう一度開いてください。',
+    no_serial: 'このブラウザは Web Serial に対応していません。コンピューターの Chrome か Edge を使ってください。',
+    connect: '接続…', all_ports: 'すべてのシリアルポートを表示(Espressif の USB 以外も)',
+    connect_note: 'どのポートを使うかはブラウザが尋ねるので、一覧から選んだものが書き込み先の COM ポートです。Espressif の USB デバイス(VID 303A)が Tab5 などの ESP32 ボードです。接続後に、チップを読み取って確認します。',
+    what_it_writes: 'ブートローダー(0x2000)、パーティションテーブル(0x8000)、アプリケーション(0x10000)を書き込み、それぞれを MD5 で検証します。フラッシュ全体の消去と、ESP32-C6(Wi-Fi)のファームウェアの書き換えは<strong>しません</strong>。ほかのパーティションにある設定は残ります。書き込み中は Tab5 を抜かないでください。',
+    confirm: 'この Tab5 のファームウェアを置き換えます', write: '書き込む', disconnect: '切断',
+    recovery: '書き込み後に Tab5 が起動しないときは、もう一度接続して別のサイズを書き込んでください。ESP32-P4 の ROM ブートローダーは残るので、書き込みに失敗しても、ボードが復旧できなくなることはありません。',
+    foot: 'ファームウェアは GitHub Actions がリポジトリからビルドします。ハッシュは manifest.json にあります。',
+    app: 'アプリ', modules: 'モジュール', core_only: 'コアのみ', built: 'ビルド', commit: 'コミット',
+    connected: '接続しました', not_p4: 'ESP32-P4 ではないので、Tab5 ではありません。書き込みは無効です。',
+    p4_ok: 'ESP32-P4 を確認しました。', connecting: '接続中…', writing: '書き込み中', verifying: 'ダウンロードを確認中', done: '完了しました。Tab5 が再起動します。',
+    failed: '失敗しました', hash_bad: 'ダウンロードしたファイルがハッシュと一致しないので、書き込みません。', port: 'ポート(USB ID)',
+  },
+};
+let lang = (localStorage.getItem('lang') || (navigator.language || 'en').slice(0, 2)) === 'ja' ? 'ja' : 'en';
+const t = (k) => TEXT[lang][k] ?? k;
+const $ = (id) => document.getElementById(id);
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i]').forEach((el) => { el.innerHTML = t(el.dataset.i); });
+  $('langToggle').textContent = lang === 'ja' ? 'English' : '日本語';
+  renderSizes();
+}
+$('langToggle').addEventListener('click', (e) => {
+  e.preventDefault(); lang = lang === 'ja' ? 'en' : 'ja'; localStorage.setItem('lang', lang); applyLang();
+});
+
+let manifest = null, selected = null, loader = null, transport = null, port = null, chipOk = false, busy = false;
+
+const LABEL = { small: { en: 'Small', ja: '小' }, medium: { en: 'Medium', ja: '中' }, large: { en: 'Large', ja: '大' } };
+const kb = (n) => (n / 1048576).toFixed(2) + ' MiB';
+
+function renderSizes() {
+  const box = $('sizes');
+  box.innerHTML = '';
+  if (!manifest) return;
+  for (const p of manifest.profiles) {
+    const label = document.createElement('label');
+    label.className = 'size';
+    const mods = p.modules.length ? p.modules.map((m) => `<li><code>${m}</code></li>`).join('') : `<li>${t('core_only')}</li>`;
+    label.innerHTML = `<input type="radio" name="size" value="${p.name}" ${selected === p.name ? 'checked' : ''}>
+      <strong>${(LABEL[p.name] || { en: p.name, ja: p.name })[lang]}</strong> <small>${t('app')} ${kb(p.app_bytes)}</small>
+      <small>${p.description}</small><small>${t('modules')}:</small><ul>${mods}</ul>`;
+    label.querySelector('input').addEventListener('change', () => { selected = p.name; update(); });
+    box.appendChild(label);
+  }
+  $('manifestInfo').textContent = `${t('built')}: ${manifest.generated} · ${t('commit')}: ${(manifest.commit || '').slice(0, 7)}`;
+}
+
+function update() {
+  $('connect').disabled = busy || !selected || !('serial' in navigator);
+  $('write').disabled = busy || !loader || !chipOk || !selected || !$('confirm').checked;
+  $('disconnect').disabled = busy || !loader;
+}
+$('confirm').addEventListener('change', update);
+
+const log = (s) => { const el = $('log'); el.hidden = false; el.textContent += s + '\n'; el.scrollTop = el.scrollHeight; };
+const terminal = { clean() { $('log').textContent = ''; }, writeLine: (d) => log(d), write: (d) => log(String(d).replace(/\n$/, '')) };
+const status = (s, cls = '') => { $('status').textContent = s; $('status').className = cls; };
+
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    if (window.CryptoJS) return ok();
+    const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => fail(new Error('could not load ' + src));
+    document.head.appendChild(s);
+  });
+}
+const toBinaryString = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return s; };
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+$('connect').addEventListener('click', async () => {
+  busy = true; update(); chipOk = false; $('chipInfo').innerHTML = '';
+  try {
+    status(t('connecting'));
+    const { ESPLoader, Transport } = await import(ESPTOOL);
+    if (loader) await disconnect();
+    const filters = $('allPorts').checked ? [] : [{ usbVendorId: 0x303a }];
+    port = await navigator.serial.requestPort({ filters });
+    transport = new Transport(port, false);
+    loader = new ESPLoader({ transport, baudrate: 460800, romBaudrate: 115200, terminal });
+    const chip = await loader.main();
+    const info = port.getInfo ? port.getInfo() : {};
+    const usb = info.usbVendorId ? ` ${info.usbVendorId.toString(16)}:${(info.usbProductId || 0).toString(16)}` : '';
+    chipOk = /ESP32-P4/i.test(String(chip));
+    $('chipInfo').innerHTML = `<div class="${chipOk ? 'ok' : 'warn bad'}"><strong>${t('connected')}</strong>: ${chip}<br>${t('port')}:${usb}<br>${chipOk ? t('p4_ok') : t('not_p4')}</div>`;
+    status('');
+  } catch (e) {
+    status(`${t('failed')}: ${e.message || e}`, 'bad'); loader = null; transport = null; port = null;
+  }
+  busy = false; update();
+});
+
+async function disconnect() {
+  try { if (transport) await transport.disconnect(); } catch (e) { /* already closed */ }
+  loader = null; transport = null; port = null; chipOk = false; $('chipInfo').innerHTML = ''; update();
+}
+$('disconnect').addEventListener('click', disconnect);
+
+$('write').addEventListener('click', async () => {
+  const profile = manifest.profiles.find((p) => p.name === selected);
+  busy = true; update(); $('bar').hidden = false; $('bar').value = 0; $('log').textContent = '';
+  try {
+    await loadScript(CRYPTOJS);
+    status(t('verifying'));
+    const fileArray = [];
+    for (const f of profile.files) {
+      const res = await fetch('../firmware/' + f.path);
+      if (!res.ok) throw new Error(`${f.path}: HTTP ${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (hex(await crypto.subtle.digest('SHA-256', bytes)) !== f.sha256) throw new Error(`${f.path}: ${t('hash_bad')}`);
+      fileArray.push({ data: toBinaryString(bytes), address: f.offset });
+    }
+    const total = fileArray.reduce((n, f) => n + f.data.length, 0);
+    const done = new Array(fileArray.length).fill(0);
+    status(t('writing') + '…');
+    await loader.writeFlash({
+      fileArray, flashSize: 'keep', flashMode: 'keep', flashFreq: 'keep', eraseAll: false, compress: true,
+      reportProgress: (i, written, size) => {
+        done[i] = fileArray[i].data.length * (written / size);
+        $('bar').value = Math.min(100, (done.reduce((a, b) => a + b, 0) / total) * 100);
+      },
+      calculateMD5Hash: (image) => window.CryptoJS.MD5(window.CryptoJS.enc.Latin1.parse(image)).toString(),
+    });
+    await loader.after();
+    $('bar').value = 100;
+    status(t('done'), 'ok');
+  } catch (e) {
+    status(`${t('failed')}: ${e.message || e}`, 'bad');
+    log(String(e.stack || e));
+  }
+  busy = false; update();
+});
+
+async function init() {
+  if (!('serial' in navigator)) $('noSerial').hidden = false;
+  try {
+    const res = await fetch('../firmware/manifest.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('no manifest');
+    manifest = await res.json();
+    selected = (manifest.profiles.find((p) => p.name === 'medium') || manifest.profiles[0]).name;
+  } catch (e) {
+    $('noManifest').hidden = false;
+  }
+  applyLang(); update();
+}
+init();
+</script>
+</body></html>

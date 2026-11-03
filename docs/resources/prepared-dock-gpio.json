@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "label": "prepared-dock-gpio-unverified-not-flashed",
+  "label": "historical-preintegration-dock-gpio-not-flashed",
   "revision_declared": "working-tree",
   "artifact_project_version": "7607793-dirty",
   "target": "esp32p4",
@@ -64,6 +64,7 @@
     "Declared revision is a label, not proof of build/source identity.",
     "BIN size includes image overhead; IDF total_size is a different metric.",
     "Static RAM includes the entire internal heap arena, used or free.",
-    "PSRAM allocations and task stacks need workload-specific runtime measurements."
+    "PSRAM allocations and task stacks need workload-specific runtime measurements.",
+    "Superseded by integration of bcaf737; this is not the final merged artifact."
   ]
 }

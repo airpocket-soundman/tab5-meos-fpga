@@ -1,5 +1,137 @@
 # Tang Primer 20K carrier integration review
 
+## Carrier all-feature plan reinspection: 2026-10-28
+
+At the user's request, fetched all carrier remote branches in both local clones.
+Remote main remains `e5a386d263d8911a490922cc2770292699a87080`; no newer NPU/MEM
+branch was found. The preserved `D:\GitHub\tab5-tang-primer20k-carrier` worktree
+(`codex/dock-jumper-gfx`) now contains additional uncommitted all-feature records:
+
+- `docs/全機能テスト計画.md`, SHA256
+  `050650e8c8a7488364ad858d4dc1f1d5c1347e5e24e2650ad5271557dfc1a014`.
+- `fpga/validation/feature_matrix.json`, SHA256
+  `425a24b3713891d07bc3978caea5808b663d32dcda9ae66538a76516c6b76d7b`.
+- `fpga/tools/test_features.py`, SHA256
+  `d20c057fb8182aab0c59168e07b4c32fcfae380a3657b324351bf60253dd184d`.
+
+The matrix enumerates 24 features. The latest recorded PC campaign reports
+9 partial and 15 not-ready features, with hardware checks not run. NPU MAC,
+requant and dot have passed recorded RTL simulation and component synthesis;
+the updated NPU README explicitly says these are not yet a host-accessible
+NPU bitstream. Component synthesis is not Dock placement/routing or hardware
+integration. The Dock builder still accepts only `link`/`gfx`, the common codec
+only exposes LINK/GFX opcodes, and the Dock tops contain no NPU dispatcher.
+Thus the new all-feature plan does not unblock physical NPU/MEM commands.
+No carrier source files were modified and no hardware was accessed in this review.
+
+## NPU / all-function jumper diagnostics review: 2026-10-28
+
+Fetched carrier main `e5a386d263d8911a490922cc2770292699a87080` again and inspected
+the preserved dirty `codex/dock-jumper-gfx` tree: Dock top, link dispatcher, C
+codec, GFX contract, NPU MAC/requant/dot RTL, compute reference, bitstream build
+variants, device plan, host guide, final pin CSV, generator and r4 hardware/audit
+record. Pin/power ownership and the 15-pin Dock profile remain unchanged.
+
+The available Dock tops/commands implement LINK and 32x32 GFX only. NPU RTL is
+not connected to the jumper dispatcher; NPU/MEM wire commands and bitstreams,
+DDR3 BIST/READ/WRITE, RAMdisk, HDMI and advanced polygon/blit/glyph commands
+remain unprovided in this reviewed tree. Do not invent opcodes in MeOS or
+present CPU reference results as physical FPGA success. An alternate/newer
+carrier NPU implementation has been requested from the user.
+
+CPU NPU semantics reviewed (raw SHA256):
+
+| Carrier path | SHA256 |
+| --- | --- |
+| `fpga/reference/compute_reference.py` | `23d48e8b2959db7b31eb807b522d414202e1268c32912b257b3dbd467ee67588` |
+| `fpga/npu/rtl/int8_mac_lane.v` | `07199c3a6c4354c598ab3847ba23c17215d7d84e1d5deb950204dea1fad47c2d` |
+| `fpga/npu/rtl/int8_requantize.v` | `12873790ccdc313a3052428f0efec893128f9fddd52f02b319a97e9d31050209` |
+| `fpga/npu/rtl/int8_dot_job.v` | `0f985e2b1d8a1e41d2be5bab588fb581900e1a218f0b78ba82e4889f1fef4dc7` |
+
+Before coding: optional `fpga_npu` CPU arithmetic/reference module, with signed
+INT8 inputs, checked INT32 accumulation, ties-away requantization and golden
+MAC/dot/GEMM/NCHW convolution tests; reject invalid parameters before narrowing.
+Explicitly reject physical NPU requests until a carrier contract exists. Add
+an optional full diagnostic runner that reports actual LINK/GFX results,
+CPU-reference NPU checks and unsupported planned functions separately, never
+claiming full hardware coverage while NPU/MEM/etc are unavailable. No RTL or
+hardware design changes in this repository.
+
+## GPU LAB native program review: 2026-10-28
+
+Fetched carrier remote main: `e5a386d263d8911a490922cc2770292699a87080`
+(unchanged). Rechecked final core CSV, generator, r4 generated hardware/audit
+record, and current Dock GFX command specification. GPU LAB source is
+`tab5-fpga-gpu d4d89e308b4a8aa799199b20e7d47c96b536e3fd` (`main/lab.cpp`,
+`main/lab.hpp`, `reference/cpp/integer_raster.hpp`, benchmark/integer docs).
+Its FPGA backend explicitly returns unavailable: the eight 640x360 scenes are
+CPU workloads. Dock GFX v0 has no triangle, depth-buffer or frame-upload ABI.
+
+Before implementation: expose optional `gfxbench` module/native shell program,
+without FPGA/GPIO dependency; retain 640x360 RGB565 and CPU raster rules, use
+MeOS PSRAM allocation, input, waits and existing synchronous LCD drawing.
+Replace C++ dynamic containers on firmware paths with explicit checked MeOS
+allocation; import no LVGL, BSP, USB protocol, FreeRTOS task or allocator APIs.
+No pin, electrical, power, transport, FPGA RTL or LCD-driver changes. Existing
+LCD buffers stay. Report CPU-only measurements, not FPGA speedups. FPGA
+polygon offload remains a future carrier command/bitstream requirement.
+
+## GFX host implementation review: 2026-10-28
+
+Fetched carrier remote main again: `e5a386d263d8911a490922cc2770292699a87080`
+(unchanged). Rechecked final core CSV, generator CLK assignments and r4 generated
+hardware/audit record. No pin, power or electrical changes are required. Existing
+dirty `D:\GitHub\tab5-tang-primer20k-carrier` checkout is preserved.
+
+GFX is still an **uncommitted experimental source contract**, not contained in
+that main SHA. Adopted files from its `codex/dock-jumper-gfx` worktree (raw SHA256):
+
+| File | SHA256 |
+| --- | --- |
+| `fpga/link/DOCK_GFX_V0.md` | `6b6cbc2eca820e204ec40151c37cdc7a934e14b6647ec4ea15c739ecfd8982bb` |
+| `fpga/host/link_protocol.h` | `bfc5a9a6970789f84b07864ad74acf30242b399d607ae02cb7901f901349eb57` |
+| `fpga/gfx/rtl/gfx_bench.v` | `841a4f50baa9e3200bbda1cd61bc9511db36909f76e854a9b66b331ebda2c392` |
+
+Also inspected the host software guide, Dock CST, GFX RTL and validation record.
+The latter reports OSS synthesis/pack and RTL successes, but no hardware test;
+these are carrier-reported results, not newly executed MeOS validation.
+Requirements before coding: optional `fpga_gfx` module depends on `fpga`; current
+15-pin Dock profile and timing unchanged; commands 0x10..16 only; 32x32 RGB565 in
+FPGA internal 2KiB RAM, not DDR3. Reserve IO ownership across COLOR/ORIGIN/RECT
+and complete readback. Check CRC/sequence before classifying status2/3/5; never
+retry unknown completion. Compare all 1024 received pixels before displaying
+that received buffer via the existing synchronous LCD drawing API. Keep LCD
+buffers and current peripherals. Hardware GFX needs the matching carrier GFX
+bitstream (`tab5_dock_gfx_top`); ID alone does not prove GFX capability.
+
+## Dock GPIO implementation review: 2026-10-28
+
+Fetched carrier origin and reviewed main `e5a386d263d8911a490922cc2770292699a87080`:
+Dock jumper wiring document, `fpga/link/rtl/link_bringup.v`, Dock CST,
+`kicad/core_pin_assignment.csv`, generator, and `spark/single-sided-r4/README.md`
+with its generated-hardware/audit status. The existing dirty checkout at
+`D:\GitHub\tab5-tang-primer20k-carrier` was preserved. A separate clone is under
+the required owner directory. Carrier CLK K14/SODIMM52 and Dock CLK T7 are
+different profiles; this implementation enables **Dock jumper only**.
+
+Supplementary uncommitted `codex/dock-jumper-gfx` host guide and DOCK_GFX_V0
+were inspected for GPIO timing/cleanup guidance, but are not a pinned released
+GFX contract. This change implements only committed LINK ID/ECHO/INVERT.
+No RTL, carrier hardware, GFX, DDR3 or PARLIO/DMA changes are made here.
+
+Implementation requirements recorded before coding: opt-in `fpga` module;
+explicit `dock-jumper-v0` selection; atomic IO ownership of D0..7, CLK, DIR,
+READY and unused AUX0..3; no pin activation at boot; READY always input;
+D inputs before DIR=1; 200us turnaround; CLK high/low and data setup >=100us;
+deadline and cancellation checks; input cleanup on completion/failure.
+All 15 pins overlap only external IO in MeOS, and must still pass the runtime
+owner check. GPIO2..5 pad JTAG and GPIO19 USB FS must be disabled externally;
+the existing USB-A host, console37/38, SD and C6 assignments are preserved.
+The Dock requires its documented SW0 ARM, 220..330-ohm signal resistors,
+separate supplies and common grounds. Software cannot validate wiring, power
+or SW0. Recovery after a failed/partial exchange requires SW0 OFF or Key_0
+before another command. Build/mock tests are not electrical validation.
+
 Date: 2026-10-24. Status: design requirements; no FPGA link, DDR3 access or PARLIO DMA verified on hardware.
 
 ## Conclusion / 結論
@@ -54,7 +186,7 @@ No new memory chip or FPGA-to-Tab5 MIPI routing is required by this proposal. DD
 
 The ESP-IDF high-level PARLIO driver must not be assumed directly usable: this MeOS build disables the FreeRTOS scheduler. Implement a native HAL/LL PARLIO+GDMA service with MeOS waits/completion, bounded timeouts, cancellation and cleanup. DMA buffers must meet alignment, reachable-memory and cache-coherency requirements. Use bounded transfer buffers; avoid allocating another full-size frame merely for transport.
 
-Before activating a carrier profile, acquire every FPGA pin atomically through the common IO service and deny shell/MicroPython reassignment. Currently the pins remain general external IO; no FPGA ownership or permanent carrier reservation is implemented. When inactive or failing, return signals to the agreed safe state. Do not enable a permanent reservation based only on this document.
+Before activating a carrier profile, acquire every FPGA pin atomically through the common IO service and deny shell/MicroPython reassignment. Pins remain general external IO while inactive. The optional Dock GPIO module now claims all 15 pins for each diagnostic session; a carrier PCB profile and permanent carrier reservation are not implemented. When inactive or failing, return signals to the agreed safe state. Do not enable a permanent reservation based only on this document.
 
 RTL first provides device ID, protocol version/capabilities, DDR size, self-test status, request IDs, bounded READ/WRITE, CRC, errors, FIFO levels and reset/recovery. Then add rectangle fill, overlap-safe copy, glyph/image upload, clipping, dirty-region readback and completion fences. Define pixel format, stride, byte order, coordinates, length limits and DDR region ownership. Japanese fonts may load from SD into a named DDR region; no RAM-disk filesystem is required for glyph lookup.
 
@@ -109,3 +241,15 @@ Fetched carrier origin/main c3502174c039bf86d8d43716e3ce0fd2fb4d8c43. Reviewed D
 Host GPIO: D0..7 = 18,19,5,3,4,2,48,47; CLK16, READY45, DIR51. Existing IO service exposes these pins and supports atomic claims; all eleven are claimed together. GPIO2..5 use GPIO pad mux selection through the existing HAL; startup/JTAG pad behavior still requires measurement. No GPIO initialization is added to boot. No outputs are permitted while the Dock profile is unverified. AUX pins are unused and not claimed.
 
 Dock revision, header orientation, voltage and real wiring remain unconfirmed. Current build must reject physical ARM. No power wires: common GND only, per carrier wiring instructions; 330-ohm series resistors are reported by the user. FPGA SRAM image must be reloaded after power cycling, SW0 initially OFF. This backend is <=5kHz bitbang only; no PARLIO/GDMA or DDR3 implementation. Enabling the verified-profile build switch requires a recorded review and user coordination before flashing/wiring/ARM.
+
+### Integration correction after remote refresh
+
+Remote MeOS bcaf737 already implements the Dock GPIO transport and optional module/diagnostic APIs. It is retained rather than replaced by the initial one-shot prototype. Active pins plus AUX17/52/6/7 are atomically claimed (15 pins), AUX kept input; cleanup and failed-session reset behavior follow that implementation. The earlier paragraph describing eleven-only claims is superseded. The electrical-review gate defaults OFF before IO access, and boot behavior is unchanged. Common HAL input configuration now disables GPIO output before pad mux selection; physical mux/JTAG/Hi-Z validation remains pending. No physical-profile activation, firmware flash or wiring was performed.
+
+## Second remote specification check requested 2026-11-03
+
+Re-fetched origin/main c3502174c039bf86d8d43716e3ce0fd2fb4d8c43 and inspected the committed Dock wiring table, generated wiring-diagram record, GFX procedure, CST, and origin/codex/dock-jumper-gfx 20a7dc581233aa38d535982fe17f1afb7abeddd0 protocol. **J5 on the user's reported physical board is 1/2=3.3V, 3/4=GND**, contrary to the old saved 3713-series schematic. Do not use the old J5 GND pair. J12/J14 remain documented 1/2=3.3V and 3/4=GND but physical confirmation/voltage measurement remains pending. No rail-to-rail connections are permitted by the bench guide. Clock/data/READY/DIR GPIOs and FPGA balls are unchanged.
+
+SW0/C7 is Bank6 at 1.5V (older Bank4 annotation is erroneous). T10/Key0 has SSPI SI/D2 device function despite its FPGA_RST board net name. The current procedure calls for SSPI pin reuse and explicitly says not to GPIO-convert RECONFIG_N, JTAG or MSPI. The earlier initial-programming report's `--reconfign_as_gpio` packing note is not a valid instruction for the new Dock top; FPGA-side build owner must reconcile the selected top/packer flags and regenerate a recorded image before testing. MeOS changes no FPGA RTL or packer.
+
+The local carrier checkout is being updated by another session; it must not be treated as a frozen release. The reviewed LINK/GFX source bytes and pins were checked separately. Recomputing GFX vectors produced the same 1,442 requests/responses and all five pinned source SHA256 values; the strict `--check` script reports drift because checkout base SHA changed. No fixture was silently re-synced. LINK remains 8-byte ID/echo/invert; the GFX branch extends op10..16 for a 32x32 RGB565 internal buffer, not DDR3. Response readiness, 100us setup/half-periods, release-before-DIR with 200us guard, 100ms deadline and no automatic retry match the host implementation. Electrical safety/clock timing/actual transfer remain unverified.

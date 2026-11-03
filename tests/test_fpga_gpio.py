@@ -1,11 +1,40 @@
-"""Test real GPIO backend against an event-level IO model, never real pins."""
-import argparse,subprocess,tempfile
+"""Compile real GPIO transport/CLI against a pin-level Dock model (no hardware)."""
+import argparse
+import json
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--cc',required=True);a=p.parse_args()
-if not __debug__:raise SystemExit('Assertions must be enabled')
-r=Path(__file__).resolve().parents[1]
-with tempfile.TemporaryDirectory() as t:
- for verified in (0,1):
-  exe=Path(t)/('gpio'+str(verified)+'.exe')
-  subprocess.run([a.cc,'cc','-std=c11','-O2','-UNDEBUG','-Wall','-Wextra','-Werror','-Wno-unused-function','-DM5OS_FPGA_DOCK_VERIFIED='+str(verified),'-I'+str(r/'kernel/include'),str(r/'drivers/fpga/fpga_link.c'),str(r/'drivers/fpga/fpga_gpio.c'),str(r/'tests/fpga_gpio_fixture.c'),'-o',str(exe)],check=True)
-  subprocess.run([str(exe)],check=True)
+import subprocess
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cc", required=True, help="Zig executable")
+    args = parser.parse_args()
+    with tempfile.TemporaryDirectory(prefix="meos-dock-") as tmp:
+        exe = Path(tmp) / "gpio.exe"
+        sources = ["drivers/fpga/fpga_link.c", "drivers/fpga/fpga_gpio.c",
+                   "drivers/fpga/fpga_mock.c", "drivers/fpga/fpga_selftest.c",
+                   "user/fpga/fpga_app.c", "tests/fpga_gpio_fixture.c"]
+        subprocess.run([args.cc, "cc", "-std=c11", "-O2", "-UNDEBUG",
+                        "-DM5OS_MODULE_FPGA=1", "-DM5OS_FPGA_DOCK_VERIFIED=1", "-Wall", "-Wextra", "-Werror",
+                        "-I" + str(ROOT / "kernel/include"),
+                        *[str(ROOT / s) for s in sources], "-o", str(exe)], check=True)
+        subprocess.run([str(exe)], check=True)
+        for command, count in [(["id"], 1), (["echo", "85", "170"], 1),
+                               (["invert", "0", "255"], 1), (["test"], 513)]:
+            report = json.loads(subprocess.check_output(
+                [str(exe), "fpga", "--dock", "dock-jumper-v0", *command], text=True))
+            assert report["result"] == "ok" and report["transactions"] == count
+            assert report["reset_required"] is False
+        for command in [["--dock"], ["--dock", "carrier", "id"],
+                        ["--dock", "dock-jumper-v0", "echo", "256", "0"]]:
+            assert subprocess.run([str(exe), "fpga", *command], capture_output=True).returncode
+        print("Dock CLI: ID/echo/invert/513-exchange test and invalid arguments passed")
+
+        gated = Path(tmp) / "gated.exe"
+        subprocess.run([args.cc, "cc", "-std=c11", "-O2", "-UNDEBUG",
+                        "-DM5OS_MODULE_FPGA=1", "-Wall", "-Wextra", "-Werror",
+                        "-I" + str(ROOT / "kernel/include"),
+                        *[str(ROOT / s) for s in sources], "-o", str(gated)], check=True)
+        subprocess.run([str(gated)], check=True)

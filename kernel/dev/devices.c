@@ -1,6 +1,10 @@
 #include <m5os/device.h>
 #include <m5os/board_config.h>
 
+#if defined(M5OS_BOARD_TAB5)
+void fat_automount_init(void);
+void camera_dev_register(void);
+#endif
 void uart_dev_register(void);
 void display_dev_register(void);
 #if M5OS_HAS_TOUCH
@@ -10,6 +14,10 @@ void buttons_dev_register(void);
 /* Registration order is also the order they appear in device_list(). */
 void devices_init(void)
 {
+#if defined(M5OS_BOARD_TAB5)
+    fat_automount_init();        /* block devices registered from here on get a FAT volume */
+    camera_dev_register();       /* camera0 */
+#endif
     uart_dev_register();
     display_dev_register();
 #if M5OS_HAS_TOUCH

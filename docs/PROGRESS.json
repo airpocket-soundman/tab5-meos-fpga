@@ -225,8 +225,8 @@
         "en": "FPGA protocol software groundwork"
       },
       "detail": {
-        "ja": "583件の互換ベクトルとmock試験に合格。Dock用低速GPIO backendを追加し、PC上のGPIOモデル513通信・異常系を確認。未確認プロファイルでは出力拒否。実機未書込み・実通信未検証、PARLIO/DMA/DDR3未実装。",
-        "en": "583 compatibility vectors and mock tests passed. Dock low-speed GPIO backend added; 513 GPIO-model exchanges and fault cases pass. Unverified profile denies output. Not flashed or physically tested; PARLIO/DMA/DDR3 pending."
+        "ja": "リモートbcaf737のDock GPIO・診断実装を統合。GPIOモデル513通信と583互換ベクトルを確認。追加した電気確認ゲートは既定OFFで実出力を拒否。実機未書込み・実通信未検証。",
+        "en": "Integrated remote bcaf737 Dock GPIO diagnostics. 513 GPIO-model exchanges and 583 compatibility vectors checked. Electrical-review gate defaults OFF and denies physical activation. Not flashed or physically tested."
       }
     },
     {

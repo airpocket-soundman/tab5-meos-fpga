@@ -4,6 +4,7 @@
 #include "../../third_party/fatfs/diskio.h"
 #include "../../third_party/fatfs/ff.h"
 #include <m5os/app.h>
+#include <m5os/devreg.h>
 #include <m5os/errno.h>
 #include <m5os/kmalloc.h>
 #include <m5os/kprintf.h>
@@ -353,3 +354,37 @@ bool usb_fat_slot_busy(unsigned slot) {
 bool usb_fat_mount(blockdev_t *bd) { return usb_fat_mount_slot(0, bd); }
 void usb_fat_detach(void) { usb_fat_detach_slot(0); }
 bool sd_fat_mount(blockdev_t *bd) { return mount_volume(1, bd); }
+
+bool usb_fat_slot_mounted(unsigned slot) {
+    if (slot >= 3)
+        return false;
+    mutex_lock(&s_lock);
+    bool mounted = volumes[usb_volume(slot)].mounted;
+    mutex_unlock(&s_lock);
+    return mounted;
+}
+
+/* The device registry tells us about block devices; FAT volumes follow them. The calls are the ones the drivers
+ * used to make themselves, in the same task and the same order. */
+static void automount(devreg_event_t event, const devreg_entry_t *e, void *ctx) {
+    (void)ctx;
+    if (e->cls != DEVREG_BLOCK)
+        return;
+    blockdev_t *bd = e->obj;
+    if (!strcmp(e->kind, "sd")) {
+        if (event == DEVREG_EVENT_ADD && mount_volume(1, bd))
+            devreg_set_mount(e->name, volumes[1].mount);
+        return;
+    }
+    if (!strcmp(e->kind, "usb") && e->unit < 3) {
+        unsigned index = usb_volume(e->unit);
+        if (event == DEVREG_EVENT_ADD) {
+            if (mount_volume(index, bd))
+                devreg_set_mount(e->name, volumes[index].mount);
+        } else {
+            detach_volume(index);
+            devreg_set_mount(e->name, "");
+        }
+    }
+}
+void fat_automount_init(void) { devreg_subscribe(automount, NULL); }

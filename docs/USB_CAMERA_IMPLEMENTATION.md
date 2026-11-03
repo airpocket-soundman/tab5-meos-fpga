@@ -63,3 +63,54 @@ Tests exercise the actual 1037-byte descriptor fixture from `056e:700a`, truncat
 - **Unverified:** other camera models, other resolutions/frame intervals, hub camera capture, image quality and sustained bandwidth.
 
 Final display coexistence check: two framebuffers, 16 submitted updates and 16 DMA-confirmed retirements, zero errors/timeouts, and the back buffer remained available during UVC capture. Maximum observed batch duration was 1642072 microseconds under load; scheduling latency remains a limitation despite correct buffer retirement.
+
+## Host startup with the Tab5 Keyboard accessory (2026-10-27)
+
+`keyboard_start()` used to return after detecting the Tab5 Keyboard accessory (I2C `0x6D`) without starting the
+USB host task, so nothing plugged into the USB-A port was ever enumerated (`lsusb` empty, no `usbkbd` task).
+It now starts the USB host in both cases. After the change a camera `1bcf:28c4` enumerated (High-Speed,
+YUY2 352x288, alt 11, payload 3060) and `uvc capture` / `uvc preview` produced frames. This is a different
+camera from the `056e:700a` documented above.
+
+## Frame loss was self-inflicted (2026-10-27)
+
+With the `1bcf:28c4` camera (YUY2 352x288, payload 3060, alt 11) a capture took 340-820 ms and about half the
+packets were counted as dropped. Counters per capture showed no error flags and no short frames at end-of-frame, only
+about 210 data packets per frame (one frame about every 200 ms) and one of every two frames marked bad *before* its
+end: the receive loop flagged the frame in progress as bad every 100 ms of busy polling and slept 1 ms, because
+sleeping loses the isochronous data of the next microframes. At low frame intervals every frame outlasted 100 ms, so
+10 and 5 fps requests never completed a frame in 10 s.
+
+The loop now yields only at a frame boundary (right after an end-of-frame packet) and mid-frame only after 1 s. Every
+end-of-frame then yielded a complete frame: 300-450 ms per capture including stream setup, about 3 fps from separate
+captures and 2.8 fps in `camera.Camera(camera.USB).live()`. The camera's own frame period (about 200 ms) is the next
+limit; `uvc interval N` (100 ns units) requests another frame interval for the next capture but did not change it
+here. `uvc live [SECONDS]` shows a continuous view (any key stops it). Each capture still negotiates, selects the
+alternate setting and closes the stream; keeping the stream open between frames would approach the camera's frame
+period. The "dropped" counter counts packets while a frame was bad, not frames.
+
+## Motion-JPEG and the isochronous receive path (2026-10-27)
+
+Camera `1bcf:28c4` advertises MJPEG at 30 fps in every size up to 1920x1080, but raw YUY2 only at 5-30 fps depending on
+the size (`uvc modes` lists both). The `mjpeg` module (see [MODULES.md](MODULES.md)) adds the MJPEG path:
+`uvc size 640x480 mjpeg`, then `uvc live` or the MicroPython `Camera.set_size(w, h, "mjpeg")`.
+
+Software decoder, `drivers/mjpeg`: baseline Huffman JPEG, 4:4:4/4:2:2/4:2:0/grey, restart intervals, frames without a DHT
+segment, reduced-size decoding by 1/2, 1/4 or 1/8 inside the inverse DCT (the camera path asks for the largest
+reduction that still fills the picture it will be shown at). `python tests/mjpeg/run_tests.py` builds it with
+Visual Studio and compares it with Pillow on 185 cases (several sizes, subsamplings, qualities, restart markers, no-DHT
+frames, malformed input): all pass. Pillow smooths chroma and the decoder replicates it, so the RGB thresholds are PSNR
+limits (32-36 dB at full size, lower for 4:2:0 at 1/8), and a luma-only check (about 44 dB) guards the entropy decoder
+and the IDCT. Decoding on the Tab5, measured with `uvc status`: 640x480 full size 107 ms (333 ms before the per-pixel
+division and the dense IDCT were removed), 352x288 40 ms, 640x480 reduced to 320x240 41 ms, 1280x720 reduced to 640x360
+108 ms.
+
+What limits the frame rate is the isochronous receive loop, not the decoder. The camera sets the UVC error bit on many
+frames (352x288 MJPEG: 31 of 69; 640x480: 74 of 88; 1280x720: 73 of 90; raw 640x480 YUY2: every one of 248, which is why
+sizes above 352x288 never completed before). Those frames really are short: a missing end-of-image marker in 38 of 88
+and none failed in the entropy decoder. An MJPEG frame is a burst of full 3060-byte payloads in consecutive microframes,
+and the host re-arms one transfer per packet, so a gap of a single microframe loses data. The receive loop now keeps two
+packet buffers and arms the next transfer before it looks at the packet just received: raw 640x480 went from 0 to 16
+complete frames in 5 s. MJPEG still loses most frames to the error bit (a set bit is not treated as fatal for MJPEG;
+the missing end marker is), so it is not faster than raw 352x288 (about 4 fps against 5.8). The next step is in the
+HAL: two channels alternating odd and even microframes, so each one has 250 us to be re-armed.

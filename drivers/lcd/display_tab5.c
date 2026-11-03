@@ -30,6 +30,7 @@
 #include "font_ja16.h"
 #include "ili9881c_tab5_init.h"
 #include "st7121_tab5_init.h"
+#include "st7123_tab5_init.h"
 
 #include "esp_ldo_regulator.h"
 #include "esp_lcd_mipi_dsi.h"
@@ -82,8 +83,22 @@ static const panel_info_t PANEL_ST7121 = {
     { .h_size = PANEL_W, .v_size = PANEL_H, .hsync_back_porch = 40, .hsync_pulse_width = 2, .hsync_front_porch = 40,
       .vsync_back_porch = 24, .vsync_pulse_width = 20, .vsync_front_porch = 200 },
 };
+/* Link speed and timing from M5GFX's M5Tab5 ST7123 detection (the touch controller stops working if the
+ * vertical front porch is reduced). */
+/* M5GFX's values.  60 MHz / 780 Mbit/s was tried on hardware (2026-10-27): the whole console blinked. */
+#ifndef M5OS_ST7123_DPI_MHZ
+#define M5OS_ST7123_DPI_MHZ 80
+#endif
+#ifndef M5OS_ST7123_LANE_MBPS
+#define M5OS_ST7123_LANE_MBPS 1040
+#endif
+static const panel_info_t PANEL_ST7123 = {
+    "ST7123", M5OS_ST7123_LANE_MBPS, M5OS_ST7123_DPI_MHZ,
+    { .h_size = PANEL_W, .v_size = PANEL_H, .hsync_back_porch = 40, .hsync_pulse_width = 2, .hsync_front_porch = 40,
+      .vsync_back_porch = 8, .vsync_pulse_width = 2, .vsync_front_porch = 220 },
+};
 
-static volatile uint32_t s_frames;       /* refresh-done interrupts seen: proves the scan-out loop runs */
+static volatile uint32_t s_frames;      /* refresh-done interrupts seen: proves the scan-out loop runs */
 static uint16_t *s_fb;                  /* physical layout: PANEL_H rows of PANEL_W pixels - what the panel scans out */
 static uint16_t *s_draw;                /* where drawing goes: s_fb, or an off-screen buffer of the same layout (display_set_target) */
 static esp_lcd_panel_io_handle_t s_io;
@@ -184,6 +199,23 @@ static void panel_start_st7121(void)
     }
 }
 
+/* M5GFX order: the settings table, then display on, tearing-effect line on and sleep out (120 ms), then
+ * MADCTL and COLMOD.  There is no software reset. */
+static void panel_start_st7123(void)
+{
+    static const uint8_t te[] = { 0x00 }, madctl[] = { 0x00 }, colmod[] = { COLMOD_RGB565 };
+    for (size_t i = 0; i < sizeof st7123_tab5_init / sizeof st7123_tab5_init[0]; i++) {
+        tx(st7123_tab5_init[i].cmd, st7123_tab5_init[i].data, st7123_tab5_init[i].len);
+        delay_ms(st7123_tab5_init[i].delay_ms);
+    }
+    tx(LCD_CMD_DISPON, NULL, 0);
+    tx(0x35, te, 1);
+    tx(LCD_CMD_SLPOUT, NULL, 0);
+    delay_ms(SLEEP_OUT_MS);
+    tx(LCD_CMD_MADCTL, madctl, 1);
+    tx(LCD_CMD_COLMOD, colmod, 1);
+}
+
 bool display_init(void)
 {
     if (!board_init()) return false;
@@ -191,8 +223,9 @@ bool display_init(void)
     switch (tab5_panel()) {
     case TAB5_PANEL_ILI9881C: pi = &PANEL_ILI9881C; break;
     case TAB5_PANEL_ST7121:   pi = &PANEL_ST7121;   break;
+    case TAB5_PANEL_ST7123:   pi = &PANEL_ST7123;   break;
     default:
-        kprintf("display: this Tab5 has an ST7123 panel; the driver is not written yet\n");
+        kprintf("display: unknown Tab5 panel\n");
         return false;
     }
     kprintf("display: %s panel, %u Mbit/s per lane\n", pi->name, (unsigned)pi->lane_mbps);
@@ -211,7 +244,9 @@ bool display_init(void)
     esp_lcd_dbi_io_config_t dbi_cfg = { .virtual_channel = 0, .lcd_cmd_bits = 8, .lcd_param_bits = 8 };
     if (esp_lcd_new_panel_io_dbi(bus, &dbi_cfg, &s_io) != ESP_OK) { kprintf("display: DBI io failed\n"); return false; }
 
-    if (pi == &PANEL_ST7121) panel_start_st7121(); else panel_start_ili9881c();
+    if (pi == &PANEL_ST7121) panel_start_st7121();
+    else if (pi == &PANEL_ST7123) panel_start_st7123();
+    else panel_start_ili9881c();
 
     /* The DPI driver takes its framebuffer from the IDF heap, which is empty (the kernel owns PSRAM).
      * Hand it the reserved top slice of PSRAM, with the same capabilities IDF itself would give PSRAM. */

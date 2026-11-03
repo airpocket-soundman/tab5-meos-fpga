@@ -21,14 +21,23 @@ int fpga_link_response(const uint8_t r[8],const uint8_t q[8])
     if (!r||!q) return FPGA_LINK_INVALID;
     uint16_t crc=fpga_link_crc16(r,6);
     if(r[6]!=(uint8_t)crc||r[7]!=(uint8_t)(crc>>8))return FPGA_LINK_CRC;
-    if(r[0]!=0x5a||r[3]!=2||r[1]>2)return FPGA_LINK_INVALID;
+    bool gfx=q[1]>=FPGA_GFX_INFO&&q[1]<=FPGA_GFX_RECT;
+    if(r[0]!=0x5a||r[3]!=2||(!gfx&&r[1]>2)||r[1]>5||r[1]==4)return FPGA_LINK_INVALID;
     if(r[2]!=q[2])return FPGA_LINK_SEQUENCE;
+    if(gfx&&r[1]==2)return FPGA_LINK_UNSUPPORTED;
+    if(gfx&&r[1]==3)return FPGA_LINK_RANGE;
+    if(gfx&&r[1]==5)return FPGA_LINK_UNINITIALIZED;
     if(r[1])return FPGA_LINK_REMOTE;
     bool good=false;
     switch(q[1]) {
     case FPGA_LINK_ID:good=r[4]=='T'&&r[5]=='P';break;
     case FPGA_LINK_ECHO:good=r[4]==q[4]&&r[5]==q[5];break;
     case FPGA_LINK_INVERT:good=r[4]==(uint8_t)(q[4]^0xff)&&r[5]==(uint8_t)(q[5]^0xff);break;
+    case FPGA_GFX_INFO:good=r[4]==32&&r[5]==32;break;
+    case FPGA_GFX_COLOR:case FPGA_GFX_PIXEL:case FPGA_GFX_ORIGIN:case FPGA_GFX_RECT:
+        good=r[4]==q[4]&&r[5]==q[5];break;
+    case FPGA_GFX_CLEAR:good=r[4]==0&&r[5]==0;break;
+    case FPGA_GFX_READ:good=true;break;
     default:return FPGA_LINK_INVALID;
     }
     return good?FPGA_LINK_OK:FPGA_LINK_DATA;
@@ -54,7 +63,7 @@ static int transfer(fpga_link_t *link,bool writing,uint8_t data[8],uint64_t dead
 int fpga_link_exchange(fpga_link_t *link,uint8_t op,uint8_t a,uint8_t b,uint8_t result[2],uint32_t timeout_us)
 {
     if(!link||!result||!link->ops||!timeout_us||timeout_us>FPGA_LINK_TIMEOUT_MAX_US
-       ||op<FPGA_LINK_ID||op>FPGA_LINK_INVERT)return FPGA_LINK_INVALID;
+       ||!((op>=FPGA_LINK_ID&&op<=FPGA_LINK_INVERT)||(op>=FPGA_GFX_INFO&&op<=FPGA_GFX_RECT)))return FPGA_LINK_INVALID;
     const fpga_link_ops_t *ops=link->ops;
     if(!ops->begin||!ops->write||!ops->turnaround||!ops->read||!ops->finish||!ops->now_us||!ops->idle)
         return FPGA_LINK_INVALID;
@@ -84,6 +93,8 @@ const char *fpga_link_error(int error)
     case FPGA_LINK_TIMEOUT:return "timeout";case FPGA_LINK_CANCELLED:return "cancelled";
     case FPGA_LINK_CRC:return "crc";case FPGA_LINK_SEQUENCE:return "sequence";
     case FPGA_LINK_REMOTE:return "remote-error";case FPGA_LINK_DATA:return "data";
-    case FPGA_LINK_BUSY:return "busy";default:return "unknown";
+    case FPGA_LINK_BUSY:return "busy";case FPGA_LINK_UNSUPPORTED:return "unsupported";
+    case FPGA_LINK_RANGE:return "range";case FPGA_LINK_UNINITIALIZED:return "uninitialized";
+    default:return "unknown";
     }
 }

@@ -21,6 +21,29 @@ set_property(CACHE M5OS_USB_BACKEND PROPERTY STRINGS native_dma tinyusb)
 if(NOT M5OS_USB_BACKEND MATCHES "^(native_dma|tinyusb)$")
     message(FATAL_ERROR "Unknown USB backend: ${M5OS_USB_BACKEND}")
 endif()
+# Which optional feature modules go into this build, with their dependencies (cmake/modules.cmake, docs/MODULES.md).
+set(M5OS_MODULES "" CACHE STRING "Modules to build, comma separated; 'all' or empty = the defaults. Dependencies are added.")
+set(M5OS_PROFILE "" CACHE STRING "Firmware size: small, medium or large (a named module selection; M5OS_MODULES overrides it)")
+set(M5OS_DISABLE_MODULES "" CACHE STRING "Modules to leave out of the default set (and whatever needs them)")
+include(${M5OS_ROOT}/cmake/modules.cmake)
+m5os_resolve_modules()
+if(NOT M5OS_MODULE_FPGA)
+    list(FILTER M5OS_SRCS EXCLUDE REGEX "/drivers/fpga/|/user/fpga/")
+endif()
+if(NOT M5OS_MODULE_FPGA_GFX)
+    list(FILTER M5OS_SRCS EXCLUDE REGEX "/fpga/fpga_gfx[^/]*[.]c$")
+endif()
+if(NOT M5OS_MODULE_FPGA_NPU)
+    list(FILTER M5OS_SRCS EXCLUDE REGEX "/fpga/fpga_npu[^/]*[.]c$")
+endif()
+if(NOT M5OS_MODULE_FPGA_DIAG)
+    list(FILTER M5OS_SRCS EXCLUDE REGEX "/fpga/fpga_diag[^/]*[.]c$")
+endif()
+if(M5OS_MODULE_GFXBENCH)
+    list(APPEND M5OS_SRCS ${M5OS_ROOT}/user/gfxbench/gfxbench_app.cpp
+                         ${M5OS_ROOT}/third_party/gpu_lab/main/lab.cpp)
+endif()
+
 if("$ENV{M5OS_BOARD}" STREQUAL "tab5" AND M5OS_USB_BACKEND STREQUAL "tinyusb")
     list(APPEND M5OS_SRCS
         ${M5OS_ROOT}/third_party/tinyusb/src/tusb.c
@@ -53,6 +76,12 @@ else()
     set(M5OS_ARCH_REQUIRES xtensa)
 endif()
 
+# Without the camera module the built-in camera driver is replaced by the stub that reports "no camera".
+if("$ENV{M5OS_BOARD}" STREQUAL "tab5" AND NOT M5OS_MODULE_CAMERA)
+    list(FILTER M5OS_SRCS EXCLUDE REGEX "/drivers/camera/camera_tab5\\.c$")
+    list(APPEND M5OS_SRCS ${M5OS_ROOT}/drivers/camera/camera_stub.c)
+endif()
+
 # Developer switch: M5OS_SELFTEST=1 idf.py build   -> run the regression tests at boot instead of the shell
 if("$ENV{M5OS_SELFTEST}" STREQUAL "1")
     set(M5OS_DEFS M5OS_BOOT_SELFTEST=1)
@@ -64,7 +93,14 @@ idf_component_register(
     # Only low-level, FreeRTOS-free IDF pieces are linked in explicitly.
     PRIV_REQUIRES soc hal esp_rom esp_hw_support ${M5OS_ARCH_REQUIRES})
 
-target_compile_definitions(${COMPONENT_LIB} PRIVATE ${M5OS_BOARD_DEF} ${M5OS_DEFS})
+target_compile_definitions(${COMPONENT_LIB} PRIVATE ${M5OS_BOARD_DEF} ${M5OS_DEFS} ${M5OS_MODULE_DEFINITIONS})
+if(M5OS_MODULE_GFXBENCH)
+    target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)
+    set_source_files_properties(${M5OS_ROOT}/user/gfxbench/gfxbench_app.cpp
+        ${M5OS_ROOT}/third_party/gpu_lab/main/lab.cpp
+        PROPERTIES COMPILE_OPTIONS "-O3;-fno-exceptions;-fno-rtti")
+endif()
+target_include_directories(${COMPONENT_LIB} PRIVATE ${M5OS_ROOT}/drivers/mjpeg)
 
 # Optional maintenance build only. Normal builds carry no C6 application image.
 set(M5OS_C6_OTA_IMAGE "" CACHE FILEPATH "Pinned Tab5 C6 MCU application for explicit SDIO OTA")
@@ -95,6 +131,9 @@ endif()
 file(GLOB M5OS_WASM3_SRCS ${M5OS_ROOT}/third_party/wasm3/*.c)
 set_source_files_properties(${M5OS_WASM3_SRCS} PROPERTIES COMPILE_OPTIONS "-w;-O3" COMPILE_DEFINITIONS "M5OS_WASM_ALLOC=1")
 
+# The JPEG decoder is the hot loop of every Motion-JPEG frame: speed over size.
+set_source_files_properties(${M5OS_ROOT}/drivers/mjpeg/mjpeg.c PROPERTIES COMPILE_OPTIONS "-O3")
+
 # THE hook that keeps FreeRTOS from ever running:
 # startup.c calls esp_startup_start_app(); freertos/port/xtensa/port.c
 # implements it as "create main task + vTaskStartScheduler()".  --wrap
@@ -113,3 +152,9 @@ include(${M5OS_ROOT}/cmake/micropython_meos.cmake)
 m5os_add_micropython(${COMPONENT_LIB})
 include(${M5OS_ROOT}/cmake/sl_meos.cmake)
 m5os_add_sl(${COMPONENT_LIB})
+
+# Never enable before recorded physical Dock review. No boot activation.
+option(M5OS_FPGA_DOCK_VERIFIED "Allow explicit Dock commands after electrical review" OFF)
+if(M5OS_FPGA_DOCK_VERIFIED)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE M5OS_FPGA_DOCK_VERIFIED=1)
+endif()

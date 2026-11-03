@@ -1,6 +1,8 @@
 /* devfs: every device registered in Phase 5 appears as /dev/<name>. */
 #include <m5os/vfs.h>
 #include <m5os/device.h>
+#include <m5os/devreg.h>
+#include <m5os/blockdev.h>
 #include <m5os/errno.h>
 
 static bool is_root(const char *rel) { return rel[0] == '/' && rel[1] == 0; }
@@ -11,6 +13,7 @@ static int devfs_open(void *fsd, const char *rel, uint32_t flags, void **file)
     if (flags & VFS_O_EXCL) return ERR_NOSYS;
     if (is_root(rel)) return ERR_ISDIR;
     int h = device_open(rel + 1);                 /* skip the leading '/' */
+    if (h == ERR_NODEV && devreg_find(rel + 1, NULL)) return ERR_NOSYS;   /* storage and cameras: listed, not opened here */
     if (h < 0) return h == ERR_NODEV ? ERR_NOENT : h;
     *file = (void *)(intptr_t)h;
     return ERR_OK;
@@ -30,6 +33,15 @@ static int fill_cb(const device_t *dev, void *ctx)
     return 0;
 }
 
+/* A block device shows its capacity (clamped to what the 32-bit size field holds); a camera has no size. */
+static uint32_t reg_size(const devreg_entry_t *e)
+{
+    if (e->cls != DEVREG_BLOCK || !e->obj) return 0;
+    const blockdev_t *bd = e->obj;
+    uint64_t bytes = (uint64_t)bd->block_count * bd->block_size;
+    return bytes > 0xFFFFFFFFu ? 0xFFFFFFFFu : (uint32_t)bytes;
+}
+
 static int devfs_stat(void *fsd, const char *rel, vfs_info_t *out)
 {
     (void)fsd;
@@ -39,13 +51,20 @@ static int devfs_stat(void *fsd, const char *rel, vfs_info_t *out)
     while (rel[1 + k] && k < FS_NAME_MAX) { probe.name[k] = rel[1 + k]; k++; }
     probe.name[k] = 0;
     device_foreach(fill_cb, &probe);
+    devreg_entry_t reg;
+    if (probe.type != FS_TYPE_DEV && devreg_find(probe.name, &reg)) {
+        probe.type = FS_TYPE_DEV;
+        probe.size = reg_size(&reg);
+        *out = probe;
+        return ERR_OK;
+    }
     if (probe.type != FS_TYPE_DEV) return ERR_NOENT;
     probe.size = 0;
     *out = probe;
     return ERR_OK;
 }
 
-struct list_ctx { int (*cb)(const vfs_info_t *, void *); void *ctx; };
+struct list_ctx { int (*cb)(const vfs_info_t *, void *); void *ctx; int stopped; };
 
 static int list_cb(const device_t *dev, void *c)
 {
@@ -54,15 +73,31 @@ static int list_cb(const device_t *dev, void *c)
     int k = 0;
     while (dev->name[k] && k < FS_NAME_MAX) { info.name[k] = dev->name[k]; k++; }
     info.name[k] = 0;
-    return lc->cb(&info, lc->ctx);
+    int r = lc->cb(&info, lc->ctx);
+    if (r) lc->stopped = 1;
+    return r;
+}
+
+static int reg_list_cb(const devreg_entry_t *e, void *c)
+{
+    struct list_ctx *lc = c;
+    vfs_info_t info = { .type = FS_TYPE_DEV, .size = reg_size(e) };
+    int k = 0;
+    while (e->name[k] && k < FS_NAME_MAX) { info.name[k] = e->name[k]; k++; }
+    info.name[k] = 0;
+    int r = lc->cb(&info, lc->ctx);
+    if (r) lc->stopped = 1;
+    return r;
 }
 
 static int devfs_readdir(void *fsd, const char *rel, int (*cb)(const vfs_info_t *, void *), void *ctx)
 {
     (void)fsd;
     if (!is_root(rel)) return ERR_NOTDIR;
-    struct list_ctx lc = { cb, ctx };
-    return device_foreach(list_cb, &lc);
+    struct list_ctx lc = { cb, ctx, 0 };
+    int n = device_foreach(list_cb, &lc);
+    if (lc.stopped) return n;
+    return n + devreg_foreach(reg_list_cb, &lc);
 }
 
 const vfs_fs_t vfs_devfs = {
