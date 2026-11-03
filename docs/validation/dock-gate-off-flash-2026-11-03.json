@@ -1,0 +1,21 @@
+{
+  "port": "COM4",
+  "artifact_hash_verified": true,
+  "boot_shell": true,
+  "status": {
+    "protocol": "bringup-v0",
+    "backend": "none",
+    "mock_available": true,
+    "gfx_available": false,
+    "npu_cpu_reference": false,
+    "npu_physical_backend": false,
+    "physical_backend": true,
+    "profile": "dock-jumper-v0",
+    "profile_verified": false,
+    "physical_link_tested": false
+  },
+  "unverified_gate_rejected": true,
+  "mock_selftest_ok": true,
+  "jumpers_connected": false,
+  "physical_link_tested": false
+}
