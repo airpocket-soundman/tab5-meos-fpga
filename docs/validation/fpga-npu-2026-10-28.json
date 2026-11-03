@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-28",
+  "carrier_commit": "e5a386d263d8911a490922cc2770292699a87080",
+  "carrier_contract_status": "LINK/GFX external commands exist; external NPU/MEM commands and NPU/MEM bitstreams absent in reviewed main/development tree",
+  "source_manifest": "tests/fixtures/fpga_npu_source.json",
+  "npu_scope": "CPU arithmetic reference, not FPGA transport or RTL execution",
+  "golden_cases": {
+    "requant": 460,
+    "dot": 87,
+    "gemm": 12,
+    "conv": 8
+  },
+  "golden_total": 567,
+  "mac_checks": 13,
+  "native_tests": [
+    "per-operator and complete selftests",
+    "INT32 overflow in reduction order",
+    "rounding/shift/extrema/ReLU",
+    "invalid numeric widths before narrowing",
+    "matrix/tensor bounds",
+    "cancellation and deadlines",
+    "physical NPU rejected before GPIO activation",
+    "mock all-feature suite",
+    "GPIO-model LINK/GFX suite returns partial, not all-feature hardware PASS",
+    "communication failure stops suite and releases pins/memory"
+  ],
+  "link_gfx_regression": "pass: 583 LINK and 1442 GFX carrier vectors; 4104 fragmented LINK patterns; 513 GPIO-model patterns",
+  "builds": {
+    "npu_only": {
+      "result": "pass",
+      "application_bytes": 1268800
+    },
+    "diagnostic_bundle": {
+      "result": "pass",
+      "application_bytes": 1302288
+    },
+    "modules_disabled": {
+      "result": "pass",
+      "application_bytes": 1458112
+    },
+    "stable_modules_plus_diagnostics": {
+      "result": "pass",
+      "application_bytes": 1530992
+    }
+  },
+  "ready_image": "D:\\GitHub\\tab5-meos-fpga\\build-tab5\\m5os.bin",
+  "ready_image_sha256": "29cf8672db6149da85a57661dd17958c2683c95b899de1091094d7d0ba1fb50f",
+  "ready_modules": "camera,uvc,mjpeg,camsrc,micropython,mp_camera,sl,fpga_diag (plus fpga, fpga_gfx, fpga_npu, gfxbench dependencies)",
+  "hardware_flashed": false,
+  "hardware_tested": false,
+  "physical_npu_implemented": false,
+  "full_hardware_coverage": false,
+  "remaining": [
+    "carrier external NPU/MEM protocol",
+    "matching NPU/MEM dispatcher and bitstreams",
+    "physical NPU/GFX/LINK, DDR3, RAMdisk, HDMI and DMA validation"
+  ],
+  "note": "Builds include unrelated pre-existing dirty module/camera/USB changes. Pending carrier information was requested from the user; no speculative wire commands or RTL changes were introduced."
+}

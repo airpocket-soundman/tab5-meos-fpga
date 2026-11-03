@@ -29,7 +29,8 @@ static int write_bytes(void*p,const uint8_t*data,size_t n,uint64_t d)
 static int turnaround(void*p,uint64_t d)
 {
     (void)d;fpga_mock_t*m=p;if(m->written!=8||m->fault==FPGA_MOCK_TURN_FAIL)return -1;
-    fpga_mock_respond(m->request,m->response);
+    if(m->respond)m->respond(m->respond_context,m->request,m->response);
+    else fpga_mock_respond(m->request,m->response);
     if(m->fault==FPGA_MOCK_BAD_CRC)m->response[6]^=1;
     if(m->fault==FPGA_MOCK_OLD_SEQUENCE){m->response[2]--;seal(m->response);}
     if(m->fault==FPGA_MOCK_WRONG_DATA){m->response[4]^=1;seal(m->response);}

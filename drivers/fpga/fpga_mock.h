@@ -9,6 +9,8 @@ typedef struct {
     unsigned written,read,chunk,fault,finishes;
     uint64_t now;
     bool ready,cancel,frozen_clock,last_failed;
+    void (*respond)(void *context,const uint8_t request[8],uint8_t response[8]);
+    void *respond_context;
 } fpga_mock_t;
 void fpga_mock_init(fpga_mock_t *mock,unsigned chunk);
 void fpga_mock_respond(const uint8_t request[8],uint8_t response[8]);

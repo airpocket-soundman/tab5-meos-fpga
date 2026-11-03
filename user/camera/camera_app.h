@@ -11,6 +11,12 @@ void camera_app_run(const char *save_dir, char *last_saved_name);
 
 /* Image helper functions used by the Filer's image viewer and shell `snap`. */
 bool camera_capture_bmp_file(const char *path);
+/* Exclusive use of the built-in camera (camsrc.c): acquire before camera_start(), release after camera_stop()
+ * (release also calls camera_deinit()). */
+bool camera_app_acquire(void);
+void camera_app_release(void);
+/* One built-in camera frame scaled to w x h (each 1..1280 / 1..720) into the caller's RGB565 buffer. */
+bool camera_capture_rgb565(uint16_t *dst, int w, int h);
 /* Standard top-down RGB565 BMP, padded rows; reports write/close failures. */
 bool camera_image_save_rgb565(const char *path, const uint16_t *pixels, int w, int h);
 bool camera_is_bmp_name(const char *name);

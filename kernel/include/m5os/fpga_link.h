@@ -1,5 +1,5 @@
 #pragma once
-/* Bringup-v0 only: not the GPU command ABI or a DDR memory protocol. */
+/* Bringup-v0 plus experimental Dock GFX v0; not a DDR memory protocol. */
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -8,14 +8,17 @@
 #define FPGA_LINK_POLL_LIMIT 1024u
 
 enum { FPGA_LINK_ID=1, FPGA_LINK_ECHO=2, FPGA_LINK_INVERT=3 };
+enum { FPGA_GFX_INFO=0x10, FPGA_GFX_COLOR=0x11, FPGA_GFX_CLEAR=0x12,
+       FPGA_GFX_PIXEL=0x13, FPGA_GFX_READ=0x14, FPGA_GFX_ORIGIN=0x15, FPGA_GFX_RECT=0x16 };
 enum { FPGA_LINK_OK=0, FPGA_LINK_INVALID=-1, FPGA_LINK_IO=-2,
        FPGA_LINK_TIMEOUT=-3, FPGA_LINK_CANCELLED=-4, FPGA_LINK_CRC=-5,
        FPGA_LINK_SEQUENCE=-6, FPGA_LINK_REMOTE=-7, FPGA_LINK_DATA=-8,
-       FPGA_LINK_BUSY=-9 };
+       FPGA_LINK_BUSY=-9, FPGA_LINK_UNSUPPORTED=-10, FPGA_LINK_RANGE=-11,
+       FPGA_LINK_UNINITIALIZED=-12 };
 
 typedef struct {
     /* Callbacks must be bounded by deadline. Positive means bytes transferred,
-     * zero means no progress, negative means failure. No GPIO implementation yet. */
+     * zero means no progress, negative means failure. */
     int (*begin)(void *context, uint64_t deadline);
     int (*write)(void *context, const uint8_t *data, size_t length, uint64_t deadline);
     int (*turnaround)(void *context, uint64_t deadline);

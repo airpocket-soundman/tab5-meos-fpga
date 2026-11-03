@@ -148,6 +148,51 @@ Use `ticks_diff(a, b)` for signed differences within half that period, and
 addition. Negative/out-of-period ticks are rejected. This module has no wall
 clock, RTC, epoch timestamps, calendar conversion or `ticks_cpu` API.
 
+## Cameras (`camera`)
+
+The built-in camera and a USB (UVC) camera sit behind one interface (`user/camera/camsrc.c`), so the same
+code runs on either; only the source differs.
+
+```python
+import camera
+cam = camera.Camera(camera.USB)          # camera.ONBOARD, camera.USB, or "onboard" / "usb"
+                                         # or by registry name: "camera0", "camera1", "/dev/camera1"
+print(camera.list())                     # ["camera0", "camera1"]: the cameras registered right now (docs/DEVICES.md)
+print(cam.name, cam.width, cam.height)   # native frame size (1280x720 built-in, 352x288 for the tested USB camera)
+img = cam.read()                         # Image; auto size = the smallest integer reduction that fits 400x300
+img = cam.read(160, 120)                 # scaled; give one of width/height to keep the aspect ratio
+cam.read_into(img)                       # no allocation: scaled to the image's own size
+cam.set_flip(True, False)                # mirror, vflip
+print(cam.modes())                       # [(w, h, "mjpeg"|"yuy2"|"raw", fps), ...]
+cam.set_size(640, 480, "mjpeg")          # choose a mode; format None = MJPEG if the camera offers it
+cam.live(5000)                           # show frames for 5 s, returns the frame count; Ctrl-C stops
+cam.close()                              # or: with camera.Camera("usb") as cam: ...
+img.show(hold_ms=3000); img.save("/sd/a.bmp"); camera.load("/sd/a.bmp", scale=2)
+camera.close()                           # give the console back after show()/live() without hold_ms
+```
+
+- `camera.available(source)` tells whether a camera is present (the USB camera must be enumerated and configured).
+  `Camera()` raises `OSError` if it is absent or busy (another task, or the shell `camera` app, has it).
+  One handle per camera; cameras left open are closed at VM exit.
+- Built-in: the first few frames after opening are skipped so auto-exposure settles, and `set_flip` is applied by the
+  sensor pipeline. USB: every `read()` sets the stream up, waits for one complete frame and closes it again (hence
+  300-450 ms), and `set_flip` is applied in software while scaling.
+- `Image(width, height)` makes a black image. `.width`, `.height` and `.data` (a bytearray of little-endian RGB565,
+  `width*height*2` bytes) are readable, and `.data` can be modified in place.
+  `Image.show(x=0, y=0, w=<screen>, h=<screen>, hold_ms=0)` fits the image into the area keeping its aspect ratio, up to
+  960x540, clearing the screen only when the area is the whole screen. `camera.show(img, ...)` is the same call.
+- `show()` and `live()` pause the text console. Without `hold_ms` the picture stays until `camera.close()` or VM exit,
+  which restore the console's previous pause state.
+- Pixels live on the 512 KiB MicroPython GC heap, so a 640x360 image (460 KB) leaves almost nothing. Use the automatic
+  size, smaller sizes, or `scale` (every n-th pixel, 1-16) for `camera.load`; a failed allocation raises `MemoryError`.
+- One-shot helpers kept from the first version: `usb_available()`, `usb_capture(timeout_ms=10000, scale=1)`,
+  `onboard_capture(width=320, height=180)`. They open, read one frame and close.
+
+Measured on a Tab5 with an ST7123 panel (2026-10-27), drawn straight to the LCD: `live()` delivered 39 frames in 6 s
+(6.5 fps) from the built-in camera and 17 frames (2.8 fps) from the USB camera `1bcf:28c4`; the shell `uvc live`
+showed 13 frames in 5 s. A single `read()` takes about 300-450 ms from the USB camera. On-screen appearance was not
+inspected by the author, and the module has no host-side test.
+
 ## Build and validation
 
 Tab5 builds enable `M5OS_MICROPYTHON` by default; `-DM5OS_MICROPYTHON=OFF` omits

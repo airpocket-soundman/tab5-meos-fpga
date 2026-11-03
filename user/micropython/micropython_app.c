@@ -28,6 +28,7 @@ static unsigned char input[128];
 static unsigned input_read, input_write;
 void mp_machine_io_init(void);
 void mp_machine_io_deinit(void);
+void mp_camera_deinit(void);
 void meos_vfs_init(void);
 int meos_vfs_deinit(void);
 int meos_vfs_set_cwd(const char *path);
@@ -174,6 +175,7 @@ static void vm_task(void *unused) {
     kprintf("python: file cleanup failed (%d)\n", close_error);
   }
   mp_machine_io_deinit();
+  mp_camera_deinit();
   mp_deinit();
   kfree(heap);
   vm_live = false;

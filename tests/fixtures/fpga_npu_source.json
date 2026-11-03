@@ -1,0 +1,17 @@
+{
+  "carrier_base_commit": "e5a386d263d8911a490922cc2770292699a87080",
+  "source_sha256": {
+    "fpga/reference/compute_reference.py": "23d48e8b2959db7b31eb807b522d414202e1268c32912b257b3dbd467ee67588",
+    "fpga/npu/rtl/int8_mac_lane.v": "07199c3a6c4354c598ab3847ba23c17215d7d84e1d5deb950204dea1fad47c2d",
+    "fpga/npu/rtl/int8_requantize.v": "12873790ccdc313a3052428f0efec893128f9fddd52f02b319a97e9d31050209",
+    "fpga/npu/rtl/int8_dot_job.v": "0f985e2b1d8a1e41d2be5bab588fb581900e1a218f0b78ba82e4889f1fef4dc7"
+  },
+  "header_sha256": "7fa65fb77936467df1cf45b2c2c9fb47a82ccc61feb2f1ccc12a8666c400e077",
+  "cases": {
+    "requant": 460,
+    "dot": 87,
+    "gemm": 12,
+    "conv": 8
+  },
+  "scope": "CPU arithmetic reference; no external NPU transport/bitstream contract exists"
+}

@@ -29,6 +29,7 @@
 
 static mutex_t s_image_lock = MUTEX_INIT;
 static uint16_t *s_preview_buf; /* 960 * 540 * 2 bytes max in PSRAM */
+static uint16_t *s_offscreen;   /* viewfinder only: framebuffer-sized drawing target, NULL = draw directly */
 #define MAX_PREVIEW_W 960
 #define MAX_PREVIEW_H 540
 
@@ -156,6 +157,9 @@ static void camera_app_run_locked(const char *save_dir, char *last_saved_name) {
         }
     }
 
+    if (!s_offscreen)
+        s_offscreen = kmalloc_psram(DISPLAY_BUFFER_BYTES);
+
     int cols = dq_cols(), rows = dq_rows();
     int fy = rows - FOOTER_ROWS;
     int mid_rows = rows - HEADER_ROWS - FOOTER_ROWS;
@@ -227,8 +231,19 @@ static void camera_app_run_locked(const char *save_dir, char *last_saved_name) {
             int vy = HEADER_ROWS * 16 + (mid_rows * 16 - vh) / 2;
 
             extract_scaled_frame(frame, s_preview_buf, vw, vh, st.mirror, st.vflip);
-            display_draw_rect(vx - 2, vy - 2, vw + 4, vh + 4, COLOR_WHITE);
-            display_draw_bitmap(vx, vy, vw, vh, s_preview_buf);
+            /* The rotated picture is drawn into an off-screen buffer and only a plain copy of the rectangle
+             * touches the buffer being scanned out, so the tear window is short.  Switching whole frames
+             * instead blanks the panel for a frame on every flip at video rates. */
+            if (s_offscreen) {
+                display_set_target(s_offscreen);
+                display_draw_rect(vx - 2, vy - 2, vw + 4, vh + 4, COLOR_WHITE);
+                display_draw_bitmap(vx, vy, vw, vh, s_preview_buf);
+                display_present(vx - 2, vy - 2, vw + 4, vh + 4);
+                display_set_target(NULL);
+            } else {
+                display_draw_rect(vx - 2, vy - 2, vw + 4, vh + 4, COLOR_WHITE);
+                display_draw_bitmap(vx, vy, vw, vh, s_preview_buf);
+            }
 
             static const uint8_t gain_mult[] = {1, 1, 2, 2, 4, 5, 8, 11, 16, 22, 32, 45};
             uint32_t gm = st.gain_idx < sizeof gain_mult ? gain_mult[st.gain_idx] : 32;
@@ -351,6 +366,8 @@ void camera_app_run(const char *dir, char *last) {
     camera_deinit();
     kfree(s_preview_buf);
     s_preview_buf = NULL;
+    kfree(s_offscreen);
+    s_offscreen = NULL;
     mutex_unlock(&s_image_lock);
 }
 
@@ -399,6 +416,53 @@ bool camera_capture_bmp_file(const char *path) {
     camera_deinit();
     kfree(s_preview_buf);
     s_preview_buf = NULL;
+    mutex_unlock(&s_image_lock);
+    return ok;
+}
+
+/* Exclusive use of the built-in camera by another user (camsrc): the same lock the camera app takes. */
+bool camera_app_acquire(void) { return mutex_trylock(&s_image_lock); }
+void camera_app_release(void) {
+    camera_deinit();
+    mutex_unlock(&s_image_lock);
+}
+
+/* One frame of the built-in camera, scaled to w x h RGB565 into the caller's buffer (MicroPython `camera`). */
+static bool camera_capture_rgb565_locked(uint16_t *dst, int w, int h) {
+    if (!camera_start())
+        return false;
+    uint32_t start_seq = 0;
+    camera_frame(&start_seq);
+    const uint16_t *frame = NULL;
+    for (int wait = 0; wait < 60; wait++) {
+        uint32_t seq = 0;
+        const uint16_t *f = camera_frame(&seq);
+        if (f && seq != start_seq) {
+            frame = f;
+            camera_auto_exposure_step(frame);
+            if (seq - start_seq >= 6u)
+                break;
+        }
+        task_sleep(20);
+    }
+    if (!frame) {
+        camera_stop();
+        return false;
+    }
+    camera_status_t st;
+    camera_get_status(&st);
+    extract_scaled_frame(frame, dst, w, h, st.mirror, st.vflip);
+    camera_stop();
+    return true;
+}
+
+bool camera_capture_rgb565(uint16_t *dst, int w, int h) {
+    if (!dst || w < 1 || h < 1 || w > CAMERA_WIDTH || h > CAMERA_HEIGHT)
+        return false;
+    if (!mutex_trylock(&s_image_lock))
+        return false;
+    bool ok = camera_capture_rgb565_locked(dst, w, h);
+    camera_deinit();
     mutex_unlock(&s_image_lock);
     return ok;
 }

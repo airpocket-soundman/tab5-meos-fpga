@@ -18,7 +18,12 @@
 #include "../wifi/wifi_app.h"
 #include "../bluetooth/bt_app.h"
 #include "../io/io_app.h"
+#if M5OS_MODULE_FPGA
 #include "../fpga/fpga_app.h"
+#endif
+#if M5OS_MODULE_GFXBENCH
+#include "../gfxbench/gfxbench_app.h"
+#endif
 #include "../image/image_app.h"
 #if M5OS_SL
 #include "../sl/sl_app.h"
@@ -41,6 +46,8 @@
 #include <m5os/vfs.h>
 #include <m5os/task.h>
 #include <m5os/kprintf.h>
+#include <m5os/devreg.h>
+#include <m5os/blockdev.h>
 #include <m5os/kmalloc.h>
 #include <m5os/hal_time.h>
 #include <m5os/errno.h>
@@ -438,6 +445,28 @@ static int cmd_eth(int argc,char **argv)
     return 0;
 }
 static int cmd_usbreset(int argc,char **argv){(void)argc;(void)argv;usb_native_rescan();sh_puts("USB rescan requested\n");return 0;}
+static int lsdev_cb(const devreg_entry_t *e, void *ctx)
+{
+    (void)ctx;
+    if (e->cls == DEVREG_BLOCK) {
+        const blockdev_t *bd = e->obj;
+        uint64_t mib = ((uint64_t)bd->block_count * bd->block_size) >> 20;
+        SH_PRINTF("%-8s block   %-4s %8u MiB   %s\n", e->name, e->kind, (unsigned)mib,
+                  e->mount[0] ? e->mount : "(not mounted)");
+    } else {
+        SH_PRINTF("%-8s camera  %s\n", e->name, e->kind);
+    }
+    return 0;
+}
+
+static int cmd_lsdev(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    sh_puts("NAME     CLASS   KIND         SIZE   MOUNT\n");
+    if (devreg_foreach(lsdev_cb, NULL) == 0) sh_puts("(no devices)\n");
+    return 0;
+}
+
 static int cmd_lsusb(int argc,char **argv)
 {
     if(argc>1 && sh_streq(argv[1],"-d")){usb_native_dump();return 0;}
@@ -1053,7 +1082,12 @@ static int cmd_history(int argc, char **argv)
 }
 
 static const command_t s_commands[] = {
-    { "fpga", fpga_cmd_main, "fpga status | --mock id/echo/invert/selftest (no hardware)" },
+#if M5OS_MODULE_FPGA
+    { "fpga", fpga_cmd_main, "fpga status/features | --mock suite | --cpu npu selftest | --dock dock-jumper-v0 id/test/gfx/suite (optional modules)" },
+#endif
+#if M5OS_MODULE_GFXBENCH
+    { "gfxbench", gfxbench_cmd_main, "gfxbench [scene|suite|list] [light|medium|heavy] [float|integer] [--bench|--frames N] [--headless]" },
+#endif
     { "image", cmd_image, "image [--info] FILE.bmp  display/inspect BMP on LCD" },
 #if M5OS_SL
     { "sl", sl_cmd_main, "sl [-aFlc]  native steam locomotive animation" },
@@ -1065,8 +1099,9 @@ static const command_t s_commands[] = {
 #if M5OS_USB_NATIVE_DMA
     { "eth", cmd_eth, "show USB Ethernet link, IP and packet counters" },
     { "usbreset", cmd_usbreset, "restart USB enumeration" },
-    { "uvc", uvc_cmd_main, "uvc [status|preview|capture PATH]  USB camera" },
+    { "uvc", uvc_cmd_main, "uvc [status|modes|size WxH [mjpeg]|preview|live [S [WxH]]|capture PATH|interval N]  USB camera" },
     { "lsusb",   cmd_lsusb,   "show cached USB devices, topology, speed and mounts" },
+    { "lsdev",   cmd_lsdev,   "list storage and camera devices (sd0, usb0.., camera0..) and their mounts" },
 #endif
     { "history", cmd_history, "show command history (or use Up/Down arrows)" },
     { "ps",      cmd_ps,      "list tasks" },

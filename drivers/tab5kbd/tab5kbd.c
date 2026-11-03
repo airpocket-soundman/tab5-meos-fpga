@@ -99,6 +99,7 @@ void keyboard_start(void)
         kprintf("keyboard: Tab5 Keyboard accessory on Ext.Port1 (firmware %02x)\n", fw);
         task_create_stack("kbd", kbd_task, NULL, TASK_PRIO_DEFAULT + 2, TASK_STACK);
         osk_start();                                  /* the on-screen keyboard is there too (hide it with `osk off`) */
+        usbkbd_start();                               /* the USB-A host also serves cameras, storage and Ethernet */
         return;
     }
     kprintf("keyboard: no Tab5 Keyboard accessory (I2C 0x%02x), looking for a USB keyboard\n", KBD_ADDR);

@@ -17,6 +17,8 @@ typedef struct {
   uvc_mode_t modes[UVC_MAX_MODES];
   uvc_alt_t alts[UVC_MAX_ALTS];
   unsigned nmodes, nalts;
+  uvc_mode_t jmodes[UVC_MAX_MODES]; /* MJPEG frame sizes: listed only, capture is YUY2 */
+  unsigned njmodes;
 } uvc_descriptor_t;
 static uint16_t uvc_le16(const uint8_t *p) {
   return p[0] | ((uint16_t)p[1] << 8);
@@ -34,7 +36,7 @@ static bool uvc_descriptors(const uint8_t *b, size_t n, uvc_descriptor_t *v) {
     return false;
   *v = (uvc_descriptor_t){.config = b[5]};
   unsigned cls = 0, sub = 0, iface = 0, alt = 0, format = 0;
-  bool yuy2 = false;
+  bool yuy2 = false, mjpeg = false;
   static const uint8_t guid[16] = {0x59, 0x55, 0x59, 0x32, 0, 0,    0x10, 0,
                                    0x80, 0,    0,    0xaa, 0, 0x38, 0x9b, 0x71};
   for (size_t i = 0; i < n;) {
@@ -50,6 +52,7 @@ static bool uvc_descriptors(const uint8_t *b, size_t n, uvc_descriptor_t *v) {
       cls = d[5];
       sub = d[6];
       yuy2 = false;
+      mjpeg = false;
       format = 0;
       if (cls == 14 && sub == 1 && !v->version)
         v->control = iface;
@@ -73,6 +76,7 @@ static bool uvc_descriptors(const uint8_t *b, size_t n, uvc_descriptor_t *v) {
           if (l < 27)
             return false;
           format = d[3];
+          mjpeg = false;
           yuy2 = true;
           for (unsigned k = 0; k < 16; k++)
             if (d[5 + k] != guid[k])
@@ -85,6 +89,15 @@ static bool uvc_descriptors(const uint8_t *b, size_t n, uvc_descriptor_t *v) {
             return false;
           format = d[3];
           yuy2 = false;
+          mjpeg = true;
+        }
+        if (d[2] == 7 && mjpeg) {
+          if (l < 26)
+            return false;
+          uint16_t w = uvc_le16(d + 5), h = uvc_le16(d + 7);
+          uint32_t interval = uvc_le32(d + 21);
+          if (w && h && interval && v->njmodes < UVC_MAX_MODES)
+            v->jmodes[v->njmodes++] = (uvc_mode_t){format, d[3], w, h, interval};
         }
         if (d[2] == 5 && yuy2) {
           if (l < 26)
@@ -109,7 +122,7 @@ static bool uvc_descriptors(const uint8_t *b, size_t n, uvc_descriptor_t *v) {
     }
     i += l;
   }
-  return v->version && v->nmodes && v->nalts && v->ep;
+  return v->version && (v->nmodes || v->njmodes) && v->nalts && v->ep;
 }
 /* Payload assembler: discard damaged/oversized/incomplete frames; FID starts a
  * new one. */
@@ -118,6 +131,8 @@ typedef struct {
   size_t capacity, used;
   uint8_t fid;
   bool started, bad, complete;
+  bool variable; /* MJPEG: the frame length is whatever arrived by end-of-frame */
+  bool ignore_error; /* MJPEG: a set error bit does not condemn the frame; the decoder checks it */
 } uvc_frame_t;
 static bool uvc_payload(uvc_frame_t *f, const uint8_t *p, size_t n) {
   if (!f || !p || !f->data || f->used > f->capacity)
@@ -145,7 +160,7 @@ static bool uvc_payload(uvc_frame_t *f, const uint8_t *p, size_t n) {
     f->bad = false;
     f->complete = false;
   }
-  if (p[1] & 0x40)
+  if ((p[1] & 0x40) && !f->ignore_error)
     f->bad = true;
   size_t bytes = n - h;
   if (bytes > f->capacity - f->used)
@@ -156,7 +171,7 @@ static bool uvc_payload(uvc_frame_t *f, const uint8_t *p, size_t n) {
     f->used += bytes;
   }
   if (p[1] & 2) {
-    f->complete = !f->bad && f->used == f->capacity;
+    f->complete = !f->bad && (f->variable ? f->used > 0 : f->used == f->capacity);
     return f->complete;
   }
   return false;

@@ -15,6 +15,8 @@
 #include "native_ecm.h"
 #include "native_uvc.h"
 #include "../../fs/fat/usb_fat.h"
+#include <m5os/devreg.h>
+#include <m5os/errno.h>
 #include "../usbkbd/hid_keys.h"
 #include <m5os/ime.h>
 #include "hal_usbh_dma.h"
@@ -24,6 +26,22 @@
 #include <m5os/usb_info.h>
 #include <m5os/tab5.h>
 #include <string.h>
+
+/* USB storage slot N is the registry device "usbN"; the FAT automounter does the mounting. */
+static bool storage_attach(unsigned slot, blockdev_t *bd) {
+    char name[DEVREG_NAME_MAX];
+    ksnprintf(name, sizeof name, "usb%u", slot);
+    devreg_remove(name); /* a stale entry from a missed detach */
+    if (devreg_add(DEVREG_BLOCK, name, "usb", slot, bd) != ERR_OK)
+        return false;
+    return usb_fat_slot_mounted(slot);
+}
+static void storage_detach(unsigned slot) {
+    char name[DEVREG_NAME_MAX];
+    ksnprintf(name, sizeof name, "usb%u", slot);
+    if (devreg_remove(name) != ERR_OK)
+        usb_fat_detach_slot(slot);
+}
 
 #define TASK_STACK        8192       /* the input method converts on this stack */
 #define POLL_MS           10u
@@ -396,7 +414,7 @@ static void hub_session(void)
                 if (slot>=0) {
                     /* Never acquire FAT while owning the bus lock: I/O takes
                      * FAT first, then the bus. Keep stale handles invalid. */
-                    usb_fat_detach_slot(slot);
+                    storage_detach(slot);
                     usbmsc_detach_slot(slot);
                     used[slot]=false; slots[port-1]=-1;
                     kprintf("usbhub: port %u storage removed\n",port);
@@ -457,7 +475,7 @@ static void hub_session(void)
             if (slot<0) { kprintf("usbhub: no free storage slot\n");continue; }
             if (usbmsc_attach_slot(slot,address,msc_iface,in,imps,out,omps)) {
                 slots[port-1]=slot;used[slot]=true;
-                bool mounted=usb_fat_mount_slot(slot,usbmsc_device_slot(slot));
+                bool mounted=storage_attach(slot,usbmsc_device_slot(slot));
                 info_mount(address,slot,mounted);
                 kprintf("usbhub: port %u address=%u storage slot=%u\n",port,address,slot);
             }
@@ -466,7 +484,7 @@ static void hub_session(void)
     }
     if(camera_port)native_uvc_detach();
     for (unsigned i=0;i<NATIVE_MSC_SLOTS;i++) if (used[i]) {
-        usb_fat_detach_slot(i);
+        storage_detach(i);
         usbmsc_detach_slot(i);
     }
     mutex_lock(&usb_native_bus_lock);
@@ -588,14 +606,14 @@ static void usbkbd_task(void *arg)
         if (iface == -2 && ctrl(0x00, REQ_SET_CONFIG, (uint16_t)config, 0, NULL, 0) >= 0) {
             info_configured(1,true);
             if (usbmsc_attach(s_msc_iface,s_msc_in,s_msc_imps,s_msc_out,s_msc_omps))
-                info_mount(1,0,usb_fat_mount(usbmsc_device()));
+                info_mount(1,0,storage_attach(0,usbmsc_device()));
             while (hal_usbh_connected() && !rescan_requested) {
                 mutex_lock(&usb_native_bus_lock);
                 hal_usbh_poll();
                 mutex_unlock(&usb_native_bus_lock);
                 task_sleep(CONNECT_POLL_MS);
             }
-            usb_fat_detach();usbmsc_detach();
+            storage_detach(0);usbmsc_detach();
             kprintf("usbmsc: disconnected\n");
             /* Removal already observed; do not wait for a second unplug if
              * the device was reinserted during filesystem cleanup. */

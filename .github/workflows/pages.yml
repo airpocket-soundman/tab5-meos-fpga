@@ -1,12 +1,24 @@
-name: Publish development site
+name: Publish site and firmware
+# The site is the roadmap, the command reference and the firmware page. The firmware page offers three sizes
+# (small, medium, large = M5OS_PROFILE, see cmake/modules.cmake); this workflow builds them and publishes the images
+# next to the page, so nothing is built when someone uses the page.
 on:
   push:
     branches: [main]
     paths:
-      - 'docs/site/**'
-      - 'docs/DEVELOPMENT_GOALS.md'
-      - 'docs/PROGRESS.json'
-      - 'tools/build_pages.py'
+      - 'docs/**'
+      - 'tools/**'
+      - 'cmake/**'
+      - 'main/**'
+      - 'kernel/**'
+      - 'drivers/**'
+      - 'hal/**'
+      - 'fs/**'
+      - 'user/**'
+      - 'apps/**'
+      - 'third_party/**'
+      - 'sdkconfig.defaults*'
+      - 'CMakeLists.txt'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 permissions:
@@ -17,15 +29,57 @@ concurrency:
   group: pages
   cancel-in-progress: false
 jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.2
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [small, medium, large]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.profile }}
+        shell: bash
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh"
+          export M5OS_BOARD=tab5
+          idf.py -B build -DSDKCONFIG=sdkconfig.tab5 -DIDF_TARGET=esp32p4 -DM5OS_PROFILE=${{ matrix.profile }} build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.profile }}
+          path: |
+            build/flash_args
+            build/m5os.bin
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+          if-no-files-found: error
   deploy:
+    needs: firmware
+    # a failed firmware build must not stop the documentation from being published
+    if: ${{ !cancelled() }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate bilingual pages
-        run: python3 tools/build_pages.py
+      - name: Generate bilingual pages and the command reference
+        run: |
+          python3 tools/build_pages.py
+          python3 tools/build_reference.py
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: firmware-*
+          path: artifacts
+      - name: Firmware manifest
+        run: |
+          if [ -f artifacts/firmware-small/flash_args ] && [ -f artifacts/firmware-medium/flash_args ] && [ -f artifacts/firmware-large/flash_args ]; then
+            python3 tools/make_firmware_manifest.py small=artifacts/firmware-small medium=artifacts/firmware-medium large=artifacts/firmware-large --commit "$GITHUB_SHA"
+          else
+            echo "Not every firmware size was built; the firmware page will say so."
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

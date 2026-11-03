@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-28",
+  "carrier_commit": "e5a386d263d8911a490922cc2770292699a87080",
+  "profile": "dock-jumper-v0",
+  "protocol": "bringup-v0 (ID, ECHO, INVERT only)",
+  "gpio_model": {
+    "result": "pass",
+    "pattern_exchanges": 513,
+    "faults": ["pin conflict", "READY timeout", "CRC", "cancel before begin", "cancel during request", "stalled timer", "short deadline"],
+    "assertions": ["no data contention", "setup >=100us", "clock high/low >=100us", "turnaround >=200us", "inputs after completion/failure", "owner released", "failed session refuses reuse"],
+    "cli": "ID, echo, invert, test and invalid profile/arguments pass"
+  },
+  "codec_regression": {
+    "result": "pass",
+    "golden_vectors": 583,
+    "pattern_exchanges": 4104,
+    "injected_cases": 96
+  },
+  "tab5_build": {
+    "idf": "5.5.2",
+    "modules_fpga": "pass",
+    "modules_fpga_image_bytes": 1231664,
+    "default_modules_without_fpga": "pass",
+    "default_image_bytes": 1458112,
+    "configuration_restored": "M5OS_MODULES empty, defaults",
+    "note": "Built with the pre-existing uncommitted module/camera/USB changes in this workspace. No hardware flash."
+  },
+  "hardware_tested": false,
+  "bitstream_sha256": null,
+  "rtl_synthesized": false,
+  "ddr3_or_dma_implemented": false
+}
