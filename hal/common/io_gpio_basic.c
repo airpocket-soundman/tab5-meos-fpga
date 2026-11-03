@@ -5,8 +5,9 @@
 #include <m5os/hal_gpio.h>
 #include <m5os/hal_io_gpio.h>
 void hal_io_gpio_input(int pin, int pull) {
-  esp_rom_gpio_pad_select_gpio(pin);
+  /* Disable the GPIO latch before selecting its pad mux: no stale output pulse. */
   gpio_ll_output_disable(&GPIO, pin);
+  esp_rom_gpio_pad_select_gpio(pin);
   gpio_ll_od_disable(&GPIO, pin);
   gpio_ll_input_enable(&GPIO, pin);
   gpio_ll_pullup_dis(&GPIO, pin);

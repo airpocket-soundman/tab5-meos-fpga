@@ -15,7 +15,7 @@ enum { FPGA_LINK_OK=0, FPGA_LINK_INVALID=-1, FPGA_LINK_IO=-2,
 
 typedef struct {
     /* Callbacks must be bounded by deadline. Positive means bytes transferred,
-     * zero means no progress, negative means failure. No GPIO implementation yet. */
+     * zero means no progress, negative means failure. */
     int (*begin)(void *context, uint64_t deadline);
     int (*write)(void *context, const uint8_t *data, size_t length, uint64_t deadline);
     int (*turnaround)(void *context, uint64_t deadline);
