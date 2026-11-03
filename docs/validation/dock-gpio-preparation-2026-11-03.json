@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-03",
+  "carrier_remote_sha": "c3502174c039bf86d8d43716e3ce0fd2fb4d8c43",
+  "carrier_checkout_sha": "e5a386d263d8911a490922cc2770292699a87080",
+  "carrier_working_files_sha256": {
+    "fpga/platform/dock_link_top.v": "e9724d6fa063747ac00bef8bb2b9387241b91b25ecea83e4787dfdced211b4db",
+    "fpga/constraints/dock/tab5_dock_link_v0.cst": "4b980a510a9c6c2972dbd732fc426d13f9e9b6cf6de64a9caa0a51f8d6ac6745",
+    "fpga/link/rtl/link_bringup.v": "344f0bcb45ebf8ff1c659d6e2f5e3af337d919928a5a49fa98909970a4bfccc2",
+    "docs/Dock初回書き込み_2026-11-03.md": "658e57a2590af8f1e494d68865bf2d9af9c910d4420b7de3699e6e19450b7470"
+  },
+  "profile_verified": false,
+  "flashed": false,
+  "physical_link_tested": false,
+  "host_gpio_model_exchanges": 513,
+  "host_cases": [
+    "unverified gate performs zero IO",
+    "atomic claim conflict",
+    "already-open rejection",
+    "READY timeout",
+    "Ctrl-C",
+    "release before DIR with >=200us guard",
+    "final input cleanup"
+  ],
+  "existing_golden_vectors_passed": 583,
+  "native_build": "passed",
+  "resource_note": "Unverified profile is compile-time disabled; optimizer may discard physical backend. Enabled-profile size/runtime cost remains unmeasured."
+}

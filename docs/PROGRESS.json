@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-26",
+  "updated": "2026-11-03",
   "items": [
     {
       "id": "baseline",
@@ -225,8 +225,8 @@
         "en": "FPGA protocol software groundwork"
       },
       "detail": {
-        "ja": "583件の互換ベクトル、分割・異常系とTab5上mock自己試験に合格。物理通信・GPIO・DDR3・DMAは未実装。",
-        "en": "583 compatibility vectors, fragmented/fault tests and Tab5 mock selftest passed. Physical link, GPIO, DDR3 and DMA are not implemented."
+        "ja": "583件の互換ベクトルとmock試験に合格。Dock用低速GPIO backendを追加し、PC上のGPIOモデル513通信・異常系を確認。未確認プロファイルでは出力拒否。実機未書込み・実通信未検証、PARLIO/DMA/DDR3未実装。",
+        "en": "583 compatibility vectors and mock tests passed. Dock low-speed GPIO backend added; 513 GPIO-model exchanges and fault cases pass. Unverified profile denies output. Not flashed or physically tested; PARLIO/DMA/DDR3 pending."
       }
     },
     {
