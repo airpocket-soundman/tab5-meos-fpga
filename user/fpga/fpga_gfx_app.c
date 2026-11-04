@@ -25,12 +25,13 @@ static bool number(const char *s,unsigned *out)
 }
 static int usage(void)
 {
-    kprintf("fpga --dock dock-jumper-v0 gfx info|test|demo\n"
+    kprintf("fpga --dock dock-jumper-v0 gfx info|test|verify|demo\n"
             "fpga --dock dock-jumper-v0 gfx color|clear RGB565\n"
             "fpga --dock dock-jumper-v0 gfx pixel X Y RGB565\n"
             "fpga --dock dock-jumper-v0 gfx rect X Y W H RGB565\n"
             "fpga --dock dock-jumper-v0 gfx read X Y\n"
-            "Use --mock gfx ... for software only. test/demo overwrite the 32x32 image.\n");
+            "Use --mock gfx ... for software only. test/verify/demo overwrite the 32x32 image.\n"
+            "verify checks 22 scenes / 22528 pixels; elapsed time includes transport.\n");
     return 1;
 }
 int fpga_gfx_cmd_main(int argc,char **argv)
@@ -40,10 +41,11 @@ int fpga_gfx_cmd_main(int argc,char **argv)
     if(argc<=(int)start||(!mock&&(strcmp(argv[1],"--dock")||strcmp(argv[2],"dock-jumper-v0"))))return usage();
     const char *cmd=argv[start];unsigned n=0,a[5]={0};
     bool info=!strcmp(cmd,"info"),test=!strcmp(cmd,"test"),demo=!strcmp(cmd,"demo");
+    bool verify=!strcmp(cmd,"verify");
     bool color=!strcmp(cmd,"color"),clear=!strcmp(cmd,"clear"),pixel=!strcmp(cmd,"pixel");
     bool rect=!strcmp(cmd,"rect"),read=!strcmp(cmd,"read");
     if(color||clear)n=1;else if(pixel)n=3;else if(rect)n=5;else if(read)n=2;
-    else if(!info&&!test&&!demo)return usage();
+    else if(!info&&!test&&!verify&&!demo)return usage();
     if(argc!=(int)(start+1+n))return usage();
     for(unsigned i=0;i<n;i++)if(!number(argv[start+1+i],&a[i]))return usage();
     if((pixel||rect||read)&&(a[0]>=32||a[1]>=32))return usage();
@@ -51,8 +53,8 @@ int fpga_gfx_cmd_main(int argc,char **argv)
 
     /* Both 2KiB buffers live on the heap, not the 4KiB shell task stack. */
     fpga_gfx_mock_t *model=mock?kmalloc(sizeof *model):NULL;
-    uint16_t *pixels=(test||demo)?kmalloc(FPGA_GFX_PIXELS*sizeof *pixels):NULL;
-    if((mock&&!model)||((test||demo)&&!pixels)) {
+    uint16_t *pixels=(test||verify||demo)?kmalloc(FPGA_GFX_PIXELS*sizeof *pixels):NULL;
+    if((mock&&!model)||((test||verify||demo)&&!pixels)) {
         kfree(model);kfree(pixels);kprintf("fpga gfx: no memory\n");return 1;
     }
     fpga_mock_t transport;fpga_gpio_t gpio={0};fpga_link_t link={0};
@@ -65,7 +67,8 @@ int fpga_gfx_cmd_main(int argc,char **argv)
         gpio.cancel=cancel;
         link.ops=&fpga_gpio_ops;link.context=&gpio;
     }
-    unsigned compared=0;uint16_t value=0;bool shown=false;
+    unsigned compared=0,scenes=0;uint16_t value=0;bool shown=false;
+    uint64_t started=link.ops?link.ops->now_us(link.context):0;
     if(!error) {
         if(info)error=fpga_gfx_info(&link);
         else if(color)error=fpga_gfx_color(&link,(uint16_t)a[0]);
@@ -73,26 +76,35 @@ int fpga_gfx_cmd_main(int argc,char **argv)
         else if(pixel)error=fpga_gfx_pixel(&link,a[0],a[1],(uint16_t)a[2]);
         else if(rect)error=fpga_gfx_rect(&link,a[0],a[1],a[2],a[3],(uint16_t)a[4]);
         else if(read)error=fpga_gfx_read(&link,a[0],a[1],&value);
+        else if(verify)error=fpga_gfx_verify(&link,pixels,&compared,&scenes);
         else error=fpga_gfx_diagnostic(&link,pixels,&compared);
     }
+    uint64_t elapsed=link.ops?link.ops->now_us(link.context)-started:0;
     if(!mock) {
         if(gpio.error)error=gpio.error;
         fpga_gpio_close(&gpio);
     }
     bool reset_required=!mock&&link.attempted&&error;
-    bool readback_pass=!error&&(test||demo)&&compared==FPGA_GFX_PIXELS;
+    bool readback_pass=!error&&((verify&&scenes==FPGA_GFX_VERIFY_SCENES&&compared==FPGA_GFX_VERIFY_PIXELS)
+        ||((test||demo)&&compared==FPGA_GFX_PIXELS));
     if(!error&&demo) {
         int scale=16;
         while(scale>1&&(32*scale>DISPLAY_WIDTH||32*scale>DISPLAY_HEIGHT))scale--;
+        display_status_t status={0};
+        display_get_status(&status);
+        if(status.framebuffer_count) {
         bool batch=display_begin_frame();
         display_draw_bitmap_scaled((DISPLAY_WIDTH-32*scale)/2,(DISPLAY_HEIGHT-32*scale)/2,32,32,pixels,scale);
         shown=!batch||display_end_frame();
+        }
         if(!shown)error=FPGA_LINK_IO;
     }
     kprintf("{\"backend\":\"%s\",\"protocol\":\"dock-gfx-v0-experimental\","
             "\"result\":\"%s\",\"transactions\":%u,\"width\":32,\"height\":32,"
-            "\"pixel\":%u,\"pixels_compared\":%u,\"readback_pass\":%s,\"lcd_submitted\":%s,\"reset_required\":%s}\n",
+            "\"pixel\":%u,\"pixels_compared\":%u,\"scenes_passed\":%u,\"elapsed_us\":%u,"
+            "\"readback_pass\":%s,\"lcd_submitted\":%s,\"reset_required\":%s}\n",
             mock?"mock":"dock-gpio",fpga_link_error(error),link.completed,value,compared,
+            scenes,(unsigned)(elapsed>UINT32_MAX?UINT32_MAX:elapsed),
             readback_pass?"true":"false",shown?"true":"false",reset_required?"true":"false");
     kfree(pixels);kfree(model);return error?1:0;
 }

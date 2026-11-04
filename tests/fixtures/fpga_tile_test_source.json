@@ -1,0 +1,43 @@
+{
+  "carrier_revision": "53c023929b4f8cf42a6e02725160c0f0015dd162",
+  "source_sha256": {
+    "fpga/reference/game_gpu_reference.py": "67bd5d81aba5b98239a995a8914363f8d5439e4577db52e8e43b6edf99112682",
+    "fpga/reference/triangle_tile.py": "d28ab48dd11caffcaf03d8688d0c62e8409d58478b927550f9e10c5480a8a888",
+    "fpga/reference/link_protocol.py": "5905b97e0e80cfeefe01253d65ba308a9959a85f68d02d7970063ffe802ed4ba"
+  },
+  "method": "Frozen SHA256 of actual independent carrier Python Frame.triangle/fractal_pixel planes; local test oracle must match before feeding the device model. No FPGA RTL or hardware executed.",
+  "scenes": [
+    "clear",
+    "constant-depth asymmetric triangle",
+    "equal-depth tie rejection",
+    "nearer overlap",
+    "Mandelbrot legacy palette",
+    "Julia legacy palette"
+  ],
+  "scene_hashes": [
+    [
+      "5939058a6cd884bcb3a431ff091c16a9b9fb232442621288b96937f0533c2834",
+      "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad"
+    ],
+    [
+      "2b61b44863edc45e52b6c103d78fea1b755a2cb0ffca5bb2b5e649d47e103d1e",
+      "2229afd19dd2fdd70e9f1a327ed0f9bb49b10c34ff4b66171f69dd2f17f6964f"
+    ],
+    [
+      "2b61b44863edc45e52b6c103d78fea1b755a2cb0ffca5bb2b5e649d47e103d1e",
+      "2229afd19dd2fdd70e9f1a327ed0f9bb49b10c34ff4b66171f69dd2f17f6964f"
+    ],
+    [
+      "8ff5a7fb1c2740aad8cca34cea9c3bd4b0350c6e7f0d2856654a45123b6b1bc4",
+      "382a0a8bac56c207fb3ce16d2cc2bd5deac465bdf1c0d09c24ff2908706e65e4"
+    ],
+    [
+      "f038c77328fb0719599519b1de21b6948611d28eff00221c88c70bf05e756934",
+      "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad"
+    ],
+    [
+      "e9013d7be28e0d577fbc520410bcc01d801826e4cb98efe8334ea6e23135c88b",
+      "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad"
+    ]
+  ]
+}

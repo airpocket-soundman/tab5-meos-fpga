@@ -7,13 +7,15 @@
 #if M5OS_MODULE_FPGA_GFX
 #include "../drivers/fpga/fpga_gfx_mock.h"
 #include <stdlib.h>
+#include <m5os/display.h>
 static fpga_gfx_mock_t gfx;
 static fpga_mock_t device;
 static unsigned allocations,display_calls;
-static bool bad_read,unsupported,fail_alloc,fail_lcd,cancel_gfx;
+static bool bad_read,unsupported,fail_alloc,fail_lcd,no_lcd,single_buffer,cancel_gfx;
 void *kmalloc(size_t n) {if(fail_alloc)return NULL;void *p=malloc(n);if(p)allocations++;return p;}
 void kfree(void *p) {if(p){assert(allocations);allocations--;free(p);}}
-bool display_begin_frame(void) {return true;}
+void display_get_status(display_status_t *s) {memset(s,0,sizeof *s);s->framebuffer_count=no_lcd?0:single_buffer?1:2;}
+bool display_begin_frame(void) {return !single_buffer;}
 bool display_end_frame(void) {return !fail_lcd;}
 void display_draw_bitmap_scaled(int x,int y,int w,int h,const uint16_t *pixels,int scale)
 {
@@ -141,6 +143,8 @@ int main(int argc,char **argv)
         if(!strcmp(argv[1],"--bad-read")){bad_read=true;argc--;argv++;}
         else if(!strcmp(argv[1],"--unsupported")){unsupported=true;argc--;argv++;}
         else if(!strcmp(argv[1],"--fail-alloc")){fail_alloc=true;argc--;argv++;}
+        else if(!strcmp(argv[1],"--no-lcd")){no_lcd=true;argc--;argv++;}
+        else if(!strcmp(argv[1],"--single-buffer")){single_buffer=true;argc--;argv++;}
         else if(!strcmp(argv[1],"--fail-lcd")){fail_lcd=true;argc--;argv++;}
         else if(!strcmp(argv[1],"--cancel-gfx")){cancel_gfx=true;argc--;argv++;}
         else if(!strcmp(argv[1],"--no-reply")){no_reply=true;argc--;argv++;}
@@ -149,7 +153,7 @@ int main(int argc,char **argv)
         int rc=fpga_cmd_main(argc-1,argv+1);inputs();assert(!claimed);
 #if M5OS_MODULE_FPGA_GFX
         assert(!allocations);
-        if(bad_read||unsupported||cancel_gfx||no_reply||corrupt)assert(!display_calls);
+        if(bad_read||unsupported||cancel_gfx||no_reply||corrupt||no_lcd)assert(!display_calls);
 #endif
         return rc;
     }

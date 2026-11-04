@@ -56,3 +56,30 @@ int fpga_gfx_diagnostic(fpga_link_t *l,uint16_t pixels[FPGA_GFX_PIXELS],unsigned
     }
     return e;
 }
+
+int fpga_gfx_verify(fpga_link_t *l,uint16_t pixels[FPGA_GFX_PIXELS],
+                    unsigned *compared,unsigned *scenes)
+{
+    if(!pixels||!compared||!scenes)return FPGA_LINK_INVALID;
+    *compared=0;*scenes=0;
+    unsigned first=0;
+    int e=fpga_gfx_diagnostic(l,pixels,&first);
+    *compared=first;
+    if(e)return e;
+    *scenes=1;
+    static const uint16_t colors[]={0x0000,0xffff,0xf800,0x07e0,0x001f};
+    for(unsigned scene=0;scene<FPGA_GFX_VERIFY_SCENES-1;scene++) {
+        uint16_t color=scene<5?colors[scene]:(uint16_t)(1u<<(scene-5));
+        e=fpga_gfx_clear(l,color);
+        for(unsigned y=0;!e&&y<FPGA_GFX_HEIGHT;y++)
+            for(unsigned x=0;!e&&x<FPGA_GFX_WIDTH;x++) {
+                unsigned i=y*FPGA_GFX_WIDTH+x;
+                e=fpga_gfx_read(l,x,y,&pixels[i]);
+                if(!e&&pixels[i]!=color)e=FPGA_LINK_DATA;
+                if(!e)(*compared)++;
+            }
+        if(e)return e;
+        (*scenes)++;
+    }
+    return 0;
+}

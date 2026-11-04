@@ -1,0 +1,33 @@
+{
+  "repository": "https://github.com/airpocket-soundman/tab5-tang-primer20k-carrier",
+  "revision": "53c023929b4f8cf42a6e02725160c0f0015dd162",
+  "files": {
+    "link_protocol.h": {
+      "source": "fpga/host/link_protocol.h",
+      "sha256": "7f90ef019b3827b3fdf6e9a345f9676757a1830b82ce75a70de494e27378c47d",
+      "git_blob": "3f36fffb702707cb917601b6f9c0eae1e62c0382"
+    },
+    "link_sync.h": {
+      "source": "fpga/host/link_sync.h",
+      "sha256": "c0b5ab1c5bb57f97e1acf09316de2b674c5a8ebf58e36ec9270f0b68991f805e",
+      "git_blob": "3162fa556baedbef07f016ee75dfef2e60ab8e81"
+    },
+    "link_stream.h": {
+      "source": "fpga/host/link_stream.h",
+      "sha256": "2ceaf13a8e984ba075e50304016e3589199d10e938bf2e7b07d12afd346a4cb8",
+      "git_blob": "568d2b2f0fbe7451e33de1807e6ed2af67f4159f"
+    },
+    "triangle_batch.h": {
+      "source": "fpga/host/triangle_batch.h",
+      "sha256": "c840db9817ceef6b974a6aa8d19c05ebdaff46505f8057f18cace5aa0e098097",
+      "git_blob": "c473baf21f6fa2179190c8b12d0a81c864b3068c"
+    },
+    "fractal_reference.h": {
+      "source": "fpga/host/fractal_reference.h",
+      "sha256": "102bbc1ebc3febf0b7d4d6391e4a4fbefda92584ff40de6a8eded7403db84710",
+      "git_blob": "4d627ffe1720067588d0e04810425f59905321cd"
+    }
+  },
+  "license_note": "No root LICENSE or COPYING file is present at this carrier revision. Existing header comments are preserved; no additional license is inferred.",
+  "scope": "Canonical portable host helpers; FPGA source/constraints remain in carrier repository."
+}
