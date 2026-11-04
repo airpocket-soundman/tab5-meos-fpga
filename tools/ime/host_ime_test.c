@@ -21,6 +21,7 @@ bool sched_started(void) { return false; }
 void mutex_lock(mutex_t *m) { (void)m; assert(!"unexpected host mutex acquisition"); }
 void mutex_unlock(mutex_t *m) { (void)m; assert(!"unexpected host mutex release"); }
 void fbcon_scroll_live(void) {}
+bool suspend_filter_input(void) { return false; }
 #endif
 
 /* ---- stubs for the OS ---- */

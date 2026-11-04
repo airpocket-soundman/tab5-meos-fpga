@@ -1,5 +1,7 @@
 name: Upstream merge validation
 on:
+  push:
+    branches: [codex/merge-upstream-20261105]
   workflow_dispatch:
 permissions:
   contents: read
