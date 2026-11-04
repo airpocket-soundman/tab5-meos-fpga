@@ -196,7 +196,7 @@ bool fs_selftest(void)
 done:
     ramdisk_destroy(rd);
     kmem_psram_stats(&after);
-    if (after.used != before.used) { kprintf("  FAIL: PSRAM leak %u -> %u\n", (uint32_t)before.used, (uint32_t)after.used); ok = false; }
+    if (after.used != before.used) { kprintf("  FAIL: PSRAM leak %u -> %u\n", (unsigned)before.used, (unsigned)after.used); ok = false; }
     kprintf("fs selftest (M5FS on RAM disk): %s\n", ok ? "PASS" : "FAIL");
     return ok;
 }
