@@ -2,6 +2,7 @@
 #include "../tui/dqwin.h"
 #include "../edit/edit.h"
 #include "../camera/camera_app.h"
+#include "../viewer/imgview.h"
 #include "../wifi/wifi_app.h"
 #include "../ssh/ssh_app.h"
 #include "../tailscale/tailscale_app.h"
@@ -319,90 +320,50 @@ static void do_rename(void)
 
 /* ---------------------------------------------------------------- viewer */
 
+/* The image viewer lives in user/viewer; the filer only tells it which file is next / previous in this directory. */
+static int strlen_(const char *s) { int n = 0; while (s[n]) n++; return n; }
+
+static int  s_view_idx;
+static bool s_camera_ran;
+
+static bool view_step(int dir, char *path, size_t cap)
+{
+    for (int step = 1; step < s_n; step++) {
+        int cand = (s_view_idx + dir * step % s_n + s_n) % s_n;
+        if (s_ent[cand].dir || !imgview_is_image_name(s_ent[cand].name)) continue;
+        char p[PATH_MAX_];
+        path_join(p, s_path, s_ent[cand].name);
+        if (!p[0] || strlen_(p) >= cap) return false;
+        for (int i = 0; ; i++) { path[i] = p[i]; if (!p[i]) break; }
+        s_view_idx = cand;
+        return true;
+    }
+    return false;
+}
+
+static void view_camera(void)
+{
+    char saved[32] = "";
+    camera_app_run(s_path, saved);
+    reload(saved[0] ? saved : s_ent[s_view_idx].name);       /* the new photo becomes the selection */
+    s_camera_ran = true;
+}
+
 static void view_image_file(int idx)
 {
-    bool large_zoom = false;
-    for (;;) {
-        const entry_t *e = &s_ent[idx];
-        char p[PATH_MAX_];
-        path_join(p, s_path, e->name);
-
-        uint16_t *pixels = NULL;
-        int img_w = 0, img_h = 0;
-        if (!p[0] || !camera_load_bmp(p, &pixels, &img_w, &img_h)) {
-            ksnprintf(s_status, sizeof s_status, "cannot decode BMP image: %s", e->name);
-            return;
-        }
-
-        int cols = dq_cols(), rows = dq_rows();
-        int fy = rows - FOOTER_ROWS;
-        int mid_rows = rows - HEADER_ROWS - FOOTER_ROWS;
-
-        for (;;) {
-            dq_window(0, 0, cols, HEADER_ROWS);
-            dq_text(2, 1, "IMAGE VIEWER");
-            char info[120];
-            ksnprintf(info, sizeof info, "%s  (%dx%d RGB565 BMP, %u KB)  [%s]",
-                      e->name, img_w, img_h, (unsigned)(e->size / 1024u),
-                      large_zoom ? "Fit 960x540" : "1:1 Original");
-            padded(16, 1, info);
-
-            dq_window(0, HEADER_ROWS, cols, mid_rows);
-            dq_window(0, fy, cols, FOOTER_ROWS);
-            dq_text(2, fy + 1, "Z/Space:Zoom  Left/Right(h/l):Prev/Next BMP  P:Camera  Q/ESC/Enter:Close");
-            padded(2, fy + 2, p);
-
-            int max_w = DISPLAY_WIDTH - 48;
-            int max_h = mid_rows * 16 - 24;
-            int dw = large_zoom ? 960 : img_w;
-            int dh = large_zoom ? 540 : img_h;
-            if (dw > max_w) { dh = (dh * max_w) / dw; dw = max_w; }
-            if (dh > max_h) { dw = (dw * max_h) / dh; dh = max_h; }
-            int dx = (DISPLAY_WIDTH - dw) / 2;
-            int dy = HEADER_ROWS * 16 + (mid_rows * 16 - dh) / 2;
-
-            display_draw_rect(dx - 2, dy - 2, dw + 4, dh + 4, COLOR_WHITE);
-            camera_draw_rgb565_fit(dx, dy, dw, dh, pixels, img_w, img_h);
-
-            int k = dq_getkey();
-            if (k == 'q' || k == 'Q' || k == DQK_ESC || k == DQK_ENTER) {
-                kfree(pixels);
-                move_to(idx);
-                return;
-            }
-            if (k == 'z' || k == 'Z' || k == ' ') {
-                large_zoom = !large_zoom;
-                continue;
-            }
-            if (k == 'p' || k == 'P') {
-                kfree(pixels);
-                char saved[32] = "";
-                camera_app_run(s_path, saved);
-                reload(saved[0] ? saved : e->name);
-                return;
-            }
-            if (k == DQK_RIGHT || k == DQK_DOWN || k == 'l' || k == 'j' || k == 'n') {
-                int next = idx;
-                for (int step = 1; step < s_n; step++) {
-                    int cand = (idx + step) % s_n;
-                    if (!s_ent[cand].dir && camera_is_bmp_name(s_ent[cand].name)) { next = cand; break; }
-                }
-                if (next != idx) { kfree(pixels); idx = next; break; }
-            } else if (k == DQK_LEFT || k == DQK_UP || k == 'h' || k == 'k') {
-                int prev = idx;
-                for (int step = 1; step < s_n; step++) {
-                    int cand = (idx + s_n - step) % s_n;
-                    if (!s_ent[cand].dir && camera_is_bmp_name(s_ent[cand].name)) { prev = cand; break; }
-                }
-                if (prev != idx) { kfree(pixels); idx = prev; break; }
-            }
-        }
-    }
+    static const imgview_nav_t nav = { view_step, view_camera };
+    char p[PATH_MAX_];
+    path_join(p, s_path, s_ent[idx].name);
+    if (!p[0]) return;
+    s_view_idx = idx;
+    s_camera_ran = false;
+    if (!imgview_show(p, &nav)) ksnprintf(s_status, sizeof s_status, "cannot show image: %s", s_ent[idx].name);
+    if (!s_camera_ran) move_to(s_view_idx);
 }
 
 static void view_file(const entry_t *e)
 {
-    if (camera_is_bmp_name(e->name)) {
+    if (imgview_is_image_name(e->name)) {
         view_image_file(s_sel);
         return;
     }
@@ -494,6 +455,7 @@ void filer_run(const char *start_dir)
         int rows = list_rows();
         s_status[0] = 0;
         switch (k) {
+        case DQK_REFRESH: s_full = true; break;
         case 'q': case 'Q': case DQK_ESC: return;
         case DQK_DOWN: case 'j': move_to(s_sel + 1); break;
         case DQK_UP:   case 'k': move_to(s_sel - 1); break;

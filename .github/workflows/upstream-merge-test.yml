@@ -1,0 +1,63 @@
+name: Upstream merge validation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upstream host tests with sanitizers
+        run: |
+          for group in battery hardware lcd psram stack suspend touch; do
+            sh tools/$group/host_test.sh
+          done
+      - name: Fork integration regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '#!/bin/sh\n[ "$1" = cc ] && shift\nexec cc "$@"\n' > "$RUNNER_TEMP/host-cc"
+          chmod +x "$RUNNER_TEMP/host-cc"
+          for test in tests/test_image.py tests/test_image_merge.py tests/test_uart_focus.py tests/test_usb_console.py tests/test_display_lease.py tests/test_suspend_safety.py tests/test_fractal_app.py tests/test_fpga_wire.py tests/test_parlio_stream.py tests/console/run_touch_test.py tests/console/run_display_frame_test.py; do
+            python3 "$test" --cc "$RUNNER_TEMP/host-cc"
+          done
+          python3 tests/test_fpga_profile.py
+  firmware:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.2
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { board: tab5, target: esp32p4, profile: small }
+          - { board: tab5, target: esp32p4, profile: large }
+          - { board: tab5, target: esp32p4, profile: large_fpga }
+          - { board: cores3, target: esp32s3, profile: small }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build without deployment or physical FPGA enable
+        shell: bash
+        env:
+          M5OS_BOARD: ${{ matrix.board }}
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh"
+          idf.py -B build -DSDKCONFIG=sdkconfig.${{ matrix.board }} -DIDF_TARGET=${{ matrix.target }} -DM5OS_PROFILE=${{ matrix.profile }} -DM5OS_FPGA_DOCK_VERIFIED=OFF build
+          cp sdkconfig.${{ matrix.board }} build/sdkconfig.used
+          sha256sum build/m5os.bin build/bootloader/bootloader.bin build/partition_table/partition-table.bin > build/SHA256SUMS
+          printf '%s\n' "$GITHUB_SHA" > build/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: merge-${{ matrix.board }}-${{ matrix.profile }}
+          path: |
+            build/flash_args
+            build/m5os.bin
+            build/m5os.map
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/sdkconfig.used
+            build/SHA256SUMS
+            build/source-commit.txt
+          if-no-files-found: error

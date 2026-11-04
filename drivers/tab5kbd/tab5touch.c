@@ -1,90 +1,78 @@
 /*
- * Tab5 touch controllers: GT911 on ILI9881C; ST7123-compatible on ST7123/ST7121 panels.
+ * Tab5 capacitive touch: GT911 (Goodix, ILI9881C units) and ST712x (ST7121/ST7123 units).
  *
- * The controller sits on the system I2C bus (GPIO 31/32) at address 0x14; the board init
+ * The GT911 sits on the system I2C bus (GPIO 31/32) at address 0x14; the board init
  * (hal/esp32p4/board_tab5.c) has already pulsed its reset line through the I/O expander.
  * Registers are 16-bit (big-endian number, then data):
  *   0x8140  product id, 4 ASCII bytes ("911")
  *   0x8048  X resolution (little-endian 16), 0x804A Y resolution: the frame the coordinates are in
  *   0x814E  status: bit 7 = a new frame is ready, bits 0-3 = number of fingers (0 when all lifted)
- *   0x814F  first point: track id; 0x8150 x lo, x hi, y lo, y hi, size lo, size hi, reserved (8
- * bytes per point) After a frame has been read the host writes 0 to 0x814E, or the controller stops
- * producing new ones. Only the first finger is used.
+ *   0x814F  first point: track id; 0x8150 x lo, x hi, y lo, y hi, size lo, size hi, reserved (8 bytes per point)
+ * After a frame has been read the host writes 0 to 0x814E, or the controller stops producing new ones.
+ * Up to five GT911 contacts or ten ST712x contacts are exposed; the legacy API uses the first.
  *
  * The 16-bit register helpers always use the system bus pins, whichever bus the 8-bit ones are
  * switched to (the Tab5 Keyboard accessory moves those to Ext.Port1), so the two keyboards and the
  * touch panel can coexist.
  */
 #include "tab5touch.h"
-#include <m5os/display.h>
-#include <m5os/hal_gpio.h>
 #include <m5os/hal_i2c.h>
+#include <m5os/hal_gpio.h>
 #include <m5os/kprintf.h>
+#include <m5os/display.h>
+#include <m5os/tab5.h>
 
-#define GT911_ADDR 0x14
-#define PIN_INT 23 /* GT911 INT: an output of the controller, also its wake-up input */
-#define REG_PRODUCT 0x8140
-#define REG_XRES 0x8048
-#define REG_STATUS 0x814E
-#define REG_POINT0 0x8150
-
-/* ST7121 panels expose the same touch report protocol as ST7123.
- * Register layout checked against M5Stack M5GFX Touch_ST7123.inl:
+/* ST7121/ST7123 protocol reference (register layout, not the GT911 handshake):
  * https://github.com/m5stack/M5GFX/blob/master/src/lgfx/v1/platforms/esp32p4/Touch_ST7123.inl
- * This implementation uses explicit bytes rather than compiler-specific bitfields. */
-#define ST7123_ADDR 0x55
-#define ST_INFO 0x0005
-#define ST_ADV 0x0010
-#define ST_REPORT 0x0014
-#define ST_MAX_POINTS 10
-static bool s_st7123;
-static uint8_t s_st_points;
-static bool s_present;
-static bool s_pressed;
-static int s_x, s_y; /* logical */
-static int s_raw_x, s_raw_y, s_max_x, s_max_y;
-static int s_map = 1;
+ * Board/display reset is already complete. ST712x needs neither the GT911 INT wake pulse
+ * nor a status acknowledgement write. Its coordinates and resolution are big-endian. */
+#define ST_INFO         0x0005
+#define ST_STATUS       0x0010
+#define ST_POINTS       0x0014
+#define ST_MAX_TOUCHES  10
+#define ST_POINT_BYTES  7
+
+typedef enum { TOUCH_NONE, TOUCH_GT911, TOUCH_ST712X } touch_kind_t;
+static touch_kind_t s_kind;
+static uint8_t s_touch_slots;
+
+#define GT911_ADDR      0x14
+#define PIN_INT         23              /* GT911 INT: an output of the controller, also its wake-up input */
+#define REG_PRODUCT     0x8140
+#define REG_XRES        0x8048
+#define REG_STATUS      0x814E
+#define REG_POINT0      0x8150
+
+static bool     s_present;
+static tab5_touch_point_t s_points[TAB5_TOUCH_MAX_POINTS];
+static unsigned s_count;
+static int      s_raw_x, s_raw_y, s_max_x, s_max_y;
+static int      s_map = 1;
 static uint32_t s_frames, s_errors;
 
-/* raw -> logical landscape.  The panel is physically portrait (720 wide, 1280 tall) and the display
- * driver stores logical (x, y) at physical column y, row 1279 - x; map 1 is the inverse of that,
- * which is what a controller configured in the panel's own frame reports.  The others are there for
- * the other possible configurations and can be selected from the shell (`osk map N`) during
- * bring-up. */
-static void map_point(int rx, int ry, int *x, int *y) {
+/* raw -> logical landscape.  The panel is physically portrait (720 wide, 1280 tall) and the display driver
+ * stores logical (x, y) at physical column y, row 1279 - x; map 1 is the inverse of that, which is what a
+ * controller configured in the panel's own frame reports.  The others are there for the other possible
+ * configurations and can be selected from the shell (`osk map N`) during bring-up. */
+static void map_point(int rx, int ry, int *x, int *y)
+{
     switch (s_map) {
     default:
-    case 0:
-        *x = rx;
-        *y = ry;
-        break;
-    case 1:
-        *x = DISPLAY_WIDTH - 1 - ry;
-        *y = rx;
-        break;
-    case 2:
-        *x = ry;
-        *y = DISPLAY_HEIGHT - 1 - rx;
-        break;
-    case 3:
-        *x = DISPLAY_WIDTH - 1 - rx;
-        *y = DISPLAY_HEIGHT - 1 - ry;
-        break;
+    case 0: *x = rx;                       *y = ry;                       break;
+    case 1: *x = DISPLAY_WIDTH - 1 - ry;   *y = rx;                       break;
+    case 2: *x = ry;                       *y = DISPLAY_HEIGHT - 1 - rx;  break;
+    case 3: *x = DISPLAY_WIDTH - 1 - rx;   *y = DISPLAY_HEIGHT - 1 - ry;  break;
     }
-    if (*x < 0)
-        *x = 0;
-    if (*x >= DISPLAY_WIDTH)
-        *x = DISPLAY_WIDTH - 1;
-    if (*y < 0)
-        *y = 0;
-    if (*y >= DISPLAY_HEIGHT)
-        *y = DISPLAY_HEIGHT - 1;
+    if (*x < 0) *x = 0;
+    if (*x >= DISPLAY_WIDTH) *x = DISPLAY_WIDTH - 1;
+    if (*y < 0) *y = 0;
+    if (*y >= DISPLAY_HEIGHT) *y = DISPLAY_HEIGHT - 1;
 }
 
-/* Wake the controller the way M5GFX (Touch_GT911::wakeup) does: INT held low for 58 ms by the host,
- * then released; INT then goes back to being the controller's output, read as an input with
- * pull-up. */
-static void wake(void) {
+/* Wake the controller the way M5GFX (Touch_GT911::wakeup) does: INT held low for 58 ms by the host, then
+ * released; INT then goes back to being the controller's output, read as an input with pull-up. */
+static void wake(void)
+{
     hal_gpio_config_output(PIN_INT, 0);
     hal_delay_us(58000);
     hal_gpio_write(PIN_INT, 1);
@@ -92,119 +80,122 @@ static void wake(void) {
     hal_gpio_config_input_pullup(PIN_INT);
 }
 
-bool tab5_touch_init(void) {
-    if (s_present)
-        return true;
-    uint8_t fw = 0, info[5] = {0};
-    if (hal_i2c_read_reg16(ST7123_ADDR, 0, &fw, 1) &&
-        hal_i2c_read_reg16(ST7123_ADDR, ST_INFO, info, sizeof info)) {
-        int width = ((int)info[0] << 8) | info[1], height = ((int)info[2] << 8) | info[3];
-        if (width > 0 && height > 0 && info[4] > 0) {
-            s_max_x = width;
-            s_max_y = height;
-            s_st_points = info[4] > ST_MAX_POINTS ? ST_MAX_POINTS : info[4];
-            s_st7123 = true;
-            s_map = width > height ? 0 : 1;
-            s_pressed = false;
+bool tab5_touch_init(void)
+{
+    s_present = false;
+    s_count = 0;
+    s_kind = TOUCH_NONE;
+    s_map = 1;
+    s_frames = s_errors = 0;
+    s_raw_x = s_raw_y = s_max_x = s_max_y = 0;
+    s_touch_slots = 0;
+
+    uint8_t fw = 0, info[5] = { 0 };
+    if (hal_i2c_read_reg16(TAB5_ST7123_TOUCH_ADDR, TAB5_ST7123_FW_REG, &fw, 1) &&
+        hal_i2c_read_reg16(TAB5_ST7123_TOUCH_ADDR, ST_INFO, info, sizeof info)) {
+        int mx = (info[0] << 8) | info[1], my = (info[2] << 8) | info[3];
+        /* Validate the geometry before accepting an unrelated/garbled bus response. */
+        if (((mx == DISPLAY_HEIGHT && my == DISPLAY_WIDTH) ||
+             (mx == DISPLAY_WIDTH && my == DISPLAY_HEIGHT)) &&
+            info[4] > 0 && info[4] <= ST_MAX_TOUCHES) {
+            s_max_x = mx; s_max_y = my; s_touch_slots = info[4];
+            if (mx > my) s_map = 0;
+            s_kind = TOUCH_ST712X;
             s_present = true;
-            kprintf("touch: ST7123-compatible at 0x55 firmware %u resolution %d x %d points %u map "
-                    "%d\n",
-                    fw, width, height, s_st_points, s_map);
+            kprintf("touch: ST712x at 0x%02x firmware %u, resolution %d x %d, %u slots, map %d\n",
+                    TAB5_ST7123_TOUCH_ADDR, fw, mx, my, s_touch_slots, s_map);
             return true;
         }
     }
-    uint8_t id[4] = {0}, res[4] = {0};
+
+    uint8_t id[4] = { 0 }, res[4] = { 0 };
     hal_i2c_write_reg16(GT911_ADDR, REG_STATUS, 0);
     wake();
     if (!hal_i2c_read_reg16(GT911_ADDR, REG_PRODUCT, id, 4) || id[0] != '9') {
-        kprintf("touch: no ST7123-compatible at 0x55 or GT911 at 0x%02x (id %02x %02x %02x %02x)\n",
-                GT911_ADDR, id[0], id[1], id[2], id[3]);
+        kprintf("touch: no GT911 at 0x%02x (id %02x %02x %02x %02x)\n", GT911_ADDR, id[0], id[1], id[2], id[3]);
         return false;
     }
     hal_i2c_read_reg16(GT911_ADDR, REG_XRES, res, 4);
-    s_max_x = res[0] | (res[1] << 8);
-    s_max_y = res[2] | (res[3] << 8);
+    s_max_x = res[0] | (res[1] << 8); s_max_y = res[2] | (res[3] << 8);
     /* A controller configured in landscape (x range ~1280) reports logical coordinates already. */
-    if (s_max_x > s_max_y)
-        s_map = 0;
-    kprintf("touch: GT911 \"%c%c%c%c\" resolution %d x %d, map %d\n", id[0], id[1], id[2],
-            id[3] ? id[3] : ' ', s_max_x, s_max_y, s_map);
+    if (s_max_x > s_max_y) s_map = 0;
+    kprintf("touch: GT911 \"%c%c%c%c\" resolution %d x %d, map %d\n", id[0], id[1], id[2], id[3] ? id[3] : ' ', s_max_x, s_max_y, s_map);
     hal_i2c_write_reg16(GT911_ADDR, REG_STATUS, 0);
     s_present = true;
-    s_st7123 = false;
+    s_kind = TOUCH_GT911;
     return true;
 }
 
-bool tab5_touch_read(int *x, int *y) {
-    if (!s_present)
-        return false;
-    if (s_st7123) {
-        uint8_t adv = 0, reports[ST_MAX_POINTS * 7];
-        if (!hal_i2c_read_reg16(ST7123_ADDR, ST_ADV, &adv, 1)) {
-            s_errors++;
-            s_pressed = false;
-            return false;
+static void add_point(int rx, int ry, uint8_t id)
+{
+    if (rx < 0 || ry < 0 || rx >= s_max_x || ry >= s_max_y) { s_errors++; return; }
+    if (!s_count) { s_raw_x = rx; s_raw_y = ry; }
+    tab5_touch_point_t *p = &s_points[s_count++];
+    map_point(rx, ry, &p->x, &p->y); p->id = id;
+}
+static void read_st712x(void)
+{
+    uint8_t status = 0, points[ST_MAX_TOUCHES * ST_POINT_BYTES];
+    s_count = 0;
+    if (!hal_i2c_read_reg16(TAB5_ST7123_TOUCH_ADDR,ST_STATUS, &status, 1)) {
+        s_errors++; return;
+    }
+    if (!(status & 0x08)) return;
+    if (!hal_i2c_read_reg16(TAB5_ST7123_TOUCH_ADDR,ST_POINTS, points,
+                            (size_t)s_touch_slots * ST_POINT_BYTES)) {
+        s_errors++; return;
+    }
+    s_frames++;
+    for (unsigned i = 0; i < s_touch_slots; i++) {
+        const uint8_t *p = points + i * ST_POINT_BYTES;
+        if (p[0] & 0x80) add_point(((p[0] & 0x3f) << 8) | p[1], (p[2] << 8) | p[3], i);
+    }
+}
+unsigned tab5_touch_read_points(tab5_touch_point_t *points, unsigned capacity)
+{
+    if (!points || !capacity || !s_present) return 0;
+    if (s_kind == TOUCH_ST712X) read_st712x();
+    else {
+        uint8_t st = 0;
+        if (!hal_i2c_read_reg16(GT911_ADDR, REG_STATUS, &st, 1)) {
+            s_count = 0; s_errors++; return 0;
         }
-        s_pressed = false;
-        if (adv & 0x08) {
-            if (!hal_i2c_read_reg16(ST7123_ADDR, ST_REPORT, reports, (size_t)s_st_points * 7)) {
-                s_errors++;
-                return false;
+        if (st & 0x80) {
+            unsigned n = st & 0x0f;
+            s_count = 0;
+            if (n > 5) s_errors++;
+            else if (n) {
+                /* Include the track ID byte before the old REG_POINT0 coordinate address. */
+                uint8_t p[5 * 8];
+                if (hal_i2c_read_reg16(GT911_ADDR, REG_POINT0 - 1, p, n * 8)) {
+                    for (unsigned i = 0; i < n; i++) {
+                        const uint8_t *q = p + i * 8;
+                        add_point(q[1] | (q[2] << 8), q[3] | (q[4] << 8), q[0]);
+                    }
+                } else s_errors++;
             }
-            for (unsigned i = 0; i < s_st_points; i++) {
-                const uint8_t *p = reports + i * 7;
-                if (!(p[0] & 0x80))
-                    continue;
-                s_raw_x = ((int)(p[0] & 0x3f) << 8) | p[1];
-                s_raw_y = ((int)p[2] << 8) | p[3];
-                map_point(s_raw_x, s_raw_y, &s_x, &s_y);
-                s_pressed = true;
-                break;
-            }
+            s_frames++;
+            if (!hal_i2c_write_reg16(GT911_ADDR, REG_STATUS, 0)) { s_count = 0; s_errors++; }
         }
-        s_frames++;
-        if (s_pressed) {
-            *x = s_x;
-            *y = s_y;
-        }
-        return s_pressed;
     }
-    uint8_t st = 0;
-    if (!hal_i2c_read_reg16(GT911_ADDR, REG_STATUS, &st, 1)) {
-        s_errors++;
-        return false;
-    }
-    if (st & 0x80) {
-        int n = st & 0x0F;
-        if (n > 0) {
-            uint8_t p[6];
-            if (hal_i2c_read_reg16(GT911_ADDR, REG_POINT0, p, sizeof p)) {
-                s_raw_x = p[0] | (p[1] << 8);
-                s_raw_y = p[2] | (p[3] << 8);
-                map_point(s_raw_x, s_raw_y, &s_x, &s_y);
-                s_pressed = true;
-            } else
-                s_errors++;
-        } else
-            s_pressed = false;
-        s_frames++;
-        hal_i2c_write_reg16(GT911_ADDR, REG_STATUS, 0);
-    }
-    if (s_pressed) {
-        *x = s_x;
-        *y = s_y;
-    }
-    return s_pressed;
+    unsigned n = s_count < capacity ? s_count : capacity;
+    for (unsigned i = 0; i < n; i++) points[i] = s_points[i];
+    return n;
+}
+bool tab5_touch_read(int *x, int *y)
+{
+    tab5_touch_point_t point;
+    if (!tab5_touch_read_points(&point, 1)) return false;
+    *x = point.x; *y = point.y; return true;
 }
 
 void tab5_touch_set_map(int map) { s_map = map & 3; }
-int tab5_touch_map(void) { return s_map; }
-void tab5_touch_stats(uint32_t *frames, uint32_t *errors, int *raw_x, int *raw_y, int *max_x,
-                      int *max_y) {
-    *frames = s_frames;
-    *errors = s_errors;
-    *raw_x = s_raw_x;
-    *raw_y = s_raw_y;
-    *max_x = s_max_x;
-    *max_y = s_max_y;
+const char *tab5_touch_name(void)
+{
+    return s_kind == TOUCH_GT911 ? "GT911" : s_kind == TOUCH_ST712X ? "ST712x" : "none";
+}
+int  tab5_touch_map(void) { return s_map; }
+void tab5_touch_stats(uint32_t *frames, uint32_t *errors, int *raw_x, int *raw_y, int *max_x, int *max_y)
+{
+    *frames = s_frames; *errors = s_errors; *raw_x = s_raw_x; *raw_y = s_raw_y; *max_x = s_max_x; *max_y = s_max_y;
 }

@@ -7,3 +7,6 @@ void osk_show(bool on);
 bool osk_visible(void);
 bool osk_available(void);
 void osk_set_debug(bool on);             /* print every touch-down (raw and mapped) to the console */
+
+/* Deferred repaint request; safe while display backend owns its render lock. */
+void osk_request_redraw(void);

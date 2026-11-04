@@ -32,6 +32,12 @@ size_t   kconsole_log_read(uint32_t *pos, char *buf, size_t max);
 void     kconsole_inject(const char *s);
 size_t   kconsole_inject_n(const char *s, size_t n);   /* returns how many bytes fitted; the rest was not queued */
 void     kconsole_set_focus(uint32_t task_id);   /* 0 = nobody: only this task reads the console (see wasm display_open) */
+bool     kconsole_suspend_busy(void); /* Active console focus is not quiesced for suspend. */
 uint32_t kconsole_get_focus(void); /* Reaps dead/reused task owners. */
 bool     kconsole_focus_exchange(uint32_t expected,uint32_t desired); /* atomic non-stealing lease operation */
+/* A program that owns the screen is asked to repaint it (the on-screen keyboard covered part of it). */
+void     kconsole_request_refresh(void);
+bool     kconsole_take_refresh(void);          /* true once per request */
+/* Called when a character arrives from the serial port (not for injected keys): lets power management see activity. */
+void     kconsole_set_input_hook(void (*hook)(void));
 int      kconsole_getc(void);                 /* injected characters first, then the serial port; -1 if none */

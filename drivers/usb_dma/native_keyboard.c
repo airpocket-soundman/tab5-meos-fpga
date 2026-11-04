@@ -19,6 +19,7 @@
 #include <m5os/errno.h>
 #include "../usbkbd/hid_keys.h"
 #include <m5os/ime.h>
+#include <m5os/suspend.h>
 #include "hal_usbh_dma.h"
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
@@ -167,6 +168,10 @@ int usb_native_read_config(uint8_t address,uint8_t index,void *buffer,size_t cap
 
 static void emit(uint8_t usage, uint8_t mods)
 {
+    if (hid_is_suspend_hotkey(usage,mods)) {
+        if (!suspend_filter_input()) suspend_request();
+        return;
+    }
     char buf[8];
     hid_decode(usage, mods, s_caps, buf);
     if (buf[0]) { ime_feed(buf); s_stats.last_char = (unsigned char)buf[0]; }
@@ -186,8 +191,9 @@ static void hub_key_report(const uint8_t cur[8])
         for (unsigned j=2;j<8;j++) if (hub_keys.previous[j]==key) old=true;
         if (old) continue;
         s_stats.presses++;s_stats.last_x=key;
+        if (suspend_filter_input()) { hub_keys.held=0;continue; }
         if (key==HID_USAGE_CAPSLOCK) { s_caps=!s_caps;continue; }
-        emit(key,cur[0]);hub_keys.held=key;
+        emit(key,cur[0]);hub_keys.held=hid_is_suspend_hotkey(key,cur[0])?0:key;
         hub_keys.pressed=hub_keys.repeated=now;
     }
     bool held=false;
@@ -541,9 +547,10 @@ static void keyboard_session(int iface)
             for (int j = 2; j < REPORT_BYTES; j++) if (prev[j] == k) was_down = true;
             if (was_down) continue;
             s_stats.presses++; s_stats.last_x = k;
+            if (suspend_filter_input()) { held=0;continue; }
             if (k == HID_USAGE_CAPSLOCK) { s_caps = !s_caps; continue; }
             emit(k, mods);
-            held = k; pressed_at = last_repeat = now;
+            held = hid_is_suspend_hotkey(k,mods)?0:k; pressed_at = last_repeat = now;
         }
         bool held_still = false;
         for (int i = 2; i < REPORT_BYTES; i++) if (cur[i] == held && held) held_still = true;

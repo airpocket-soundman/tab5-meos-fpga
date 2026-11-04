@@ -27,6 +27,9 @@
 #include <m5os/arch.h>
 #include <m5os/tab5.h>
 #include "font8x8.h"
+#include "bitmap_resize.h"
+#include "fbcon.h"
+#include "../tab5kbd/osk.h"
 #include "font_ja16.h"
 #include "ili9881c_tab5_init.h"
 #include "st7121_tab5_init.h"
@@ -100,6 +103,9 @@ static const panel_info_t PANEL_ST7123 = {
 
 static volatile uint32_t s_frames;      /* refresh-done interrupts seen: proves the scan-out loop runs */
 static uint16_t *s_fb;                  /* physical layout: PANEL_H rows of PANEL_W pixels - what the panel scans out */
+static int s_clip_y = DISPLAY_HEIGHT;   /* drawing at logical y >= this is discarded (display_clip_bottom) */
+static volatile bool s_suspended;       /* screen off: all drawing discarded; read by other tasks */
+static inline int clip_y(void) { return s_suspended ? 0 : s_clip_y; }
 static uint16_t *s_draw;                /* where drawing goes: s_fb, or an off-screen buffer of the same layout (display_set_target) */
 static esp_lcd_panel_io_handle_t s_io;
 static esp_lcd_panel_handle_t s_dpi_panel;
@@ -165,7 +171,7 @@ static void fb_flush_real(int row0, int row1)
     esp_cache_msync((void *)a, b - a, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
 }
 
-static inline void put(int x, int y, uint16_t c) { s_draw[(size_t)(DISPLAY_WIDTH - 1 - x) * PANEL_W + y] = c; }
+static inline void put(int x, int y, uint16_t c) { if (y >= clip_y()) return; s_draw[(size_t)(DISPLAY_WIDTH - 1 - x) * PANEL_W + y] = c; }
 
 /* Panel start-up over DSI, before the video stream runs.  The two controllers want different sequences. */
 static void panel_start_ili9881c(void)
@@ -307,7 +313,7 @@ static void __attribute__((optimize("O2"))) display_fill_rect_unlocked(int x, in
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > DISPLAY_WIDTH)  w = DISPLAY_WIDTH  - x;
-    if (y + h > DISPLAY_HEIGHT) h = DISPLAY_HEIGHT - y;
+    if (y + h > clip_y()) h = clip_y() - y;
     if (w <= 0 || h <= 0 || !s_fb) return;
     for (int i = 0; i < w; i++) {
         uint16_t *column = &s_draw[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
@@ -431,7 +437,7 @@ static void display_draw_bitmap_unlocked(int x, int y, int w, int h, const uint1
     if (!s_fb || !px || w <= 0 || h <= 0) return;
     int x0 = x < 0 ? -x : 0, y0 = y < 0 ? -y : 0;
     int x1 = x + w > DISPLAY_WIDTH  ? DISPLAY_WIDTH  - x : w;
-    int y1 = y + h > DISPLAY_HEIGHT ? DISPLAY_HEIGHT - y : h;
+    int y1 = y + h > clip_y() ? clip_y() - y : h;
     if (x0 >= x1 || y0 >= y1) return;
 
     const int TILE = 32;
@@ -495,7 +501,7 @@ static void display_fill_triangle_unlocked(int x0, int y0, int x1, int y1, int x
         else        yb = x2 == x1 ? y1 : y1 + (int)(((int64_t)(y2 - y1) * (x - x1)) / (x2 - x1));
         int lo = ya < yb ? ya : yb, hi = ya < yb ? yb : ya;
         if (lo < 0) lo = 0;
-        if (hi >= DISPLAY_HEIGHT) hi = DISPLAY_HEIGHT - 1;
+        if (hi >= clip_y()) hi = clip_y() - 1;
         uint16_t *col = &s_draw[(size_t)(DISPLAY_WIDTH - 1 - x) * PANEL_W];
         for (int y = lo; y <= hi; y++) col[y] = color;
     }
@@ -504,13 +510,14 @@ static void display_fill_triangle_unlocked(int x0, int y0, int x1, int y1, int x
 
 static void display_set_target_unlocked(uint16_t *buf) { s_draw = buf ? buf : s_fb; }
 
+
 static void display_present_unlocked(int x, int y, int w, int h)
 {
     if (!s_fb || s_draw == s_fb) return;
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > DISPLAY_WIDTH)  w = DISPLAY_WIDTH  - x;
-    if (y + h > DISPLAY_HEIGHT) h = DISPLAY_HEIGHT - y;
+    if (y + h > clip_y()) h = clip_y() - y;                           /* the keyboard overlay / a suspended screen */
     if (w <= 0 || h <= 0) return;
     int r0 = DISPLAY_WIDTH - x - w, r1 = DISPLAY_WIDTH - 1 - x;       /* physical rows of this rectangle: contiguous runs of h pixels */
     for (int r = r0; r <= r1; r++) memcpy(&s_fb[(size_t)r * PANEL_W + y], &s_draw[(size_t)r * PANEL_W + y], (size_t)h * sizeof(uint16_t));
@@ -533,7 +540,7 @@ static void __attribute__((optimize("O2"))) display_draw_bitmap_scaled_unlocked(
     int dw = w * scale, dh = h * scale;
     int x0 = x < 0 ? -x : 0, y0 = y < 0 ? -y : 0;
     int x1 = x + dw > DISPLAY_WIDTH  ? DISPLAY_WIDTH  - x : dw;
-    int y1 = y + dh > DISPLAY_HEIGHT ? DISPLAY_HEIGHT - y : dh;
+    int y1 = y + dh > clip_y() ? clip_y() - y : dh;
     if (x0 >= x1 || y0 >= y1) return;
 
     for (int i = x0; i < x1; i++) {
@@ -545,6 +552,24 @@ static void __attribute__((optimize("O2"))) display_draw_bitmap_scaled_unlocked(
         }
     }
     fb_flush_rows(DISPLAY_WIDTH - (x + x1), DISPLAY_WIDTH - 1 - (x + x0));
+}
+
+/* The panel is rotated: blit contiguous columns, then flush only that span. */
+static void display_draw_bitmap_resized_unlocked(int x,int y,int w,int h,const uint16_t *px,int dw,int dh)
+{
+    if (!s_fb) return;
+    int first,last;
+    if (tab5_bitmap_resize_clip(s_draw,x,y,w,h,px,dw,dh,&first,&last,clip_y()))
+        fb_flush_rows(DISPLAY_WIDTH-1-last,DISPLAY_WIDTH-1-first);
+}
+
+static void display_draw_indexed_bitmap_resized_unlocked(int x,int y,int w,int h,const uint8_t *indices,
+    const uint16_t palette[256],int dw,int dh)
+{
+    if (!s_fb) return;
+    int first,last;
+    if (tab5_indexed_resize_rows_clip(s_draw,x,y,w,h,indices,palette,dw,dh,&first,&last,dh,clip_y()))
+        fb_flush_rows(DISPLAY_WIDTH-1-last,DISPLAY_WIDTH-1-first);
 }
 
 #include "display_frame.inc"

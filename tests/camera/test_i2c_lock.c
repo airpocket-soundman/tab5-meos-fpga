@@ -30,6 +30,8 @@ static void script_read(uint8_t value, bool fail_read) {
     incoming[incoming_count++]=0; incoming[incoming_count++]=0; incoming[incoming_count++]=0;
 }
 bool sched_started(void) { return running; }
+static task_t fake_task;
+task_t *task_current(void) { return running ? &fake_task : NULL; }
 void mutex_lock(mutex_t *m) {
     AcquireSRWLockExclusive(&guard);
     owner = GetCurrentThreadId();

@@ -9,6 +9,7 @@
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
 #include <string.h>
+#include <m5os/suspend.h>
 static keyboard_stats_t stats = {0, -1, -1, -1, 0};
 static bool caps;
 typedef struct {
@@ -17,6 +18,10 @@ typedef struct {
 } keyboard_t;
 static keyboard_t keyboards[4];
 static void emit(uint8_t k, uint8_t mods) {
+    if (hid_is_suspend_hotkey(k, mods)) {
+        if (!suspend_filter_input()) suspend_request();
+        return;
+    }
     char buf[8];
     hid_decode(k, mods, caps, buf);
     if (buf[0]) {
@@ -76,12 +81,13 @@ void tuh_hid_report_received_cb(uint8_t dev, uint8_t idx, uint8_t const *r, uint
                 continue;
             stats.presses++;
             stats.last_x = key;
+            if (suspend_filter_input()) { k->held = 0; continue; }
             if (key == HID_USAGE_CAPSLOCK) {
                 caps = !caps;
                 continue;
             }
             emit(key, r[0]);
-            k->held = key;
+            k->held = hid_is_suspend_hotkey(key,r[0]) ? 0 : key;
             k->pressed = k->repeated = now;
         }
         bool held = false;

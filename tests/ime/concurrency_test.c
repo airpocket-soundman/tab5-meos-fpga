@@ -12,6 +12,8 @@ task_t *task_current(void) {return &self;}
 void mutex_lock(mutex_t *m) {EnterCriticalSection(&guard);assert(!m->owner);m->owner=&self;active=m;InterlockedIncrement(&locks);}
 void mutex_unlock(mutex_t *m) {assert(m->owner==&self);m->owner=NULL;active=NULL;LeaveCriticalSection(&guard);}
 void fbcon_scroll_live(void) {}
+static volatile LONG consume_wake;
+bool suspend_filter_input(void){return InterlockedExchange(&consume_wake,0)!=0;}
 #define IME_HOST_PLATFORM_PROVIDED 1
 #define main original_ime_main
 #define kconsole_inject_n original_inject
@@ -34,6 +36,7 @@ int main(void) {
     boot=true;ime_init();assert(locks==0);boot=false;
     char *args[]={"ime-test",NULL};assert(original_ime_main(1,args)==0);
     ime_bypass(true);s_outn=0;s_out[0]=0;
+    consume_wake=1;ime_feed("WAKE");assert(s_outn==0);
     HANDLE threads[4];const char *texts[]={"AAA","BBB","CCC","DDD"};
     for(unsigned i=0;i<4;i++)threads[i]=CreateThread(NULL,0,worker,(void *)texts[i],0,NULL);
     assert(WaitForMultipleObjects(4,threads,TRUE,10000)==WAIT_OBJECT_0);

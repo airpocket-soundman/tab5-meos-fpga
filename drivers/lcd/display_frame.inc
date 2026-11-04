@@ -10,6 +10,10 @@ static bool s_frame_active;
 static uint16_t *s_frame_pending;
 static display_status_t s_display_stats;
 static uint64_t s_frame_begin_us;
+static task_t *s_overlay_owner;
+static uint32_t s_overlay_id;
+static int s_overlay_saved_clip;
+static bool s_overlay_active;
 /* One slot per TCB address; the monotonically increasing ID defeats TCB reuse. */
 static struct { task_t *task; uint32_t id; uint16_t *buffer; } s_targets[TASK_MAX];
 static uint16_t *display_task_target(task_t *self) {
@@ -36,6 +40,11 @@ static bool display_enter(void) {
     if (!self || s_display_mutex.owner == self)
         return false; /* Boot or nested draw. */
     mutex_lock(&s_display_mutex);
+    if(s_overlay_active) {
+        /* task_kill releases this mutex; restore an interrupted overlay's
+         * temporary clip before any later task starts drawing. */
+        s_clip_y=s_overlay_saved_clip;s_overlay_active=false;s_overlay_owner=NULL;
+    }
     if (s_frame_active) {
         s_display_stats.orphaned++;
         /* A killed rendering task may have had its mutex reclaimed. Keep the
@@ -71,7 +80,7 @@ static void display_leave(bool locked) {
 
 bool display_begin_frame(void) {
     bool locked = display_enter();
-    if (!locked || !s_fb || !s_back || !s_dpi_panel || s_draw != s_fb || s_frame_active) {
+    if (!locked || s_suspended || !s_fb || !s_back || !s_dpi_panel || s_draw != s_fb || s_frame_active) {
         display_leave(locked);
         return false;
     }
@@ -231,4 +240,57 @@ void display_draw_bitmap_scaled(int x, int y, int w, int h, const uint16_t *pixe
     bool held = display_enter();
     display_draw_bitmap_scaled_unlocked(x, y, w, h, pixels, scale);
     display_leave(held);
+}
+void display_draw_bitmap_resized(int x,int y,int w,int h,const uint16_t *pixels,int dw,int dh) {
+    bool held=display_enter();
+    display_draw_bitmap_resized_unlocked(x,y,w,h,pixels,dw,dh);
+    display_leave(held);
+}
+void display_draw_indexed_bitmap_resized(int x,int y,int w,int h,const uint8_t *indices,
+                                       const uint16_t palette[256],int dw,int dh) {
+    bool held=display_enter();
+    display_draw_indexed_bitmap_resized_unlocked(x,y,w,h,indices,palette,dw,dh);
+    display_leave(held);
+}
+void display_clip_bottom(int y) {
+    bool held=display_enter();
+    s_clip_y=y<0?0:y>DISPLAY_HEIGHT?DISPLAY_HEIGHT:y;
+    display_leave(held);
+}
+bool display_is_suspended(void) { return s_suspended; }
+void display_set_suspended(bool on) {
+    bool held=display_enter();bool resumed=s_suspended&&!on;
+    s_suspended=on;display_leave(held);
+    if(resumed){fbcon_request_redraw();osk_request_redraw();}
+}
+void display_panel_power(bool on) {
+    bool held=display_enter();
+    if(s_io)tx(on?LCD_CMD_DISPON:LCD_CMD_DISPOFF,NULL,0);
+    display_leave(held);
+}
+bool display_overlay_begin(void) {
+    bool held=display_enter();
+    if(!held||s_suspended||!s_fb||s_draw!=s_fb||s_frame_active||!task_current()) {
+        display_leave(held);return false;
+    }
+    s_overlay_saved_clip=s_clip_y;s_clip_y=DISPLAY_HEIGHT;
+    s_overlay_owner=task_current();s_overlay_id=s_overlay_owner->id;s_overlay_active=true;
+    return true; /* retain render mutex across the small overlay paint scope */
+}
+void display_overlay_end(void) {
+    if(!s_overlay_active||s_overlay_owner!=task_current()||s_overlay_owner->id!=s_overlay_id||
+       s_display_mutex.owner!=task_current())return;
+    s_clip_y=s_overlay_saved_clip;s_overlay_active=false;s_overlay_owner=NULL;
+    display_leave(true);
+}
+void display_overlay_end_clip(int y) {
+    if(!s_overlay_active||s_overlay_owner!=task_current()||s_overlay_owner->id!=s_overlay_id||
+       s_display_mutex.owner!=task_current())return;
+    s_overlay_saved_clip=y<0?0:y>DISPLAY_HEIGHT?DISPLAY_HEIGHT:y;
+    display_overlay_end();
+}
+bool display_render_busy(void) {
+    if(!mutex_trylock(&s_display_mutex))return true;
+    bool busy=s_frame_active||s_frame_pending||s_overlay_active;
+    mutex_unlock(&s_display_mutex);return busy;
 }

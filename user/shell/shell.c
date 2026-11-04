@@ -14,6 +14,7 @@
 #include "../filer/filer.h"
 #include "../tui/dqwin.h"
 #include "../edit/edit.h"
+#include "../viewer/imgview.h"
 #include "../camera/camera_app.h"
 #include "../wifi/wifi_app.h"
 #include "../bluetooth/bt_app.h"
@@ -42,7 +43,11 @@
 #include "../../drivers/lcd/fbcon.h"
 
 #define FILER_PAUSE_SETTLE_MS 100u
+
+static bool sh_streq(const char *a, const char *b);      /* used by cmd_osk, defined further down */
 #include "shell.h"
+#include "hardware.h"
+#include <m5os/suspend.h>
 #include <m5os/vfs.h>
 #include <m5os/task.h>
 #include <m5os/kprintf.h>
@@ -89,6 +94,8 @@
 
 static int  s_out = -1, s_in = -1;
 static char s_cwd[VFS_PATH_MAX] = "/";
+static bool sh_streq(const char *a, const char *b);
+
 static bool sh_streq(const char *a, const char *b);
 
 /* ---------------------------------------------------------------- output */
@@ -163,10 +170,16 @@ static int cmd_ps(int argc, char **argv)
     (void)argc; (void)argv;
     task_info_t t[PS_MAX];
     int n = task_snapshot(t, PS_MAX);
-    sh_puts("PID  NAME             PRI  STATE       APP\n");
+    sh_puts("PID  NAME             PRI  STATE       APP  STACK used~/size  GUARD\n");
     for (int i = 0; i < n; i++) {
-        if (t[i].app_id) SH_PRINTF("%-4u %-16s %-4u %-11s %u\n", t[i].id, t[i].name, t[i].priority, task_state_name(t[i].state), t[i].app_id);
-        else             SH_PRINTF("%-4u %-16s %-4u %-11s -\n", t[i].id, t[i].name, t[i].priority, task_state_name(t[i].state));
+        SH_PRINTF("%-4u %-16s %-4u %-11s ", t[i].id, t[i].name, t[i].priority, task_state_name(t[i].state));
+        if (t[i].app_id) SH_PRINTF("%u  ", t[i].app_id);
+        else sh_puts("-  ");
+        task_stack_info_t stack;
+        int rc = task_stack_inspect(t[i].id, &stack);
+        if (rc == ERR_OK) SH_PRINTF("%u/%u  %s\n", (unsigned)stack.used, (unsigned)stack.size,
+                                   stack.guard_ok ? "OK" : "DAMAGED");
+        else sh_puts(rc == ERR_NOSYS ? "n/a (boot stack)\n" : "n/a (task exited)\n");
     }
     return 0;
 }
@@ -666,6 +679,20 @@ static int cmd_files(int argc, char **argv)
     return 0;
 }
 
+static int cmd_view(int argc, char **argv)
+{
+    char path[VFS_PATH_MAX];
+    if (argc < 2) { SH_PRINTF("usage: view IMAGE (BMP or PPM)\n"); return 1; }
+    if (!resolve(argv[1], path)) return fail("view", "bad path", ERR_INVAL);
+    fbcon_pause(true);
+    task_sleep(FILER_PAUSE_SETTLE_MS);
+    dq_clear();
+    bool ok = imgview_show(path, NULL);
+    fbcon_pause(false);
+    if (!ok) SH_PRINTF("view: %s: %s\n", path, imgview_last_error());
+    return ok ? 0 : 1;
+}
+
 static int cmd_edit(int argc, char **argv)
 {
     char path[VFS_PATH_MAX];
@@ -955,6 +982,7 @@ static int cmd_install(int argc, char **argv)
         return ok ? 0 : 1;
     }
 #endif
+#if M5OS_BOARD_TAB5
     if (argc == 2 && (argv[1][0] == 'h' || argv[1][0] == 'm') && (has_slash(argv[1]) || argv[1][1] == 'e')) {     /* an https:// link or a meos:// code */
         fbcon_pause(true);
         task_sleep(FILER_PAUSE_SETTLE_MS);
@@ -965,12 +993,17 @@ static int cmd_install(int argc, char **argv)
         if (ok) SH_PRINTF("installed %s\n", name);
         return ok ? 0 : 1;
     }
+#endif
     if (argc != 2 || !resolve(argv[1], path)) { sh_puts("usage: install [FILE.wasm | URL]   (no file: scan an app's QR code)\n"); return 1; }
     int rc = wasm_install_file(path, name);
     if (rc != ERR_OK) return fail("install", path, rc);
     SH_PRINTF("installed %s\n", name);
     return 0;
 }
+
+#if M5OS_BOARD_TAB5
+static int cmd_sleep(int argc, char **argv) { return suspend_command(argc, argv); }
+#endif
 
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
 
@@ -1032,6 +1065,21 @@ static int cmd_mount(int argc, char **argv)
         SH_PRINTF("M5FS: %u KB total, %u KB free\n", st.total_blocks * st.block_size / 1024u, st.free_blocks * st.block_size / 1024u);
     return 0;
 }
+
+#if M5OS_BOARD_TAB5
+static int cmd_devices(int argc, char **argv)
+{
+    (void)argc; (void)argv; hardware_print_devices(); return 0;
+}
+static int cmd_power(int argc, char **argv)
+{
+    (void)argc; (void)argv; hardware_print_power(); return 0;
+}
+static int cmd_storage(int argc, char **argv)
+{
+    (void)argc; (void)argv; hardware_print_storage(); return 0;
+}
+#endif
 
 /* ----------------------------------------------------------- line editing */
 
@@ -1096,6 +1144,14 @@ static const command_t s_commands[] = {
     { "python", micropython_cmd_main, "python [PATH | -c SOURCE]  MicroPython REPL/script" },
 #endif
     { "help",    cmd_help,    "list commands" },
+#if M5OS_BOARD_TAB5
+    { "devices", cmd_devices, "board devices: detected, untested, or unsupported (read-only)" },
+    { "power",   cmd_power,   "battery voltage/current, estimated level and charger state (read-only)" },
+    { "storage", cmd_storage, "root backing, persistence and microSD support (read-only)" },
+#endif
+#if M5OS_BOARD_TAB5
+    { "sleep", cmd_sleep, "sleep [status | idle SECONDS|off]   suspend now: screen and 5 V off, slow CPU, wakes on key/touch/movement" },
+#endif
 #if M5OS_USB_NATIVE_DMA
     { "eth", cmd_eth, "show USB Ethernet link, IP and packet counters" },
     { "usbreset", cmd_usbreset, "restart USB enumeration" },
@@ -1119,6 +1175,7 @@ static const command_t s_commands[] = {
     { "gui",     cmd_gui,     "list windows (front first)" },
 #if M5OS_HAS_KEYBOARD
     { "files",   cmd_files,   "files [DIR]     full-screen file manager (filer)" },
+    { "view",    cmd_view,    "view IMAGE      show an image (BMP/PPM)" },
     { "edit",    cmd_edit,    "edit FILE       full-screen text editor (^S save, ^Q quit)" },
     { "camera",  cmd_camera,  "camera [DIR]    full-screen camera viewfinder (Space:capture, Q:quit)" },
     { "cam",     cmd_camera,  "cam [DIR]       alias for camera" },

@@ -9,8 +9,14 @@
  * twice locks it.  Backspace, Delete, Space and the arrows repeat while held.
  *
  * Hidden, the keyboard folds into a one-row bar at the bottom of the screen ("keyboard" at the right);
- * tapping it brings the keys back.  Full-screen programs that pause the console own the whole display:
- * the keyboard neither draws nor reacts while fbcon is paused and repaints when the console returns.
+ * tapping it brings the keys back.
+ *
+ * Full-screen programs (files, edit, ...) pause the console and own the whole display.  The keyboard is
+ * out of their way then, but a tap on the RIGHT EDGE of the screen calls it up at any time, as an
+ * overlay: the pixels it covers are saved first, and the display's bottom clip (display_clip_bottom)
+ * makes the program's own drawing skip that area while the keys are up, so the two never mix.  "Hide"
+ * puts the saved pixels back and asks the program to repaint (kconsole_request_refresh), because
+ * whatever it drew under the keyboard meanwhile was discarded.
  */
 #include "osk.h"
 #include "tab5touch.h"
@@ -21,6 +27,11 @@
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
 #include <m5os/hal_time.h>
+#include <m5os/kmalloc.h>
+#include <m5os/battery.h>
+#include <m5os/suspend.h>
+#include <m5os/power.h>
+#include <string.h>
 
 #define UNIT            40              /* key widths are multiples of this; 1280 = 32 units */
 #define KEY_H           52
@@ -31,6 +42,9 @@
 #define REPEAT_DELAY_MS 400u
 #define REPEAT_PERIOD_MS 60u
 #define SHIFT_LOCK_MS   500u
+#define BATTERY_REFRESH_MS 5000u        /* how often the bar's battery text is re-read (the bar only) */
+#define BAR_MARGIN      16              /* left margin of the battery text in the bar */
+#define EDGE_PX         64              /* a tap this close to the right edge calls the keyboard up */
 #define TASK_STACK      12288           /* the input method converts on this stack */
 
 #define COL_KBD_BG      RGB565(18, 18, 24)
@@ -56,6 +70,7 @@
 #define U_CTRL  0xF2
 #define U_JP    0xF3                    /* Ctrl+Space: Japanese input on/off */
 #define U_HIDE  0xF4
+#define U_SLEEP 0xF5                    /* the "Zz" key: suspend now */
 
 typedef struct { const char *lo, *hi; uint8_t usage; uint8_t w; } key_t;   /* w in UNITs */
 
@@ -76,11 +91,18 @@ static const key_t ROW3[] = {
     { "b", "B", 0x05, 2 }, { "n", "N", 0x11, 2 }, { "m", "M", 0x10, 2 }, { ",", "<", 0x36, 2 }, { ".", ">", 0x37, 2 },
     { "/", "?", 0x38, 2 }, { "^", "^", U_UP, 2 }, { "Shift", "Shift", U_SHIFT, 5 }, { 0 } };
 static const key_t ROW4[] = {
-    { "Esc", "Esc", U_ESC, 3 }, { "Jp/En", "Jp/En", U_JP, 4 }, { "", "", U_SPACE, 16 }, { "<", "<", U_LEFT, 2 },
+    { "Esc", "Esc", U_ESC, 3 }, { "Jp/En", "Jp/En", U_JP, 4 }, { "Zz", "Zz", U_SLEEP, 3 }, { "", "", U_SPACE, 13 }, { "<", "<", U_LEFT, 2 },
     { "v", "v", U_DOWN, 2 }, { ">", ">", U_RIGHT, 2 }, { "Hide", "Hide", U_HIDE, 3 }, { 0 } };
 static const key_t *const ROWS_[KEY_ROWS] = { ROW0, ROW1, ROW2, ROW3, ROW4 };
 
+static battery_tracker_t s_bat_track;
+static char     s_bat_text[32] = "Bat --";
+static uint64_t s_bat_at;
 static bool s_avail, s_visible = false, s_debug;
+static bool s_repaint;
+void osk_request_redraw(void){__atomic_store_n(&s_repaint,true,__ATOMIC_RELEASE);}
+static bool s_ov;                                 /* the overlay keyboard is up (a full-screen program owns the screen) */
+static uint16_t *s_saved;                         /* the screen under the overlay */
 static int  s_top;                                /* y of the keyboard area (visible) or of the bar (hidden) */
 static int  s_shift, s_ctrl;                      /* 0 off, 1 one-shot, 2 locked (shift only) */
 static const key_t *s_down;                       /* the key under the finger, if any */
@@ -95,7 +117,7 @@ static int key_x(const key_t *row, const key_t *k)
 
 static bool is_repeating(uint8_t u) { return u == U_BKSP || u == U_DEL || u == U_SPACE || u == U_LEFT || u == U_RIGHT || u == U_UP || u == U_DOWN; }
 
-static void draw_key(const key_t *row, int r, const key_t *k, bool down)
+static void draw_key_unlocked(const key_t *row, int r, const key_t *k, bool down)
 {
     int x = key_x(row, k), y = s_top + 4 + r * ROW_PITCH, w = k->w * UNIT;
     bool special = k->usage >= U_ENTER || k->usage == U_TAB;
@@ -106,17 +128,56 @@ static void draw_key(const key_t *row, int r, const key_t *k, bool down)
     if (len) display_draw_text(x + (w - len * 16) / 2, y + (KEY_H - 16) / 2, label, COL_TEXT, bg, 2);
 }
 
-static void draw_keyboard(void)
+static void draw_key(const key_t *row,int r,const key_t *k,bool down)
+{
+    if(!display_overlay_begin())return;
+    draw_key_unlocked(row,r,k,down);
+    display_overlay_end();
+}
+
+static void draw_keyboard_unlocked(void)
 {
     display_fill_rect(0, s_top, DISPLAY_WIDTH, DISPLAY_HEIGHT - s_top, COL_KBD_BG);
     for (int r = 0; r < KEY_ROWS; r++)
-        for (const key_t *k = ROWS_[r]; k->lo; k++) draw_key(ROWS_[r], r, k, false);
+        for (const key_t *k = ROWS_[r]; k->lo; k++) draw_key_unlocked(ROWS_[r], r, k, false);
 }
+
+static void draw_keyboard(void)
+{
+    if(!display_overlay_begin())return;
+    draw_keyboard_unlocked();
+    display_overlay_end();
+}
+
+#define BAR_KBD_X   (DISPLAY_WIDTH - 12 * 16 - 8)            /* "[ keyboard ]" */
+#define BAR_ZZ_X    (BAR_KBD_X - 6 * 16 - 32)                /* "[ Zz ]": suspend now, left of it */
 
 static void draw_bar(void)
 {
+    if(!display_overlay_begin())return;
+    int y = s_top + (DISPLAY_HEIGHT - s_top - 16) / 2;
     display_fill_rect(0, s_top, DISPLAY_WIDTH, DISPLAY_HEIGHT - s_top, COL_BAR);
-    display_draw_text(DISPLAY_WIDTH - 11 * 16 - 8, s_top + (DISPLAY_HEIGHT - s_top - 16) / 2, "[ keyboard ]", COL_TEXT, COL_BAR, 2);
+    display_draw_text(BAR_MARGIN, y, s_bat_text, COL_TEXT, COL_BAR, 2);                       /* battery: left */
+    display_draw_text(BAR_ZZ_X, y, "[ Zz ]", COL_TEXT, COL_BAR, 2);
+    display_draw_text(BAR_KBD_X, y, "[ keyboard ]", COL_TEXT, COL_BAR, 2);   /* the way back to the keys: right */
+    display_overlay_end();
+}
+
+/* Re-read the battery and rebuild the bar's text.  Returns true if the text changed. */
+static bool battery_refresh(void)
+{
+    power_sample_t p;
+    power_read(&p);
+    uint64_t now = hal_time_now_us();
+    if (p.result == POWER_OK) battery_tracker_update(&s_bat_track, p.battery_ua, now);
+    battery_status_t st;
+    battery_status_make(&s_bat_track, &p, M5OS_BATTERY_MAH, &st);
+    char text[sizeof s_bat_text];
+    battery_format(&st, text, sizeof text);
+    s_bat_at = now;
+    if (!strcmp(text, s_bat_text)) return false;
+    memcpy(s_bat_text, text, sizeof text);
+    return true;
 }
 
 static void layout(void)
@@ -159,11 +220,39 @@ static void redraw_modifiers(void)
             if (k->usage == U_SHIFT || k->usage == U_CTRL) draw_key(ROWS_[r], r, k, false);
 }
 
+static void overlay_hide(void);
+
+static void overlay_show(void)
+{
+    if (s_ov) return;
+    if (!s_saved) s_saved = kmalloc_psram((size_t)DISPLAY_WIDTH * KBD_H * sizeof(uint16_t));
+    if (!s_saved) return;                                     /* no memory: better no keyboard than a damaged screen */
+    if(!display_overlay_begin())return;
+    s_top = DISPLAY_HEIGHT - KBD_H;
+    display_read_bitmap(0, s_top, DISPLAY_WIDTH, KBD_H, s_saved);
+    s_ov = true;
+    s_shift = s_ctrl = 0;
+    draw_keyboard_unlocked();
+    display_overlay_end_clip(s_top);
+}
+
+static void overlay_hide(void)
+{
+    if (!s_ov) return;
+    if(!display_overlay_begin())return;
+    display_draw_bitmap(0, s_top, DISPLAY_WIDTH, KBD_H, s_saved);
+    s_ov = false;
+    s_down = NULL;
+    display_overlay_end_clip(DISPLAY_HEIGHT);
+    kconsole_request_refresh();                               /* what the program drew under the keys was discarded */
+}
+
 static void press(const key_t *k, int r)
 {
     static uint64_t last_shift_us;
     uint64_t now = hal_time_now_us();
-    if (k->usage == U_HIDE) { osk_show(false); return; }
+    if (k->usage == U_SLEEP) { suspend_request(); return; }
+    if (k->usage == U_HIDE) { if (s_ov) overlay_hide(); else osk_show(false); return; }
     if (k->usage == U_SHIFT) {
         if (s_shift == 2) s_shift = 0;
         else if (s_shift == 1 && now - last_shift_us < SHIFT_LOCK_MS * 1000u) s_shift = 2;
@@ -181,53 +270,76 @@ static void press(const key_t *k, int r)
     if (was) { if (s_shift == 0) draw_keyboard(); else redraw_modifiers(); draw_key(ROWS_[r], r, k, true); }
 }
 
+static bool s_paused_before, s_down_before;
+static bool s_console_touch,s_dragged;
+static int s_gesture_y,s_gesture_start_y;
+static uint64_t s_pressed_at, s_last_repeat;
+
+/* One poll of the touch panel (every POLL_MS).  Runs with the display clip lifted, see osk_task. */
+static void osk_poll(void)
+{
+    bool paused = fbcon_is_paused();
+    if(__atomic_exchange_n(&s_repaint,false,__ATOMIC_ACQ_REL)){
+        if(!paused)layout();else if(s_ov)draw_keyboard();
+    }
+    if (paused && !s_paused_before) { s_paused_before = true; s_ov = false; s_down = NULL; s_down_before = false; s_console_touch=false; }   /* a full-screen program starts: keys hidden */
+    if (!paused && s_paused_before) {
+        s_paused_before = false; s_ov = false; s_down = NULL;s_console_touch=false;
+        display_clip_bottom(DISPLAY_HEIGHT);
+        task_sleep(60);                                               /* the console repaints itself... */
+        layout();                                                     /* ...then the keyboard area is drawn again */
+    }
+    bool up = paused ? s_ov : s_visible;                              /* are the keys on screen? */
+    if (!paused && !s_visible && !display_is_suspended() && hal_time_now_us() - s_bat_at >= BATTERY_REFRESH_MS * 1000u)
+        if (battery_refresh()) draw_bar();                            /* only while the bar is what is on screen */
+
+    int x = 0, y = 0;
+    bool down = tab5_touch_read(&x, &y);
+    if (down && suspend_filter_input()) { s_down_before = true; s_down = NULL; s_console_touch=false; return; }   /* asleep: this touch only wakes; it types nothing, even once awake */
+    uint64_t now = hal_time_now_us();
+    if (down && !s_down_before) {
+        if (s_debug) { uint32_t f, e; int rx, ry, mx, my; tab5_touch_stats(&f, &e, &rx, &ry, &mx, &my); kprintf("osk: touch raw %d,%d -> %d,%d (map %d)\n", rx, ry, x, y, tab5_touch_map()); }
+        s_console_touch=!paused && y<s_top && x<DISPLAY_WIDTH-EDGE_PX;
+        s_dragged=false;s_gesture_y=s_gesture_start_y=y;
+        if (s_console_touch) { /* Keep gesture ownership until release. */ }
+        else if (!up) {
+            if (x >= DISPLAY_WIDTH - EDGE_PX) { if (paused) overlay_show(); else osk_show(true); }
+            else if (!paused && y >= s_top) {                         /* the bar */
+                if (x >= BAR_ZZ_X - 16 && x < BAR_KBD_X - 8) suspend_request();
+                else osk_show(true);
+            }
+        } else {
+            int r;
+            const key_t *k = hit(x, y, &r);
+            if (k) { s_down = k; s_down_row = r; s_down_x = x; s_down_y = y; press(k, r); s_pressed_at = s_last_repeat = now; }
+        }
+    } else if (down && s_console_touch) {
+        int cell=fbcon_cell_px(),movement=y-s_gesture_start_y;
+        if(!s_dragged&&(movement>=cell||movement<=-cell))s_dragged=true;
+        if(s_dragged){int lines=(y-s_gesture_y)/cell;if(lines){fbcon_scroll(lines);s_gesture_y+=lines*cell;}}
+    } else if (!down && s_down_before && s_console_touch) {
+        if(!s_dragged)fbcon_scroll_live();
+        s_console_touch=false;
+    } else if (!down && s_down_before && s_down) {
+        if (up && s_down->usage < U_SHIFT) draw_key(ROWS_[s_down_row], s_down_row, s_down, false);
+        s_down = NULL;
+    } else if (down && s_down && is_repeating(s_down->usage) &&
+               now - s_pressed_at > REPEAT_DELAY_MS * 1000u && now - s_last_repeat > REPEAT_PERIOD_MS * 1000u) {
+        emit(s_down); s_last_repeat = now;
+    }
+    s_down_before = down;
+}
+
 static void osk_task(void *arg)
 {
     (void)arg;
-    bool paused_before = fbcon_is_paused(), down_before = false;
-    bool console_touch = false, dragged = false;
-    int gesture_y = 0, gesture_start_y = 0;
-    uint64_t pressed_at = 0, last_repeat = 0;
+    s_paused_before = fbcon_is_paused();
     layout();
     for (;;) {
-        task_sleep(POLL_MS);
-        bool paused = fbcon_is_paused();
-        if (paused) { paused_before = true; s_down = NULL; down_before = false; console_touch = false; continue; }
-        if (paused_before) { paused_before = false; task_sleep(60); layout(); }     /* the console repainted: draw again */
-        int x = 0, y = 0;
-        bool down = tab5_touch_read(&x, &y);
-        uint64_t now = hal_time_now_us();
-        if (down && !down_before) {
-            if (s_debug) { uint32_t f, e; int rx, ry, mx, my; tab5_touch_stats(&f, &e, &rx, &ry, &mx, &my); kprintf("osk: touch raw %d,%d -> %d,%d (map %d)\n", rx, ry, x, y, tab5_touch_map()); }
-            console_touch = y < s_top;
-            dragged = false;
-            gesture_y = gesture_start_y = y;
-            if (console_touch) { /* The gesture stays owned by the console until release. */ }
-            else if (!s_visible) { if (y >= s_top) osk_show(true); }
-            else {
-                int r;
-                const key_t *k = hit(x, y, &r);
-                if (k) { s_down = k; s_down_row = r; s_down_x = x; s_down_y = y; press(k, r); pressed_at = last_repeat = now; }
-            }
-        } else if (down && console_touch) {
-            int cell = fbcon_cell_px();
-            int movement = y - gesture_start_y;
-            if (!dragged && (movement >= cell || movement <= -cell)) dragged = true;
-            if (dragged) {
-                int lines = (y - gesture_y) / cell;
-                if (lines) { fbcon_scroll(lines); gesture_y += lines * cell; }
-            }
-        } else if (!down && down_before && console_touch) {
-            if (!dragged) fbcon_scroll_live();
-            console_touch = false;
-        } else if (!down && down_before && s_down) {
-            if (s_visible && s_down->usage < U_SHIFT) draw_key(ROWS_[s_down_row], s_down_row, s_down, false);
-            s_down = NULL;
-        } else if (down && s_down && is_repeating(s_down->usage) &&
-                   now - pressed_at > REPEAT_DELAY_MS * 1000u && now - last_repeat > REPEAT_PERIOD_MS * 1000u) {
-            emit(s_down); last_repeat = now;
-        }
-        down_before = down;
+        task_sleep(suspend_poll_ms(POLL_MS));
+        /* I2C, battery reads, sleeps and IME calls run without a display lock.
+         * Each paint takes a short overlay scope that temporarily lifts clipping. */
+        osk_poll();
     }
 }
 
@@ -246,10 +358,7 @@ void osk_set_debug(bool on) { s_debug = on; }
 void osk_start(void)
 {
     if (!tab5_touch_init()) return;
-    if (task_create_stack("osk", osk_task, NULL, TASK_PRIO_DEFAULT + 2, TASK_STACK) < 0) {
-        kprintf("osk: cannot create touch/input task\n");
-        return;
-    }
     s_avail = true;
+    task_create_stack("osk", osk_task, NULL, TASK_PRIO_DEFAULT + 2, TASK_STACK);
     kprintf("osk: on-screen keyboard ready (shell: osk on|off|map N|debug)\n");
 }
