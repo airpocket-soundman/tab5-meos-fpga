@@ -88,7 +88,15 @@ int app_start_image(const uint8_t *file, size_t len, uint32_t *app_id)
     if (!a) return ERR_BUSY;
 
     /* Image and start context are tagged with the app id: they are reclaimed with the app. */
-    uint8_t *mem = kmalloc_internal_owned(h.mem_size, a->app_id);
+    /* P4 cache publication invalidates complete lines. Isolate both ends from
+     * allocator metadata/other allocations; the original tagged block is still
+     * reclaimed by app id, not by freeing this aligned interior image pointer. */
+#if M5OS_BOARD_TAB5
+    uint8_t *allocation=kmalloc_internal_owned((size_t)h.mem_size+256u,a->app_id);
+    uint8_t *mem=allocation?(uint8_t*)(((uintptr_t)allocation+127u)&~(uintptr_t)127u):NULL;
+#else
+    uint8_t *mem = kmalloc_internal_owned(h.mem_size,a->app_id);
+#endif
     m5ex_ctx_t *ctx = kmalloc_internal_owned(sizeof *ctx, a->app_id);
     uintptr_t code_base = mem ? hal_exec_alias(mem, h.mem_size) : 0;
     if (!mem || !ctx || !code_base) {
@@ -107,7 +115,10 @@ int app_start_image(const uint8_t *file, size_t len, uint32_t *app_id)
         v += (uint32_t)(v < h.code_size ? code_base : data_base);                       /* code -> I bus, data -> D bus */
         w[0] = (uint8_t)v; w[1] = (uint8_t)(v >> 8); w[2] = (uint8_t)(v >> 16); w[3] = (uint8_t)(v >> 24);
     }
-    hal_exec_sync(mem, h.mem_size);
+    if(!hal_exec_sync(mem,h.mem_size)) {
+        app_abort(a);
+        return ERR_IO;
+    }
 
     ctx->entry = (m5ex_entry_t)(code_base + h.entry_offset);
     rc = app_launch(a, m5ex_task_entry, ctx, TASK_PRIO_DEFAULT, h.stack_size);

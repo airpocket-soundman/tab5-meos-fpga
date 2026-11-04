@@ -1,0 +1,2 @@
+# Explicit trusted-native application build only. Keep other PMP/PMA regions.
+CONFIG_ESP_SYSTEM_PMP_IDRAM_SPLIT=n

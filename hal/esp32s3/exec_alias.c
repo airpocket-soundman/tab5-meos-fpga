@@ -17,9 +17,10 @@ uintptr_t hal_exec_alias(const void *p, size_t len)
     return a + SOC_I_D_OFFSET;
 }
 
-void hal_exec_sync(void *p, size_t len)
+bool hal_exec_sync(void *p, size_t len)
 {
-    (void)p; (void)len;
+    if(!hal_exec_alias(p,len))return false;
     /* memw: finish pending stores; isync: drop the instruction prefetch queue. */
     __asm__ volatile ("memw\n\tisync" ::: "memory");
+    return true;
 }
