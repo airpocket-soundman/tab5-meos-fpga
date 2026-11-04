@@ -5,7 +5,7 @@
 
 /* Dock native finite and scaled continuous DMA. Caller owns all pins and serializes the handle.
  * No boot hook. Open allocates/claims peripheral resources but never maps pads.
- * tx restores CLK GPIO LOW and all DATA inputs on every attempted transfer.
+ * DMA tx restores CLK GPIO LOW and all DATA inputs on every attempted transfer.
  * rx requires CLK HIGH, DIR HIGH, READY HIGH and all DATA already inputs.
  * Adapter-owned peripheral polls use an absolute deadline plus poll cap.
  * Cache/allocator operations retain their platform implementation contracts.
@@ -39,6 +39,15 @@ int hal_parlio_open(uint32_t frequency_hz, hal_parlio_t **out);
 int hal_parlio_set_rx_frequency(hal_parlio_t *, uint32_t frequency_hz);
 int hal_parlio_tx(hal_parlio_t *, const uint8_t *, size_t, uint64_t deadline_us,
                   hal_parlio_cancel_t, void *);
+/* Owned, idle GPIO control reply only (8..24 actual bytes). Caller has
+ * released DATA, selected CPU CLK LOW and DIR HIGH. Samples two registers
+ * per byte with 1us setup/half-cycle. At most 72us nominal IRQ masking;
+ * no allocation, mutex, scheduler or callback while masked. Bulk RX unchanged. */
+int hal_parlio_short_rx(hal_parlio_t *, uint8_t *, size_t, size_t *, uint64_t deadline_us);
+/* Fixed 8-byte GPIO control TX, owned DATA/CLK outputs LOW and DIR/READY LOW.
+ * 1us setup/half-cycle, nominal 24us masked; no DMA/peripheral reset.
+ * Caller releases DATA after return, including error paths. */
+int hal_parlio_short_tx(hal_parlio_t *, const uint8_t *, size_t, uint64_t deadline_us);
 int hal_parlio_rx(hal_parlio_t *, uint8_t *, size_t capacity, size_t *received,
                   uint64_t deadline_us, hal_parlio_cancel_t, void *);
 void hal_parlio_get_stats(const hal_parlio_t *, hal_parlio_stats_t *);

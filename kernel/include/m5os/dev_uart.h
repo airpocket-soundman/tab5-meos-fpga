@@ -8,3 +8,5 @@
  *            -1 = wait forever.  A waiting reader does not block writers. */
 #define UART_IOC_SET_RX_TIMEOUT   0x0301     /* arg: int32_t* */
 #define UART_IOC_FOCUS            0x0302     /* arg: bool*: same-task input lease, no stealing from a live owner */
+
+#define UART_IOC_POLL_CHAR        0x0303     /* arg: uint8_t*; 1 char, 0 empty, no wait/timeout change; focus checked */

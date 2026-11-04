@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-04",
+  "firmware_sha256": "b93ad466debcde7e3d4d0a3944d0df8c8587f25da63c02df67165786fb47f39d",
+  "firmware_bytes": 1280016,
+  "modules": [
+    "fpga",
+    "fpga_gfx",
+    "fpga_parlio"
+  ],
+  "native_m5ex": true,
+  "pmp_idram_split": false,
+  "app_sha256": "ee04d87f4af2a676e778e8f58c481c3217dd6a45ff4184e597e926b4818b57c3",
+  "app_bytes": 5732,
+  "fpga_usercode": "0xE368",
+  "fpga_sha256": "85bac22420a81bbaaef26a2edff81a3deb0e2bb114a97f106c1deede8062d717",
+  "carrier_remote_sha": "53c023929b4f8cf42a6e02725160c0f0015dd162",
+  "carrier_local_checkpoint": "5846dc3c0457711b8dfc80336beb03c11ac4e003",
+  "esp_idf_reference_remote": "7a4f83e85978ce2c9a94dc3df0322636d7a7b355",
+  "esp_idf_reference_demo": "b4950b338c20a9c552023872117bc83fd4f5362a",
+  "policy": {
+    "control": "GPIO fixed 1us setup/high/low and 2us guards",
+    "bulk_rx_hz": 5000000,
+    "dma_tx_hz_for_long_requests": 1000000,
+    "session": "one BEGIN/END per complete frame",
+    "scheduling": "TASK_PRIO_MAX during bounded GPU ioctl; interrupts enabled; exact restoration"
+  },
+  "root_causes": [
+    "100us software waits per setup and clock half-cycle; 200us guards",
+    "per-tile transport allocation/capability negotiation/teardown",
+    "measured 148449us in-transaction execution gap exceeding FPGA100ms no-strobe timeout",
+    "USB CDC full64-byte packet missing terminating ZLP; completed report delayed until later input"
+  ],
+  "benchmark": {
+    "workload": "16 identical32x32 Mandelbrot tiles,64 iterations, exact16384-pixel reference match; 254704 total engine cycles",
+    "baseline_device_us_median_3_cases": 1860196,
+    "final_full_case_wall_ms_median_36_cases": 97.0,
+    "speedup_conservative": 19.177278350515465,
+    "method_limit": "Baseline sums per-call device times; final full-case wall time also includes session setup/close and CPU verification, so ratio is conservative. Old baseline failed later Julia workload and does not qualify sustained operation. Binary/config changes mean this is an end-to-end firmware comparison, not an isolated per-line or resource delta."
+  },
+  "endurance": {
+    "runs": 12,
+    "sessions": 72,
+    "tiles": 1152,
+    "matched_pixels": 1179648,
+    "errors": 0,
+    "record": "fpga-device-speed-endurance-2026-11-04.json"
+  },
+  "ui": {
+    "record": "fractal-speed-optimized-2026-11-04.json",
+    "result": "passed",
+    "scope": "CPU/GPU modes, pause/resume, all4 resolutions, both scenes, complete comparisons, cancellation to CPU, exit/memory restoration, display no errors/timeouts"
+  },
+  "host_checks": [
+    "fpga_device",
+    "fpga_parallel",
+    "fpga_parallel_app",
+    "fpga_wire4515vectors",
+    "fpga_stream",
+    "parlio_stream",
+    "parlio_rx",
+    "usb_console_ZLP",
+    "fractal_app20scenarios",
+    "parlio_control_actual_functions_pin_trace_and_IRQ_bounds"
+  ],
+  "limits": [
+    "No20MHz qualification; unchanged prior8MHz failure is historical, not overridden by this5MHz run",
+    "No electrical/power qualification or DDR3 claim",
+    "No independent physical LCD visual assessment",
+    "No FPGA flash programming; frozen E368 loaded into SRAM only"
+  ],
+  "result": "passed",
+  "final_state_record": "fractal-speed-final-state-2026-11-04.json"
+}

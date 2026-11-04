@@ -1,0 +1,77 @@
+{
+  "port": "COM4",
+  "app_sha256": "d3e69cc47ad0b647d7f961c617e6e1803a88168314b63446c9b4842dd23be33c",
+  "firmware_sha256": "bc5c2e543b1e8ee4aa7ab75c93a101ccfc6bdc2099d13a6ff6471f8481cc4019",
+  "checks": [
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 0,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 158573,
+      "cycles": 254704,
+      "session": true,
+      "wall_ms": 161,
+      "error": 0,
+      "run": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 1,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 160065,
+      "cycles": 254704,
+      "session": true,
+      "wall_ms": 162,
+      "error": 0,
+      "run": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 2,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 155145,
+      "cycles": 254704,
+      "session": true,
+      "wall_ms": 158,
+      "error": 0,
+      "run": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "julia",
+      "repeat": 0,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 165623,
+      "cycles": 802480,
+      "session": true,
+      "wall_ms": 169,
+      "error": 0,
+      "run": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "julia",
+      "repeat": 1,
+      "calls": 5,
+      "matched": 5120,
+      "device_us": 36183,
+      "cycles": 250775,
+      "session": true,
+      "wall_ms": 543,
+      "error": -18,
+      "run": 0
+    }
+  ],
+  "runs": 12,
+  "scope": "96 fixed 32x32 device calls per run; no LCD timing",
+  "output": "run /sd/fpgabench.m5ex\r\nstarted /sd/fpgabench.m5ex as app 1  (permissions CD-----)\r\n> {\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":0,\"calls\":16,\"matched\":16384,\"device_us\":158573,\"cycles\":254704,\"session\":true,\"wall_ms\":161,\"error\":0}\r\nwifi: SDIO Slot 1 ready (RCA=0x0001, 4-bit @ 20 MHz)\r\n{\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":1,\"calls\":16,\"matched\":16384,\"device_us\":160065,\"cycles\":254704,\"session\":true,\"wall_ms\":162,\"error\":0}\r\n{\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":2,\"calls\":16,\"matched\":16384,\"device_us\":155145,\"cycles\":254704,\"session\":true,\"wall_ms\":158,\"error\":0}\r\n{\"fpgabench\":true,\"scene\":\"julia\",\"repeat\":0,\"calls\":16,\"matched\":16384,\"device_us\":165623,\"cycles\":802480,\"session\":true,\"wall_ms\":169,\"error\":0}\r\nwifi: ESP32-C6 STA initialized (Ready (MAC DC:1E:D5:87:F1:40))\r\n{\"fpga_device_failure\":true,\"link_error\":-3,\"op\":184,\"stage\":\"short_gpio_tx\",\"max_gap_us\":148449,\"stream_reason\":1,\"stream_fatal\":false,\"raw\":[]}\r\n{\"fpgabench\":true,\"scene\":\"julia\",\"repeat\":1,\"calls\":5,\"matched\":5120,\"device_us\":36183,\"cycles\":250775,\"session\":true,\"wall_ms\":543,\"error\":-18}\r\n",
+  "result": "failed",
+  "error": "{'fpgabench': True, 'scene': 'julia', 'repeat': 1, 'calls': 5, 'matched': 5120, 'device_us': 36183, 'cycles': 250775, 'session': True, 'wall_ms': 543, 'error': -18}"
+}

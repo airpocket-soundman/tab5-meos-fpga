@@ -86,6 +86,7 @@ static int uart_ioctl(device_t *dev, uint32_t cmd, void *arg)
         return 0;
     }
     if(focus_owner&&!focus_self())return ERR_BUSY;
+    if(cmd==UART_IOC_POLL_CHAR){if(!arg)return ERR_INVAL;return drain(arg,1);}
     if (cmd != UART_IOC_SET_RX_TIMEOUT || !arg) return ERR_INVAL;
     s_rx_timeout_ms = *(int32_t *)arg;
     return ERR_OK;

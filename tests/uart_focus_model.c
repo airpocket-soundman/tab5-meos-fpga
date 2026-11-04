@@ -21,8 +21,10 @@ int main(void){
  uart_dev_register();bool on=true,off=false;int32_t timeout=17;
  assert(!uart_ioctl(NULL,UART_IOC_SET_RX_TIMEOUT,&timeout));
  assert(!uart_ioctl(NULL,UART_IOC_FOCUS,&on)&&kconsole_get_focus()==1);
- self=&b;serial='x';assert(kconsole_getc()==-1&&serial=='x');assert(uart_ioctl(NULL,UART_IOC_FOCUS,&on)==ERR_BUSY);assert(uart_ioctl(NULL,UART_IOC_SET_RX_TIMEOUT,&timeout)==ERR_BUSY);assert(!uart_close(NULL)&&kconsole_get_focus()==1);
- self=&a;assert(kconsole_getc()=='x');timeout=0;assert(!uart_ioctl(NULL,UART_IOC_SET_RX_TIMEOUT,&timeout));assert(!uart_close(NULL)&&kconsole_get_focus()==0&&s_rx_timeout_ms==17);
+ self=&b;serial='x';assert(kconsole_getc()==-1&&serial=='x');assert(uart_ioctl(NULL,UART_IOC_FOCUS,&on)==ERR_BUSY);assert(uart_ioctl(NULL,UART_IOC_SET_RX_TIMEOUT,&timeout)==ERR_BUSY);assert(uart_ioctl(NULL,UART_IOC_POLL_CHAR,&timeout)==ERR_BUSY&&serial=='x');assert(!uart_close(NULL)&&kconsole_get_focus()==1);
+ self=&a;uint8_t polled=0;assert(uart_ioctl(NULL,UART_IOC_POLL_CHAR,&polled)==1&&polled=='x'&&s_rx_timeout_ms==17);
+ assert(uart_ioctl(NULL,UART_IOC_POLL_CHAR,&polled)==0&&s_rx_timeout_ms==17);
+ assert(uart_ioctl(NULL,UART_IOC_POLL_CHAR,NULL)==ERR_INVAL);timeout=0;assert(!uart_ioctl(NULL,UART_IOC_SET_RX_TIMEOUT,&timeout));assert(!uart_close(NULL)&&kconsole_get_focus()==0&&s_rx_timeout_ms==17);
  self=&b;kconsole_set_focus(2);self=&a;assert(uart_ioctl(NULL,UART_IOC_FOCUS,&on)==ERR_BUSY&&kconsole_get_focus()==2);
  b.state=TASK_TERMINATED;assert(!uart_ioctl(NULL,UART_IOC_FOCUS,&on)&&kconsole_get_focus()==1);b.state=TASK_RUNNING;
  a.state=TASK_TERMINATED;self=&b;serial='q';assert(kconsole_getc()=='q'&&kconsole_get_focus()==0);assert(!uart_close(NULL)&&!focus_owner);a.state=TASK_RUNNING;

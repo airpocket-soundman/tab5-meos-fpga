@@ -1,0 +1,25 @@
+{
+  "port": "COM4",
+  "app_sha256": "d3e69cc47ad0b647d7f961c617e6e1803a88168314b63446c9b4842dd23be33c",
+  "firmware_sha256": "b91ba63c5187cb7f26a28f208f8b960addc75c15152dc0031c4a52287e015f08",
+  "checks": [
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 0,
+      "calls": 5,
+      "matched": 5120,
+      "device_us": 33545,
+      "cycles": 79595,
+      "session": true,
+      "wall_ms": 541,
+      "error": -18,
+      "run": 0
+    }
+  ],
+  "runs": 12,
+  "scope": "96 fixed 32x32 device calls per run; no LCD timing",
+  "output": "run /sd/fpgabench.m5ex\r\nstarted /sd/fpgabench.m5ex as app 2  (permissions CD-----)\r\n> {\"fpga_device_failure\":true,\"link_error\":-3,\"op\":184,\"stage\":\"tx_complete\",\"stream_reason\":1,\"stream_fatal\":false,\"raw\":[]}\r\n{\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":0,\"calls\":5,\"matched\":5120,\"device_us\":33545,\"cycles\":79595,\"session\":true,\"wall_ms\":541,\"error\":-18}\r\n",
+  "result": "failed",
+  "error": "{'fpgabench': True, 'scene': 'mandelbrot', 'repeat': 0, 'calls': 5, 'matched': 5120, 'device_us': 33545, 'cycles': 79595, 'session': True, 'wall_ms': 541, 'error': -18}"
+}

@@ -1,0 +1,61 @@
+{
+  "port": "COM4",
+  "app_sha256": "8f8a33a30b37ffa4689880b9778fab90ae93e284b3ac971fead4596850ecb3de",
+  "firmware_sha256": "bbe4b68de56dcadca81d3d311231e942784a527ad01facb84fcadf2a0f1fcb5a",
+  "checks": [
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 0,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 193535,
+      "cycles": 254704,
+      "error": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 1,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 194866,
+      "cycles": 254704,
+      "error": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 2,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 190062,
+      "cycles": 254704,
+      "error": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "julia",
+      "repeat": 0,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 346988,
+      "cycles": 802480,
+      "error": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "julia",
+      "repeat": 1,
+      "calls": 1,
+      "matched": 1024,
+      "device_us": 9074,
+      "cycles": 50155,
+      "error": -18
+    }
+  ],
+  "scope": "96 fixed 32x32 device calls; no LCD timing",
+  "output": "run /sd/fpgabench.m5ex\r\nstarted /sd/fpgabench.m5ex as app 1  (permissions CD-----)\r\n> {\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":0,\"calls\":16,\"matched\":16384,\"device_us\":193535,\"cycles\":254704,\"error\":0}\r\nwifi: SDIO Slot 1 ready (RCA=0x0001, 4-bit @ 20 MHz)\r\n{\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":1,\"calls\":16,\"matched\":16384,\"device_us\":194866,\"cycles\":254704,\"error\":0}\r\n{\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":2,\"calls\":16,\"matched\":16384,\"device_us\":190062,\"cycles\":254704,\"error\":0}\r\nwifi: ESP32-C6 STA initialized (Ready (MAC DC:1E:D5:87:F1:40))\r\n{\"fpgabench\":true,\"scene\":\"julia\",\"repeat\":0,\"calls\":16,\"matched\":16384,\"device_us\":346988,\"cycles\":802480,\"error\":0}\r\n{\"fpga_device_failure\":true,\"link_error\":-3,\"op\":184,\"stage\":\"tx_complete\",\"stream_reason\":0,\"stream_fatal\":false,\"raw\":[]}\r\n{\"fpgabench\":true,\"scene\":\"julia\",\"repeat\":1,\"calls\":1,\"matched\":1024,\"device_us\":9074,\"cycles\":50155,\"error\":-18}\r\n",
+  "result": "failed",
+  "error": "{'fpgabench': True, 'scene': 'julia', 'repeat': 1, 'calls': 1, 'matched': 1024, 'device_us': 9074, 'cycles': 50155, 'error': -18}"
+}

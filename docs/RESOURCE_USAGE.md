@@ -102,3 +102,36 @@ python tools/resource_report.py compare before.json after.json --output comparis
 ```
 
 必要に応じて比較に `--max-flash-growth 32768 --max-static-ram-growth 4096` のような許容増分を指定できます。値はバイトで、超過時は終了コード2になります。全機能共通の固定予算として採用したものではありません。
+
+
+## Dedicated GPU latency test image — 2026-11-04
+
+The optional native-M5EX/Dock test firmware with `fpga_parlio,fpga_gfx`
+(dependency `fpga`) is1,280,016 bytes, SHA256
+`b93ad466debcde7e3d4d0a3944d0df8c8587f25da63c02df67165786fb47f39d`.
+It explicitly enables the reviewed Dock and trusted-native execution gates;
+standard published profiles/defaults are unchanged. This is a measured image,
+not an isolated feature-size delta against the older firmware/configuration.
+The installed standalone fractal executable is5,732 bytes; its task stack
+remains4KiB and its largest workspace remains about274KiB in PSRAM.
+
+Frame sessions retain one transport/context between tiles instead of allocating
+it for every tile; END releases it before LCD submission. Failed unsafe close
+retains kernel DMA/IRQ storage and protected IO ownership rather than reclaiming
+live callback memory. [Final UI checks](validation/fractal-speed-optimized-2026-11-04.json)
+restore internal and PSRAM used bytes after exit; one internal allocation miss
+is the expected large-workspace fallback to PSRAM. The
+[measurement summary](validation/fpga-speed-summary-2026-11-04.json) records
+latency, hashes, scope and qualifications. No default profile size is inferred
+from this dedicated image.
+
+## Animation pipeline measurement — 2026-11-04
+
+The newer installed SD executable is6116 bytes. Workspace grows from about
+274KiB to919596 bytes (about898KiB) for the palette and full-image old-display
+fallback; native stack remains4KiB. Kernel scaling normally reads only the
+source-sized start of that buffer. Internal/PSRAM used bytes returned to
+94416/8588864 after exit; one internal allocation miss is the expected PSRAM
+fallback. See [hashes and firmware size](validation/fractal-animation-summary-2026-11-04.json)
+and [functional run](validation/fractal-animation-functional-2026-11-04.json).
+These are successive diagnostic builds, not isolated feature-size deltas.

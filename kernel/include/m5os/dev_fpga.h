@@ -4,9 +4,16 @@
 
 /* /dev/fpga: fixed graphics commands, APP_PERM_DISPLAY. No raw GPIO access.
  * One synchronous32x32 RGB565 tile. Output is committed only after complete
- * validated device readback and safe physical-session close. No CPU fallback. */
+ * validated device readback and safe idle/close. Held-session callers must
+ * require successful END before presenting any part of the frame. No CPU fallback. */
 #define FPGA_FRACTAL_ABI_VERSION 1u
 #define FPGA_IOC_FRACTAL_RENDER 0x0501u
+/* Optional fixed-policy session, NULL argument. BEGIN negotiates once, then
+ * RENDER may be repeated by the owning task. END releases all bus resources.
+ * Owner close/task exit also tears down; communication errors close without retry.
+ * Older firmware returns ERR_NOSYS for these optional operations. */
+#define FPGA_IOC_FRACTAL_BEGIN  0x0502u
+#define FPGA_IOC_FRACTAL_END    0x0503u
 #define FPGA_FRACTAL_PIXELS 1024u
 typedef struct {
     uint32_t version,size;

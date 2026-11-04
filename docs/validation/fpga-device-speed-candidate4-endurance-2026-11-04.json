@@ -1,0 +1,64 @@
+{
+  "port": "COM4",
+  "app_sha256": "d3e69cc47ad0b647d7f961c617e6e1803a88168314b63446c9b4842dd23be33c",
+  "firmware_sha256": "be939c08f00f2cd45fdf8b649f97ba15dc0be5636bcc9027789d5b72f9c7b1c7",
+  "checks": [
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 0,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 166132,
+      "cycles": 254704,
+      "session": true,
+      "wall_ms": 169,
+      "error": 0,
+      "run": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 1,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 167550,
+      "cycles": 254704,
+      "session": true,
+      "wall_ms": 170,
+      "error": 0,
+      "run": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "mandelbrot",
+      "repeat": 2,
+      "calls": 16,
+      "matched": 16384,
+      "device_us": 163415,
+      "cycles": 254704,
+      "session": true,
+      "wall_ms": 165,
+      "error": 0,
+      "run": 0
+    },
+    {
+      "fpgabench": true,
+      "scene": "julia",
+      "repeat": 0,
+      "calls": 13,
+      "matched": 13312,
+      "device_us": 150786,
+      "cycles": 652015,
+      "session": true,
+      "wall_ms": 656,
+      "error": -18,
+      "run": 0
+    }
+  ],
+  "runs": 12,
+  "scope": "96 fixed 32x32 device calls per run; no LCD timing",
+  "output": "run /sd/fpgabench.m5ex\r\nstarted /sd/fpgabench.m5ex as app 1  (permissions CD-----)\r\n> {\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":0,\"calls\":16,\"matched\":16384,\"device_us\":166132,\"cycles\":254704,\"session\":true,\"wall_ms\":169,\"error\":0}\r\nwifi: SDIO Slot 1 ready (RCA=0x0001, 4-bit @ 20 MHz)\r\n{\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":1,\"calls\":16,\"matched\":16384,\"device_us\":167550,\"cycles\":254704,\"session\":true,\"wall_ms\":170,\"error\":0}\r\n{\"fpgabench\":true,\"scene\":\"mandelbrot\",\"repeat\":2,\"calls\":16,\"matched\":16384,\"device_us\":163415,\"cycles\":254704,\"session\":true,\"wall_ms\":165,\"error\":0}\r\nwifi: ESP32-C6 STA initialized (Ready (MAC DC:1E:D5:87:F1:40))\r\n{\"fpga_device_failure\":true,\"link_error\":-3,\"op\":181,\"stage\":\"tx_complete\",\"stream_reason\":1,\"stream_fatal\":false,\"raw\":[]}\r\n{\"fpgabench\":true,\"scene\":\"julia\",\"repeat\":0,\"calls\":13,\"matched\":13312,\"device_us\":150786,\"cycles\":652015,\"session\":true,\"wall_ms\":656,\"error\":-18}\r\n",
+  "result": "failed",
+  "error": "{'fpgabench': True, 'scene': 'julia', 'repeat': 0, 'calls': 13, 'matched': 13312, 'device_us': 150786, 'cycles': 652015, 'session': True, 'wall_ms': 656, 'error': -18}"
+}

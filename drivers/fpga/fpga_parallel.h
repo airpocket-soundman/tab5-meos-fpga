@@ -7,6 +7,13 @@ typedef struct {
   io_owner_t owner;
   hal_parlio_t *native;
   bool claimed, failed, busy, native_rx, tagged, owner_guarded;
+  /* Explicit owner-selected GPIO control timing: 1us setup/half, 2us guards.
+   * Select only while idle. Default preserves 100us/200us diagnostics. */
+  bool fast_control;
+  uint8_t short_failure[24];
+  size_t short_failure_length;
+  uint32_t gpio_tx_completed, max_gap_us;
+  uint64_t last_check_us;
   int error;
   uint32_t attempted, completed;
   uint8_t pending[8];

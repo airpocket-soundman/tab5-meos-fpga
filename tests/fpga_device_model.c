@@ -3,13 +3,20 @@
 #include <stdio.h>
 #include "../drivers/fpga/fpga_dev.c"
 static bool permission=true,unsafe_close,fail_draw;static unsigned opens,closes,commands,allocations;
+static task_t self={.id=1,.state=TASK_RUNNING,.priority=1},other={.id=2,.state=TASK_RUNNING,.priority=2};
+static task_t*current=&self;
+task_t *task_current(void){return current;}
+uint32_t arch_irq_disable(void){return 0;}
+void arch_irq_restore(uint32_t flags){(void)flags;}
 static device_t *registered;
+void kprintf(const char *fmt,...){(void)fmt;}
 bool task_has_perm(uint32_t p){assert(p==APP_PERM_DISPLAY);return permission;}
 uint64_t hal_time_now_us(void){static uint64_t t;return ++t;}
 void *kmalloc_psram(size_t n){void*p=calloc(1,n);if(p)allocations++;return p;}
 void kfree(void*p){if(p){allocations--;free(p);}}
 int device_register(device_t*d){registered=d;return 0;}
 int fpga_parallel_open(fpga_parallel_t*b,const char*p,uint32_t hz){assert(!strcmp(p,"dock-jumper-v0")&&hz==1000000);opens++;b->owner=1;b->native=(void*)1;return 0;}
+int hal_parlio_set_rx_frequency(hal_parlio_t*h,uint32_t hz){assert(h&&hz==5000000);return 0;}
 void fpga_parallel_close(fpga_parallel_t*b){closes++;if(!unsafe_close){b->owner=0;b->native=NULL;b->stream=NULL;b->owner_guarded=false;}}
 int fpga_parallel_continuous(fpga_parallel_t*b){assert(b->tagged);b->stream=(void*)1;return 0;}
 const fpga_wire_ops_t fpga_parallel_wire_ops={0},fpga_parallel_stream_wire_ops={0};
@@ -17,7 +24,7 @@ int fpga_wire_init(fpga_wire_t*w,const fpga_wire_ops_t*o,void*c,fpga_wire_worksp
 int fpga_wire_caps(fpga_wire_t*w,uint32_t t){assert(t==500000);w->sync_capable=true;return 0;}
 int fpga_wire_tile_caps(fpga_wire_t*w,uint32_t t){assert(w->sync_capable&&t==500000);w->tile_capable=true;return 0;}
 int fpga_wire_transport(fpga_wire_t*w,const fpga_wire_ops_t*o,void*c){w->ops=o;w->context=c;return 0;}
-int fpga_wire_command(fpga_wire_t*w,uint8_t op,uint8_t a,uint8_t b,bool tagged,uint8_t*out,size_t n,uint32_t t){assert(w&&tagged&&n==8&&t==500000);commands++;memset(out,0,8);if(op==FRACTAL_INFO){out[4]=23;out[5]=1;}else if(op==FRACTAL_CYCLES_LO){out[4]=0x34;out[5]=0x12;}else if(op==FRACTAL_CYCLES_HI){out[4]=0xcd;out[5]=0xab;}else if(op==FRACTAL_DRAW){if(fail_draw)return FPGA_LINK_IO;}else{out[4]=a;out[5]=b;}return 0;}
+int fpga_wire_command(fpga_wire_t*w,uint8_t op,uint8_t a,uint8_t b,bool tagged,uint8_t*out,size_t n,uint32_t t){assert(w&&tagged&&n==8&&t==500000&&task_current()->priority==TASK_PRIO_MAX);commands++;memset(out,0,8);if(op==FRACTAL_INFO){out[4]=23;out[5]=1;}else if(op==FRACTAL_CYCLES_LO){out[4]=0x34;out[5]=0x12;}else if(op==FRACTAL_CYCLES_HI){out[4]=0xcd;out[5]=0xab;}else if(op==FRACTAL_DRAW){if(fail_draw)return FPGA_LINK_IO;}else{out[4]=a;out[5]=b;}return 0;}
 int fpga_wire_tile(fpga_wire_t*w,unsigned plane,bool tag,uint8_t*out,uint32_t t){assert(w->tile_capable&&plane==0&&tag&&t==500000);for(unsigned i=0;i<1024;i++){uint16_t v=(uint16_t)(i^0x1234);out[8+2*i]=(uint8_t)v;out[9+2*i]=(uint8_t)(v>>8);}return 0;}
 int main(void){
  fpga_dev_register();assert(registered&&registered->required_perm==APP_PERM_DISPLAY&&!strcmp(registered->name,"fpga"));
@@ -30,8 +37,25 @@ int main(void){
  for(unsigned i=0;i<1024;i++)assert(pixels[i]==(uint16_t)(i^0x1234));
  for(unsigned i=0;i<1024;i++)pixels[i]=0xbeef;
  fail_draw=true;assert(gpu_ioctl(&dev,FPGA_IOC_FRACTAL_RENDER,&q)==ERR_IO);assert(!q.cycles_valid&&q.elapsed_us==0&&allocations==0);for(unsigned i=0;i<1024;i++)assert(pixels[i]==0xbeef);fail_draw=false;
+ unsigned before=opens;
+ assert(!gpu_ioctl(&dev,FPGA_IOC_FRACTAL_BEGIN,NULL));
+ assert(gpu_ioctl(&dev,FPGA_IOC_FRACTAL_BEGIN,NULL)==ERR_BUSY);
+ assert(!gpu_ioctl(&dev,FPGA_IOC_FRACTAL_RENDER,&q));unsigned scalar_before=commands;
+ assert(!gpu_ioctl(&dev,FPGA_IOC_FRACTAL_RENDER,&q));assert(commands-scalar_before==5);
+ scalar_before=commands;q.cx++;
+ assert(!gpu_ioctl(&dev,FPGA_IOC_FRACTAL_RENDER,&q));assert(commands-scalar_before==6);q.cx--;
+ assert(opens==before+1&&active_session&&allocations==1);
+ current=&other;assert(gpu_ioctl(&dev,FPGA_IOC_FRACTAL_RENDER,&q)==ERR_BUSY);
+ assert(gpu_ioctl(&dev,FPGA_IOC_FRACTAL_END,NULL)==ERR_BUSY);assert(!gpu_close(&dev)&&active_session);
+ current=&self;assert(!gpu_ioctl(&dev,FPGA_IOC_FRACTAL_END,NULL)&&!active_session&&!allocations);
+ assert(!gpu_ioctl(&dev,FPGA_IOC_FRACTAL_BEGIN,NULL));fail_draw=true;
+ assert(gpu_ioctl(&dev,FPGA_IOC_FRACTAL_RENDER,&q)==ERR_IO&&!active_session&&!allocations);fail_draw=false;
+ assert(!gpu_ioctl(&dev,FPGA_IOC_FRACTAL_END,NULL));
+ assert(!gpu_ioctl(&dev,FPGA_IOC_FRACTAL_BEGIN,NULL));self.state=TASK_TERMINATED;current=&other;
+ assert(!gpu_close(&dev)&&!active_session&&!allocations);self.state=TASK_RUNNING;current=&self;
+ for(unsigned i=0;i<1024;i++)pixels[i]=0xbeef;
  unsafe_close=true;assert(gpu_ioctl(&dev,FPGA_IOC_FRACTAL_RENDER,&q)==ERR_IO&&allocations==1&&active_session);for(unsigned i=0;i<1024;i++)assert(pixels[i]==0xbeef);
  unsigned prior=opens;assert(gpu_ioctl(&dev,FPGA_IOC_FRACTAL_RENDER,&q)==ERR_BUSY&&opens==prior);
- kfree(active_session);active_session=NULL;assert(allocations==0&&commands);
+ kfree(active_session);active_session=NULL;assert(allocations==0&&commands&&self.priority==1&&other.priority==2);
  puts("FPGA device: permission/ABI/range checks, canonical command routing, actual tile-only commit, failure no-copy, complete close and quarantine retention passed");return 0;
 }

@@ -166,6 +166,13 @@ static int display_ioctl(device_t *dev, uint32_t cmd, void *arg)
         display_draw_bitmap(b->x, b->y, b->w, b->h, b->pixels);
         return ERR_OK;
     }
+    case DISPLAY_IOC_BLIT_SCALED: {
+        display_scaled_blit_t *b=arg;
+        if(!b->image.pixels||b->scale<1||b->scale>16||b->image.w<=0||b->image.h<=0||
+           b->image.w>DISPLAY_WIDTH/b->scale||b->image.h>DISPLAY_HEIGHT/b->scale)return ERR_INVAL;
+        display_draw_bitmap_scaled(b->image.x,b->image.y,b->image.w,b->image.h,b->image.pixels,b->scale);
+        return ERR_OK;
+    }
     case DISPLAY_IOC_SET_TERM: {
         display_term_t *t = arg;
         if (t->y0 < 0 || t->y1 > DISPLAY_HEIGHT || t->y1 <= t->y0) return ERR_INVAL;

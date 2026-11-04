@@ -1,0 +1,46 @@
+{
+  "date": "2026-11-04",
+  "carrier_remote_sha": "53c023929b4f8cf42a6e02725160c0f0015dd162",
+  "firmware": {
+    "bytes": 1279104,
+    "sha256": "0b890a442cd7a21c8235da5563ae9f9be0874f20babd8dad1eac62b763b315e3"
+  },
+  "app": {
+    "bytes": 6116,
+    "sha256": "18f136521b5b2ad027dbeebe1c90cac096748d61c7a33a446231b37c8327fad5"
+  },
+  "workspace_bytes_rv32": 919596,
+  "resolution": 128,
+  "lcd_image_side": 512,
+  "visual_inspection": false,
+  "comparison": {
+    "mandelbrot": {
+      "cpu": {
+        "frame_ms": 190,
+        "cpu_ms": 96,
+        "gpu_ms": 0,
+        "draw_ms": 93
+      },
+      "fpga": {
+        "frame_ms": 170,
+        "cpu_ms": 0,
+        "gpu_ms": 75,
+        "draw_ms": 93
+      }
+    },
+    "julia": {
+      "cpu": {
+        "frame_ms": 160,
+        "cpu_ms": 76,
+        "gpu_ms": 0,
+        "draw_ms": 82
+      },
+      "fpga": {
+        "frame_ms": 160,
+        "cpu_ms": 0,
+        "gpu_ms": 69,
+        "draw_ms": 88
+      }
+    }
+  }
+}

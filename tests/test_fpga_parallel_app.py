@@ -13,6 +13,8 @@ with tempfile.TemporaryDirectory() as tmp:
   r,j=run(opts=['--rx-hz',str(hz)]);assert not r.returncode and j[0]['hz']==1000000 and j[0]['rx_hz']==hz
   assert j[0]['rx']=='bulk-continuous+short-gpio' and j[1]['stream']
   assert j[0]['drive_cap_zero_verified'] is True
+ r,j=run(opts=['--fast-control']);assert not r.returncode and j[0]['fast_control'] is True
+ r,j=run(opts=['--fast-control','--fast-control']);assert r.returncode and not j
  for mode,label in (('--finite-rx','finite-dma'),('--gpio-rx','gpio')):
   r,j=run(opts=[mode]);assert not r.returncode and j[0]['rx']==label and len(j)==1
  for opts in (['--rx-hz'],['--rx-hz','4000000'],['--rx-hz','20000001'],['--rx-hz','-1'],['--rx-hz','1000000','--gpio-rx'],['--gpio-rx','--gpio-rx'],['--finite-rx','--finite-rx'],['--finite-rx','--gpio-rx'],['--gpio-rx','--finite-rx'],['--rx-hz','1000000','--rx-hz','2000000']):

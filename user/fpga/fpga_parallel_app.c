@@ -35,14 +35,14 @@ static bool frequency(const char *s, uint32_t *out, bool rx) {
 static int usage(void) {
   kprintf("fpga --parlio dock-jumper-v0 HZ "
           "id|caps|test|gpu-test|gpu-verify|tile-test|tile-demo|batch-test "
-          "[--gpio-rx | --finite-rx] [--rx-hz HZ]\nHZ: 500000,1000000,2000000,5000000; bulk continuous DMA "
+          "[--gpio-rx | --finite-rx] [--rx-hz HZ] [--fast-control]\nHZ: 500000,1000000,2000000,5000000; bulk continuous DMA "
           "RX plus short GPIO replies is default.\n--gpio-rx explicitly selects GPIO receive with DMA "
           "transmit. RX additionally accepts 8000000,10000000,16000000,20000000.\n"
-          "--finite-rx selects the previous finite DMA strategy. No automatic fallback/retry.\n");
+          "--fast-control selects GPIO short TX/RX, 1us waits and 2us guards.\n--finite-rx selects the previous finite DMA strategy. No automatic fallback/retry.\n");
   return 1;
 }
 int fpga_parallel_cmd_main(int argc, char **argv) {
-  bool hybrid = false, finite = false, rx_selected = false;
+  bool hybrid = false, finite = false, rx_selected = false, fast_control = false;
   uint32_t hz = 0, rx_hz = 0;
   if (argc < 5 || strcmp(argv[2], "dock-jumper-v0") ||
       !frequency(argv[3], &hz, false))
@@ -52,6 +52,8 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
       hybrid = true;
     else if(!strcmp(argv[i],"--finite-rx")&&!finite&&!hybrid)
       finite=true;
+    else if (!strcmp(argv[i], "--fast-control") && !fast_control)
+      fast_control = true;
     else if (!strcmp(argv[i], "--rx-hz") && !rx_selected && i + 1 < argc) {
       if (!frequency(argv[++i], &rx_hz, true))
         return usage();
@@ -92,6 +94,7 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
   uint8_t body[8] = {0};
   unsigned tests = 0, compared = 0, scenes = 0;
   int e = fpga_parallel_open(&bus, argv[2], hz);
+  bus.fast_control = fast_control;
   bus.cancel = cancel;
   if (!e && rx_selected && hal_parlio_set_rx_frequency(bus.native, rx_hz))
     e = FPGA_LINK_IO;
@@ -173,10 +176,10 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
         e = FPGA_LINK_IO;
     }
   }
-  kprintf("{\"backend\":\"native-parlio\",\"rx\":\"%s\",\"hz\":%u,\"rx_hz\":%u,\"lcd_submitted\":%s,\"result\":"
+  kprintf("{\"backend\":\"native-parlio\",\"rx\":\"%s\",\"hz\":%u,\"rx_hz\":%u,\"fast_control\":%s,\"lcd_submitted\":%s,\"result\":"
           "\"%s\",\"sync_capable\":%s,\"tile_capable\":%s,\"batch_capable\":%s,"
           "\"test_transactions\":%u,\"compared_pixels\":%u,\"scenes_passed\":%"
-          "u,\"data\":[%u,%u],\"tx_dma_completed\":%u,\"rx_dma_completed\":%u,"
+          "u,\"data\":[%u,%u],\"gpio_tx_completed\":%u,\"tx_dma_completed\":%u,\"rx_dma_completed\":%u,"
           "\"tx_channel\":%d,\"rx_channel\":%d,\"phase_verified\":%s,\"parlio_"
           "raw\":%u,\"dma_raw\":%u,\"stage\":\"%s\",\"reset_required\":%s,"
           "\"last_rx_bytes\":%u,\"rx_phase_verified\":%s,\"quarantined\":%s,"
@@ -186,11 +189,11 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
           "\"gate_ready_mask\":%u,\"gate_gpio_enable\":%u,\"gate_gpio_mux\":%u,"
           "\"gate_gpio_task\":%u,\"gate_etm_event\":%u,\"gate_etm_task\":%u,\"drive_cap_zero_verified\":%s}\n",
           hybrid ? "gpio" : finite ? "finite-dma" : "bulk-continuous+short-gpio", hz,
-          hybrid ? 0 : bus.stats.rx_frequency_hz, shown ? "true" : "false", fpga_link_error(e),
+          hybrid ? 0 : bus.stats.rx_frequency_hz, fast_control ? "true" : "false", shown ? "true" : "false", fpga_link_error(e),
           wire.sync_capable ? "true" : "false",
           wire.tile_capable ? "true" : "false",
           wire.batch_capable ? "true" : "false", tests, compared, scenes,
-          body[4], body[5], bus.stats.tx_completed, bus.stats.rx_completed,
+          body[4], body[5], bus.gpio_tx_completed, bus.stats.tx_completed, bus.stats.rx_completed,
           bus.stats.tx_channel, bus.stats.rx_channel,
           bus.stats.tx_phase_verified ? "true" : "false", bus.stats.parlio_raw,
           bus.stats.dma_raw, bus.stats.stage ? bus.stats.stage : "not-opened",

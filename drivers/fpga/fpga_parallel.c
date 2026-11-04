@@ -21,7 +21,10 @@ static bool cancelled(void *p) {
 static int check(fpga_parallel_t *b, uint64_t end) {
   if (cancelled(b))
     return FPGA_LINK_CANCELLED;
-  return hal_time_now_us() >= end ? FPGA_LINK_TIMEOUT : 0;
+  uint64_t now=hal_time_now_us();
+  if(b->last_check_us&&now-b->last_check_us>b->max_gap_us)b->max_gap_us=(uint32_t)(now-b->last_check_us);
+  b->last_check_us=now;
+  return now >= end ? FPGA_LINK_TIMEOUT : 0;
 }
 static int config(fpga_parallel_t *b, int p, bool out, int value) {
   return io_gpio_config(b->owner, p, out, value, IO_PULL_NONE) ? FPGA_LINK_IO
@@ -132,7 +135,8 @@ static int pause(fpga_parallel_t *b, uint64_t end, unsigned us) {
   return check(b, end);
 }
 static int ready(fpga_parallel_t *b, uint64_t end, int expected) {
-  for (unsigned i = 0; i < 1024; i++) {
+  /* Keep the same nominal READY wait horizon when shortening polls. */
+  for (unsigned i = 0; i < (b->fast_control ? 102400u : 1024u); i++) {
     int e = check(b, end), v;
     if (e)
       return e;
@@ -140,7 +144,7 @@ static int ready(fpga_parallel_t *b, uint64_t end, int expected) {
       return FPGA_LINK_IO;
     if (v == expected)
       return 0;
-    if ((e = pause(b, end, 100)))
+    if ((e = pause(b, end, b->fast_control ? 1 : 100)))
       return e;
   }
   return FPGA_LINK_TIMEOUT;
@@ -193,7 +197,7 @@ static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
     return FPGA_LINK_BUSY;
   if (!b->claimed || !b->native || b->failed)
     return FPGA_LINK_IO;
-  b->busy = true;
+  b->busy = true;b->last_check_us=0;b->max_gap_us=0;
   bool bulk=b->stream&&cap==FPGA_WIRE_TILE_BYTES&&(tx[1]&127)==0x3b&&(tx[1]&128);
   b->attempted++;
   int e = check(b, end);
@@ -205,13 +209,18 @@ static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
   if (!e)
     e = config(b, DIR, true, 0);
   if (!e)
-    e = pause(b, end, 200);
+    e = pause(b, end, b->fast_control ? 2 : 200);
   if (!e)
     e = ready(b, end, 0);
   for (unsigned i = 0; !e && i < 8; i++)
     e = config(b, pins[i], true, 0);
-  if (!e)
-    e = translate(hal_parlio_tx(b->native, tx, n, end, cancelled, b));
+  if (!e) {
+    if(b->fast_control&&n==8){
+      e=translate(hal_parlio_short_tx(b->native,tx,n,end));
+      if(!e)b->gpio_tx_completed++;
+      if(!e)e=check(b,end);
+    }else e=translate(hal_parlio_tx(b->native, tx, n, end, cancelled, b));
+  }
   if (!e)
     e = inputs(b);
   if(bulk){
@@ -228,9 +237,9 @@ static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
     /* Retain finite/GPIO comparison timing, including conservative software
      * receive loops below; this is not full reference performance parity. */
     if (!e)e = config(b, CLK, true, b->native_rx ? 1 : 0);
-    if (!e)e = pause(b, end, 200);
+    if (!e)e = pause(b, end, b->fast_control ? 2 : 200);
     if (!e)e = set(b, DIR, 1);
-    if (!e)e = pause(b, end, 200);
+    if (!e)e = pause(b, end, b->fast_control ? 2 : 200);
     if (!e)e = ready(b, end, 1);
   }
   if(!e&&bulk)e=stream_receive(b,tx,rx,&actual,end);
@@ -240,10 +249,14 @@ static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
   if (!e && !bulk && b->native_rx)
     e = translate(
         hal_parlio_rx(b->native, rx, cap, &actual, end, cancelled, b));
+  else if (!e&&!bulk&&b->fast_control&&cap<=24) {
+    e=translate(hal_parlio_short_rx(b->native,rx,cap,&actual,end));
+    if(!e)e=check(b,end);
+  }
   else if (!e&&!bulk) {
     /* Explicit hybrid mode: transmit DMA, GPIO-controlled finite receive. */
     for (size_t j = 0; !e && j < cap; j++) {
-      e = pause(b, end, 100);
+      e = pause(b, end, b->fast_control ? 1 : 100);
       unsigned v = 0;
       for (unsigned i = 0; !e && i < 8; i++) {
         int bit;
@@ -258,11 +271,11 @@ static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
         e = set(b, CLK, 1);
       }
       if (!e)
-        e = pause(b, end, 100);
+        e = pause(b, end, b->fast_control ? 1 : 100);
       if (!e)
         e = set(b, CLK, 0);
       if (!e)
-        e = pause(b, end, 100);
+        e = pause(b, end, b->fast_control ? 1 : 100);
     }
   }
   if (!e)
@@ -270,7 +283,7 @@ static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
   if (!e)
     e = set(b, DIR, 0);
   if (!e)
-    e = pause(b, end, 200);
+    e = pause(b, end, b->fast_control ? 2 : 200);
   if (!e)
     e = ready(b, end, 0);
   int cleanup = safe(b);
@@ -307,7 +320,10 @@ static int stream_exchange(void *p,const uint8_t *tx,size_t n,uint8_t *rx,
   uint8_t raw[24],body[8];size_t count=0;unsigned offset=0;
   int e=exchange(p,tx,n,raw,(tx[1]&128)?24:8,&count,end);
   if(!e)e=fpga_wire_validate(tx,raw,count,body,8,&offset);
-  if(e){b->failed=true;if(!b->error)b->error=e;}
+  if(e){b->failed=true;if(!b->error)b->error=e;
+    b->short_failure_length=count<sizeof b->short_failure?count:sizeof b->short_failure;
+    memcpy(b->short_failure,raw,b->short_failure_length);
+  }
   if(!e){memcpy(rx,body,8);*received=8;}
   return e;
 }

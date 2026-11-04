@@ -1,5 +1,126 @@
 # Tang Primer 20K carrier integration review
 
+## Animation pipeline review: 2026-11-04
+
+Fetched current carrier remote main `53c023929b4f8cf42a6e02725160c0f0015dd162`
+again; existing Dock specification, final pin map, generated wiring/audit and
+E368 contract remain the reference. No wire/pin/power/RTL change. The previous
+19x fixed-device result did not measure LCD FPS; actual GPU UI was about1FPS.
+Before implementation: focused nonblocking console poll without changing the
+shared UART timeout; one full image blit and lookup palette; progress only on
+slow frames; same-resolution frozen-pose CPU/GPU measurements including LCD.
+Expose the existing kernel nearest-neighbor scaler via an optional display
+ioctl, with explicit old-display fallback. Preserve frame-copy/DMA retirement
+ownership and safety; skip redundant per-frame static chrome.
+Compile pure host codec/parser sources with optimization, keeping all framing,
+CRC, sequence and golden-pixel validation. Keep physical transport clocks and
+the measured priority/deadline policy unchanged.
+Rechecked ESP-IDF `dock_gpu.cpp` tile probe: set shared DX/DY/CX/CY/CONFIG
+once, then X0/Y0/DRAW/TILE per tile. The carrier requires full reconfiguration
+after reset/abort, not after each successful DRAW. Cache only identical shared
+setters within the exclusively owned BEGIN/END session; always execute DRAW
+and validate actual readback. Any communication error discards the cache.
+
+
+
+## Qualified MeOS GPU transport: 2026-11-04
+
+Final policy: GPIO8-byte control TX/short RX with1us setup/half-cycle,2us
+turnaround guards; continuous DMA TILE readback at5MHz;1MHz native DMA remains
+available for long requests. BEGIN/END holds the transport for one frame;
+GPIO is released before LCD presentation. GPU ioctl temporarily raises the
+caller task priority with interrupts enabled, then restores it on all paths.
+Quarantine retains ownership/storage after unsafe teardown. Existing CRC,
+sequence, unique-prefix, exact-length and pixel checks are retained; no repair,
+retry or transport fallback after errors. Optional BEGIN on old firmware may
+return ERR_NOSYS, allowing the existing single-tile ABI explicitly.
+
+Final physical test:1,152 tiles /1,179,648 reference pixels /72 sessions passed,
+plus both UI scenes and32/64/128/256 comparisons with memory restored on exit.
+Fixed16-tile Mandelbrot workload improved from1.860s device time to97ms full
+case time (about19x; latter includes setup/close and CPU verification). Original
+failed candidates remain separate audit records. This does not qualify20MHz,
+electrical margins, DDR3 or an independent visual LCD assessment. No RTL,
+constraints, physical pin, power or FPGA flash changes were made.
+See [measured summary](validation/fpga-speed-summary-2026-11-04.json).
+
+## MeOS transport latency review: 2026-11-04
+
+Fetched carrier remote main `53c023929b4f8cf42a6e02725160c0f0015dd162` and
+ESP-IDF remote main `7a4f83e85978ce2c9a94dc3df0322636d7a7b355`; carrier clone
+HEAD also retains checkpoint `5846dc3c0457711b8dfc80336beb03c11ac4e003`.
+Inspected carrier Dock fractal/stream/host requirements, core pin CSV, generated
+Dock wiring and r4 audit earlier this session; electrical allocation unchanged.
+Reference ESP-IDF demo `b4950b338c20a9c552023872117bc83fd4f5362a` dock_gpu.cpp
+uses short GPIO control plus continuous DMA tiles, 25ns software bit waits and
+2us direction guards in its recorded fast profile. MeOS instead waits 100us
+three times per short-response byte and 200us per guard, repeated for all
+parameter commands and per-tile capability negotiation.
+
+Before implementation: add explicit opt-in 1us control setup/half-cycle and
+2us guards, preserving default diagnostic timing, deadlines/CRC/no retry and
+input-before-DIR ownership. Qualify this host timing and existing 5MHz bulk
+point on E368 via physical pixel tests before using the faster device policy.
+Do not claim 20MHz reliability or alter carrier RTL/pins/clock phase.
+
+Further pre-implementation review: the carrier chat confirms no defined
+48/64-call limit or per-scene reset requirement; ESP-IDF qualifications mainly
+retain the transport context, rather than recreating it per tile. Cold-loop
+candidates still fail strict short-response validation in the MeOS stress test;
+these failed records must not qualify sustained operation. Add optional fixed
+BEGIN/END frame sessions, under the existing display permission, task ownership
+and device mutex. No raw timing selection. Close on END, error, task termination
+and owned device close; preserve DMA/IRQ storage and protected pins on unsafe
+teardown. The app releases the session before LCD work or processing cancelled
+frame input.
+The 5MHz and split 1MHz-TX/5MHz-RX candidates still lost occasional short
+parameter/DRAW replies under repetition (strict failure; no automatic retry).
+ESP-IDF's ordinary bulk-only path uses GPIO control TX unless experimental
+persistent DMA TX is explicitly selected. Align that division: bounded owned
+GPIO TX for 8-byte control frames (1us setup/half-cycle, nominal 24us IRQ
+masking), GPIO short RX (nominal <=72us masking), continuous DMA for full TILE
+readback and native DMA retained for long BATCH requests. Preserve defaults for
+conservative diagnostics and report GPIO versus DMA TX truthfully.
+
+Measured failure after the GPIO/session changes: an in-transaction scheduler
+gap of 148449us while waiting for a DRAW reply, exceeding the carrier's100ms
+no-strobe timeout. Before implementation: temporarily raise the calling task's
+priority only for the bounded synchronous GPU ioctl; retain all interrupts,
+absolute deadlines, error cleanup and exact prior-priority restoration. Do not
+mask interrupts for an entire render or bypass CRC/framing validation.
+Existing single-tile ABI stays available for older apps.
+
+
+
+## Fractal USB recovery review: 2026-11-04
+
+Reviewed local carrier checkpoint `5846dc3c0457711b8dfc80336beb03c11ac4e003`
+after fetch (remote main is recorded separately in the latency review).
+Read GPU LAB development/reset procedure and programming tools/checkpoint;
+reviewed host input-release requirement before SRAM reconfiguration. Existing
+Dock pins/power remain in use. User authorized USB recovery and consultation
+with the carrier development chat. App is exited; do not run concurrent host
+traffic while programming. Read-only JTAG on current USB location 6177 reports
+USERCODE 0x0573 and status 0x6020. Carrier chat identified the matching frozen filtered-reply image: SHA256
+`85bac22420a81bbaaef26a2edff81a3deb0e2bb114a97f106c1deede8062d717`,
+USERCODE 0xE368. P4 was held in ROM (--no-stub, no_reset) during SRAM-only
+programming; independent op73/op74 reads verified 0xE368/0x6020. P4 reboot
+then 1MHz ID returned TP and reset_required=false. Flash was not written.
+The former 0x0573 image remains unidentified; replacement fixed the observed
+link failure, without establishing why the former image was present.
+
+## Fractal presentation review: 2026-11-04
+
+Fetched carrier origin/main `53c023929b4f8cf42a6e02725160c0f0015dd162`.
+Reviewed the Dock fractal tile contract, generated Dock wiring record, core pin
+CSV and r4 generated hardware/audit summary. This change only updates the
+standalone viewer presentation: larger framed UI, bounded tile progress updates
+and vivid display-side palette. Wire pixels and CPU/FPGA comparison remain
+unchanged; no new GPIO, power, transport, RTL or LCD driver requirements.
+The M5EX API does not expose the native window service; draw the app frame via
+existing display ioctls without extending the ABI.
+
+
 ## Carrier all-feature plan reinspection: 2026-10-28
 
 At the user's request, fetched all carrier remote branches in both local clones.

@@ -1,0 +1,1562 @@
+[
+  {
+    "time": "2026-11-04T18:56:40.261007",
+    "firmware_sha256": "fb15b7c06729d8c622e0586897fe6b07e7332f67c447b71c8ca3f3c323e9d305",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.13 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.16 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.09 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00146fff...\nCompressed 1273040 bytes to 819799...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fb3... (3 %)\nWriting at 0x00024d49... (5 %)\nWriting at 0x0002be0d... (7 %)\nWriting at 0x00030e6d... (9 %)\nWriting at 0x00036451... (11 %)\nWriting at 0x0003b797... (13 %)\nWriting at 0x000409cb... (15 %)\nWriting at 0x00045b89... (17 %)\nWriting at 0x0004af20... (19 %)\nWriting at 0x000502bb... (21 %)\nWriting at 0x00055728... (23 %)\nWriting at 0x0005a887... (25 %)\nWriting at 0x0005faf2... (27 %)\nWriting at 0x000648c7... (29 %)\nWriting at 0x00069a09... (31 %)\nWriting at 0x0006ed7e... (33 %)\nWriting at 0x00073fce... (35 %)\nWriting at 0x0007941f... (37 %)\nWriting at 0x0007e947... (39 %)\nWriting at 0x00083999... (41 %)\nWriting at 0x00088a8d... (43 %)\nWriting at 0x0008dcc5... (45 %)\nWriting at 0x00092ff3... (47 %)\nWriting at 0x00098276... (49 %)\nWriting at 0x0009d86f... (50 %)\nWriting at 0x000a66b9... (52 %)\nWriting at 0x000ad2a3... (54 %)\nWriting at 0x000b3e3d... (56 %)\nWriting at 0x000bb6f6... (58 %)\nWriting at 0x000c12d8... (60 %)\nWriting at 0x000c760b... (62 %)\nWriting at 0x000cd788... (64 %)\nWriting at 0x000d347b... (66 %)\nWriting at 0x000d8ebe... (68 %)\nWriting at 0x000df62b... (70 %)\nWriting at 0x000e5f54... (72 %)\nWriting at 0x000ec397... (74 %)\nWriting at 0x000f26d7... (76 %)\nWriting at 0x000f991f... (78 %)\nWriting at 0x0010069a... (80 %)\nWriting at 0x00106562... (82 %)\nWriting at 0x0010bb90... (84 %)\nWriting at 0x0011129b... (86 %)\nWriting at 0x0011733d... (88 %)\nWriting at 0x0011d82a... (90 %)\nWriting at 0x00128f2a... (92 %)\nWriting at 0x0012f8d7... (94 %)\nWriting at 0x0013552a... (96 %)\nWriting at 0x0013d76b... (98 %)\nWriting at 0x00146686... (100 %)\nWrote 1273040 bytes (819799 compressed) at 0x00010000 in 5.2 seconds (effective 1952.5 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T19:01:48.526493",
+    "firmware_sha256": "bbe4b68de56dcadca81d3d311231e942784a527ad01facb84fcadf2a0f1fcb5a",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.14 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.06 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00146fff...\nCompressed 1273664 bytes to 820224...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fb8... (3 %)\nWriting at 0x00024d45... (5 %)\nWriting at 0x0002be1c... (7 %)\nWriting at 0x00030e7a... (9 %)\nWriting at 0x00036463... (11 %)\nWriting at 0x0003b7a8... (13 %)\nWriting at 0x000409e1... (15 %)\nWriting at 0x00045b9e... (17 %)\nWriting at 0x0004af34... (19 %)\nWriting at 0x000502d0... (21 %)\nWriting at 0x00055733... (23 %)\nWriting at 0x0005a899... (25 %)\nWriting at 0x0005fb06... (27 %)\nWriting at 0x000648d6... (29 %)\nWriting at 0x00069a1e... (31 %)\nWriting at 0x0006ed87... (33 %)\nWriting at 0x00073fdf... (35 %)\nWriting at 0x00079428... (37 %)\nWriting at 0x0007e95a... (39 %)\nWriting at 0x000839a7... (41 %)\nWriting at 0x00088a9b... (43 %)\nWriting at 0x0008dcd7... (45 %)\nWriting at 0x00092ffb... (47 %)\nWriting at 0x00098279... (49 %)\nWriting at 0x0009d87c... (50 %)\nWriting at 0x000a66b2... (52 %)\nWriting at 0x000ad293... (54 %)\nWriting at 0x000b3e15... (56 %)\nWriting at 0x000bb6d0... (58 %)\nWriting at 0x000c12b4... (60 %)\nWriting at 0x000c75d3... (62 %)\nWriting at 0x000cd755... (64 %)\nWriting at 0x000d3447... (66 %)\nWriting at 0x000d8e96... (68 %)\nWriting at 0x000df548... (70 %)\nWriting at 0x000e5eeb... (72 %)\nWriting at 0x000ec2ff... (74 %)\nWriting at 0x000f25e5... (76 %)\nWriting at 0x000f981a... (78 %)\nWriting at 0x00100578... (80 %)\nWriting at 0x00106513... (82 %)\nWriting at 0x0010bb2b... (84 %)\nWriting at 0x00111237... (86 %)\nWriting at 0x001172e3... (88 %)\nWriting at 0x0011d413... (90 %)\nWriting at 0x00128e74... (92 %)\nWriting at 0x0012f7fa... (94 %)\nWriting at 0x00135509... (96 %)\nWriting at 0x0013d6c1... (98 %)\nWriting at 0x001464fc... (100 %)\nWrote 1273664 bytes (820224 compressed) at 0x00010000 in 5.2 seconds (effective 1952.8 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T19:10:53.538935",
+    "firmware_sha256": "4411d83fbc04902c71dabc4665df6da48b2e46f56cdc81091603e9b3c3fa2070",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.54 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.09 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00147fff...\nCompressed 1274192 bytes to 820503...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fb9... (3 %)\nWriting at 0x00024d3c... (5 %)\nWriting at 0x0002be1b... (7 %)\nWriting at 0x00030e7a... (9 %)\nWriting at 0x00036462... (11 %)\nWriting at 0x0003b7a7... (13 %)\nWriting at 0x000409dc... (15 %)\nWriting at 0x00045b9b... (17 %)\nWriting at 0x0004af31... (19 %)\nWriting at 0x000502cd... (21 %)\nWriting at 0x00055730... (23 %)\nWriting at 0x0005a896... (25 %)\nWriting at 0x0005fb01... (27 %)\nWriting at 0x000648d4... (29 %)\nWriting at 0x00069a1a... (31 %)\nWriting at 0x0006ed84... (33 %)\nWriting at 0x00073fe0... (35 %)\nWriting at 0x00079428... (37 %)\nWriting at 0x0007e95a... (39 %)\nWriting at 0x000839a8... (41 %)\nWriting at 0x00088a9c... (43 %)\nWriting at 0x0008dcd7... (45 %)\nWriting at 0x00092ffb... (47 %)\nWriting at 0x0009827a... (49 %)\nWriting at 0x0009d864... (50 %)\nWriting at 0x000a66b2... (52 %)\nWriting at 0x000ad28f... (54 %)\nWriting at 0x000b3e1d... (56 %)\nWriting at 0x000bb6d8... (58 %)\nWriting at 0x000c12b7... (60 %)\nWriting at 0x000c75ce... (62 %)\nWriting at 0x000cd756... (64 %)\nWriting at 0x000d3447... (66 %)\nWriting at 0x000d8e9a... (68 %)\nWriting at 0x000df5a2... (70 %)\nWriting at 0x000e5ee3... (72 %)\nWriting at 0x000ec359... (74 %)\nWriting at 0x000f269b... (76 %)\nWriting at 0x000f989a... (78 %)\nWriting at 0x0010057c... (80 %)\nWriting at 0x001065ba... (82 %)\nWriting at 0x0010bbbb... (84 %)\nWriting at 0x0011130e... (86 %)\nWriting at 0x0011736e... (88 %)\nWriting at 0x0011d3fc... (90 %)\nWriting at 0x00128eb1... (92 %)\nWriting at 0x0012f869... (94 %)\nWriting at 0x001355cf... (96 %)\nWriting at 0x0013d6cc... (98 %)\nWriting at 0x0014641e... (100 %)\nWrote 1274192 bytes (820503 compressed) at 0x00010000 in 5.2 seconds (effective 1953.0 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T19:13:49.758754",
+    "firmware_sha256": "b91ba63c5187cb7f26a28f208f8b960addc75c15152dc0031c4a52287e015f08",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.09 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.09 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279072 bytes to 823643...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fb9... (3 %)\nWriting at 0x00024e04... (5 %)\nWriting at 0x0002c01d... (7 %)\nWriting at 0x00031068... (9 %)\nWriting at 0x00036654... (11 %)\nWriting at 0x0003b9a8... (13 %)\nWriting at 0x00040c01... (15 %)\nWriting at 0x00045dad... (17 %)\nWriting at 0x0004b143... (19 %)\nWriting at 0x000504d5... (21 %)\nWriting at 0x00055916... (23 %)\nWriting at 0x0005aa92... (25 %)\nWriting at 0x0005fd0e... (27 %)\nWriting at 0x00064ae7... (29 %)\nWriting at 0x00069c45... (31 %)\nWriting at 0x0006ef67... (33 %)\nWriting at 0x000741e7... (35 %)\nWriting at 0x000795e9... (37 %)\nWriting at 0x0007eb58... (39 %)\nWriting at 0x00083bb2... (41 %)\nWriting at 0x00088c86... (43 %)\nWriting at 0x0008dec7... (45 %)\nWriting at 0x00093214... (47 %)\nWriting at 0x00098481... (49 %)\nWriting at 0x0009d916... (50 %)\nWriting at 0x000a687e... (52 %)\nWriting at 0x000ad3e4... (54 %)\nWriting at 0x000b3f76... (56 %)\nWriting at 0x000bb881... (58 %)\nWriting at 0x000c13e3... (60 %)\nWriting at 0x000c7739... (62 %)\nWriting at 0x000cd886... (64 %)\nWriting at 0x000d355c... (66 %)\nWriting at 0x000d8fcb... (68 %)\nWriting at 0x000df6de... (70 %)\nWriting at 0x000e5ff6... (72 %)\nWriting at 0x000ec46e... (74 %)\nWriting at 0x000f27b2... (76 %)\nWriting at 0x000f99a3... (78 %)\nWriting at 0x001006ac... (80 %)\nWriting at 0x00106723... (82 %)\nWriting at 0x0010bd09... (84 %)\nWriting at 0x00111463... (86 %)\nWriting at 0x00117524... (88 %)\nWriting at 0x0011d4ed... (90 %)\nWriting at 0x00128f0f... (92 %)\nWriting at 0x0012f5e6... (94 %)\nWriting at 0x0013582a... (96 %)\nWriting at 0x0013d6f6... (98 %)\nWriting at 0x0014499e... (100 %)\nWrote 1279072 bytes (823643 compressed) at 0x00010000 in 5.3 seconds (effective 1946.5 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T19:17:52.910071",
+    "firmware_sha256": "be939c08f00f2cd45fdf8b649f97ba15dc0be5636bcc9027789d5b72f9c7b1c7",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.24 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.09 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279104 bytes to 823661...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fbe... (3 %)\nWriting at 0x00024e06... (5 %)\nWriting at 0x0002c01a... (7 %)\nWriting at 0x00031066... (9 %)\nWriting at 0x00036651... (11 %)\nWriting at 0x0003b9a4... (13 %)\nWriting at 0x00040bfd... (15 %)\nWriting at 0x00045dab... (17 %)\nWriting at 0x0004b13e... (19 %)\nWriting at 0x000504d0... (21 %)\nWriting at 0x00055914... (23 %)\nWriting at 0x0005aa90... (25 %)\nWriting at 0x0005fd0b... (27 %)\nWriting at 0x00064ae5... (29 %)\nWriting at 0x00069c41... (31 %)\nWriting at 0x0006ef67... (33 %)\nWriting at 0x000741e4... (35 %)\nWriting at 0x000795e5... (37 %)\nWriting at 0x0007eb55... (39 %)\nWriting at 0x00083baa... (41 %)\nWriting at 0x00088c83... (43 %)\nWriting at 0x0008dec4... (45 %)\nWriting at 0x00093210... (47 %)\nWriting at 0x0009847d... (49 %)\nWriting at 0x0009d914... (50 %)\nWriting at 0x000a686c... (52 %)\nWriting at 0x000ad3d5... (54 %)\nWriting at 0x000b3f64... (56 %)\nWriting at 0x000bb87a... (58 %)\nWriting at 0x000c13d7... (60 %)\nWriting at 0x000c7736... (62 %)\nWriting at 0x000cd882... (64 %)\nWriting at 0x000d3557... (66 %)\nWriting at 0x000d8fc9... (68 %)\nWriting at 0x000df6dd... (70 %)\nWriting at 0x000e5ffd... (72 %)\nWriting at 0x000ec470... (74 %)\nWriting at 0x000f27b5... (76 %)\nWriting at 0x000f9984... (78 %)\nWriting at 0x0010067b... (80 %)\nWriting at 0x00106724... (82 %)\nWriting at 0x0010bd06... (84 %)\nWriting at 0x00111468... (86 %)\nWriting at 0x00117503... (88 %)\nWriting at 0x0011d4ea... (90 %)\nWriting at 0x00128f18... (92 %)\nWriting at 0x0012f5b9... (94 %)\nWriting at 0x0013583a... (96 %)\nWriting at 0x0013d6e6... (98 %)\nWriting at 0x001449a0... (100 %)\nWrote 1279104 bytes (823661 compressed) at 0x00010000 in 5.2 seconds (effective 1949.7 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T19:22:09.566803",
+    "firmware_sha256": "9acb5bf96df8716242515d02713adc7684cdbb7f70830b31acd41485b01ad40b",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.23 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.15 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.06 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279808 bytes to 824033...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fc1... (3 %)\nWriting at 0x00024e0a... (5 %)\nWriting at 0x0002c046... (7 %)\nWriting at 0x0003108f... (9 %)\nWriting at 0x00036681... (11 %)\nWriting at 0x0003b9d1... (13 %)\nWriting at 0x00040c2a... (15 %)\nWriting at 0x00045dd9... (17 %)\nWriting at 0x0004b170... (19 %)\nWriting at 0x00050501... (21 %)\nWriting at 0x00055944... (23 %)\nWriting at 0x0005aabf... (25 %)\nWriting at 0x0005fd38... (27 %)\nWriting at 0x00064b13... (29 %)\nWriting at 0x00069c73... (31 %)\nWriting at 0x0006ef88... (33 %)\nWriting at 0x00074215... (35 %)\nWriting at 0x0007960d... (37 %)\nWriting at 0x0007eb80... (39 %)\nWriting at 0x00083bde... (41 %)\nWriting at 0x00088caf... (43 %)\nWriting at 0x0008def5... (45 %)\nWriting at 0x00093241... (47 %)\nWriting at 0x0009849a... (49 %)\nWriting at 0x0009d909... (50 %)\nWriting at 0x000a68ad... (52 %)\nWriting at 0x000ad414... (54 %)\nWriting at 0x000b3f76... (56 %)\nWriting at 0x000bb87e... (58 %)\nWriting at 0x000c13ee... (60 %)\nWriting at 0x000c7752... (62 %)\nWriting at 0x000cd899... (64 %)\nWriting at 0x000d356b... (66 %)\nWriting at 0x000d8fe1... (68 %)\nWriting at 0x000df70a... (70 %)\nWriting at 0x000e6020... (72 %)\nWriting at 0x000ec4a0... (74 %)\nWriting at 0x000f27e3... (76 %)\nWriting at 0x000f99ba... (78 %)\nWriting at 0x001006ce... (80 %)\nWriting at 0x001067f1... (82 %)\nWriting at 0x0010bd9a... (84 %)\nWriting at 0x001114f6... (86 %)\nWriting at 0x0011756e... (88 %)\nWriting at 0x0011d55f... (90 %)\nWriting at 0x00128f2e... (92 %)\nWriting at 0x0012f534... (94 %)\nWriting at 0x0013594c... (96 %)\nWriting at 0x0013d6a3... (98 %)\nWriting at 0x00144711... (100 %)\nWrote 1279808 bytes (824033 compressed) at 0x00010000 in 5.3 seconds (effective 1947.4 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T19:25:43.184671",
+    "firmware_sha256": "bc5c2e543b1e8ee4aa7ab75c93a101ccfc6bdc2099d13a6ff6471f8481cc4019",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.19 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.15 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.09 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279888 bytes to 824067...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fb1... (3 %)\nWriting at 0x00024df1... (5 %)\nWriting at 0x0002c040... (7 %)\nWriting at 0x0003108d... (9 %)\nWriting at 0x0003667d... (11 %)\nWriting at 0x0003b9c6... (13 %)\nWriting at 0x00040c20... (15 %)\nWriting at 0x00045dd6... (17 %)\nWriting at 0x0004b16c... (19 %)\nWriting at 0x000504fb... (21 %)\nWriting at 0x0005593c... (23 %)\nWriting at 0x0005aaba... (25 %)\nWriting at 0x0005fd35... (27 %)\nWriting at 0x00064b11... (29 %)\nWriting at 0x00069c72... (31 %)\nWriting at 0x0006ef78... (33 %)\nWriting at 0x00074214... (35 %)\nWriting at 0x000795fe... (37 %)\nWriting at 0x0007eb6b... (39 %)\nWriting at 0x00083bdc... (41 %)\nWriting at 0x00088ca8... (43 %)\nWriting at 0x0008def0... (45 %)\nWriting at 0x0009323d... (47 %)\nWriting at 0x00098495... (49 %)\nWriting at 0x0009d8c8... (50 %)\nWriting at 0x000a68a5... (52 %)\nWriting at 0x000ad3fe... (54 %)\nWriting at 0x000b3f5f... (56 %)\nWriting at 0x000bb869... (58 %)\nWriting at 0x000c13cf... (60 %)\nWriting at 0x000c7726... (62 %)\nWriting at 0x000cd870... (64 %)\nWriting at 0x000d354a... (66 %)\nWriting at 0x000d8fae... (68 %)\nWriting at 0x000df6c9... (70 %)\nWriting at 0x000e5fd0... (72 %)\nWriting at 0x000ec48c... (74 %)\nWriting at 0x000f27d4... (76 %)\nWriting at 0x000f9963... (78 %)\nWriting at 0x001006b9... (80 %)\nWriting at 0x001067d0... (82 %)\nWriting at 0x0010bdac... (84 %)\nWriting at 0x001114f0... (86 %)\nWriting at 0x0011756c... (88 %)\nWriting at 0x0011d56d... (90 %)\nWriting at 0x00128f42... (92 %)\nWriting at 0x0012f49c... (94 %)\nWriting at 0x00135961... (96 %)\nWriting at 0x0013d6af... (98 %)\nWriting at 0x00144744... (100 %)\nWrote 1279888 bytes (824067 compressed) at 0x00010000 in 5.3 seconds (effective 1947.3 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T19:29:50.860797",
+    "firmware_sha256": "b93ad466debcde7e3d4d0a3944d0df8c8587f25da63c02df67165786fb47f39d",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.14 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.06 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1280016 bytes to 824154...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fc2... (3 %)\nWriting at 0x00024e08... (5 %)\nWriting at 0x0002c041... (7 %)\nWriting at 0x0003108f... (9 %)\nWriting at 0x0003667f... (11 %)\nWriting at 0x0003b9c8... (13 %)\nWriting at 0x00040c24... (15 %)\nWriting at 0x00045dd9... (17 %)\nWriting at 0x0004b16e... (19 %)\nWriting at 0x000504fe... (21 %)\nWriting at 0x00055941... (23 %)\nWriting at 0x0005aabd... (25 %)\nWriting at 0x0005fd38... (27 %)\nWriting at 0x00064b14... (29 %)\nWriting at 0x00069c74... (31 %)\nWriting at 0x0006ef7a... (33 %)\nWriting at 0x00074216... (35 %)\nWriting at 0x000795ff... (37 %)\nWriting at 0x0007eb6d... (39 %)\nWriting at 0x00083bdd... (41 %)\nWriting at 0x00088ca9... (43 %)\nWriting at 0x0008def2... (45 %)\nWriting at 0x0009323f... (47 %)\nWriting at 0x00098497... (49 %)\nWriting at 0x0009d8b1... (50 %)\nWriting at 0x000a68bc... (52 %)\nWriting at 0x000ad416... (54 %)\nWriting at 0x000b3f76... (56 %)\nWriting at 0x000bb881... (58 %)\nWriting at 0x000c13ee... (60 %)\nWriting at 0x000c774a... (62 %)\nWriting at 0x000cd899... (64 %)\nWriting at 0x000d3567... (66 %)\nWriting at 0x000d8fd7... (68 %)\nWriting at 0x000df6c1... (70 %)\nWriting at 0x000e5ff1... (72 %)\nWriting at 0x000ec48d... (74 %)\nWriting at 0x000f27f7... (76 %)\nWriting at 0x000f9982... (78 %)\nWriting at 0x0010069e... (80 %)\nWriting at 0x001067e6... (82 %)\nWriting at 0x0010bdc8... (84 %)\nWriting at 0x001114ba... (86 %)\nWriting at 0x0011756e... (88 %)\nWriting at 0x0011d592... (90 %)\nWriting at 0x00128f73... (92 %)\nWriting at 0x0012f3ce... (94 %)\nWriting at 0x00135979... (96 %)\nWriting at 0x0013d6b8... (98 %)\nWriting at 0x00144744... (100 %)\nWrote 1280016 bytes (824154 compressed) at 0x00010000 in 5.3 seconds (effective 1941.7 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T20:03:55.918385",
+    "firmware_sha256": "c649ae28ec5af1f7c785e8ad3d524ad1f36a951fc3546058f36a1c9c12db1fc8",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.1 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.08 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1278960 bytes to 824523...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fb7... (3 %)\nWriting at 0x00024dff... (5 %)\nWriting at 0x0002c041... (7 %)\nWriting at 0x0003108f... (9 %)\nWriting at 0x0003667f... (11 %)\nWriting at 0x0003b9c8... (13 %)\nWriting at 0x00040c24... (15 %)\nWriting at 0x00045dd8... (17 %)\nWriting at 0x0004b16e... (19 %)\nWriting at 0x000504fe... (21 %)\nWriting at 0x00055941... (23 %)\nWriting at 0x0005aabc... (25 %)\nWriting at 0x0005fd38... (27 %)\nWriting at 0x00064b13... (29 %)\nWriting at 0x00069c74... (31 %)\nWriting at 0x0006ef7b... (33 %)\nWriting at 0x00074217... (35 %)\nWriting at 0x00079600... (37 %)\nWriting at 0x0007eb6e... (39 %)\nWriting at 0x00083bdd... (41 %)\nWriting at 0x00088caa... (43 %)\nWriting at 0x0008def2... (45 %)\nWriting at 0x00093240... (47 %)\nWriting at 0x00098497... (49 %)\nWriting at 0x0009d8c8... (50 %)\nWriting at 0x000a68b6... (52 %)\nWriting at 0x000ad407... (54 %)\nWriting at 0x000b3f6e... (56 %)\nWriting at 0x000bb870... (58 %)\nWriting at 0x000c13cd... (60 %)\nWriting at 0x000c772c... (62 %)\nWriting at 0x000cd87c... (64 %)\nWriting at 0x000d3551... (66 %)\nWriting at 0x000d8fc0... (68 %)\nWriting at 0x000df1ca... (70 %)\nWriting at 0x000e5ae9... (72 %)\nWriting at 0x000ebf3e... (74 %)\nWriting at 0x000f22aa... (76 %)\nWriting at 0x000f9439... (78 %)\nWriting at 0x001001b8... (80 %)\nWriting at 0x001062e0... (82 %)\nWriting at 0x0010b902... (84 %)\nWriting at 0x00110f80... (86 %)\nWriting at 0x00117023... (88 %)\nWriting at 0x0011cfb9... (90 %)\nWriting at 0x001289d2... (92 %)\nWriting at 0x0012eb9b... (94 %)\nWriting at 0x001353b2... (96 %)\nWriting at 0x0013d08c... (98 %)\nWriting at 0x00144131... (100 %)\nWrote 1278960 bytes (824523 compressed) at 0x00010000 in 5.3 seconds (effective 1943.4 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T20:08:34.783987",
+    "firmware_sha256": "be9c0f789aa3357158dcd2b9c8be3e15c4ba5266df60b44e4b7138325a24fdaf",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.1 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.07 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279040 bytes to 824559...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fbd... (3 %)\nWriting at 0x00024e08... (5 %)\nWriting at 0x0002c047... (7 %)\nWriting at 0x00031092... (9 %)\nWriting at 0x00036682... (11 %)\nWriting at 0x0003b9cc... (13 %)\nWriting at 0x00040c25... (15 %)\nWriting at 0x00045dda... (17 %)\nWriting at 0x0004b172... (19 %)\nWriting at 0x00050501... (21 %)\nWriting at 0x00055944... (23 %)\nWriting at 0x0005aac0... (25 %)\nWriting at 0x0005fd3b... (27 %)\nWriting at 0x00064b17... (29 %)\nWriting at 0x00069c78... (31 %)\nWriting at 0x0006ef7e... (33 %)\nWriting at 0x0007421a... (35 %)\nWriting at 0x00079603... (37 %)\nWriting at 0x0007eb71... (39 %)\nWriting at 0x00083be3... (41 %)\nWriting at 0x00088caf... (43 %)\nWriting at 0x0008def6... (45 %)\nWriting at 0x00093244... (47 %)\nWriting at 0x0009849a... (49 %)\nWriting at 0x0009d8ce... (50 %)\nWriting at 0x000a68b4... (52 %)\nWriting at 0x000ad408... (54 %)\nWriting at 0x000b3f71... (56 %)\nWriting at 0x000bb87c... (58 %)\nWriting at 0x000c13dc... (60 %)\nWriting at 0x000c7739... (62 %)\nWriting at 0x000cd88d... (64 %)\nWriting at 0x000d355f... (66 %)\nWriting at 0x000d8fce... (68 %)\nWriting at 0x000df1f2... (70 %)\nWriting at 0x000e5b08... (72 %)\nWriting at 0x000ebf4e... (74 %)\nWriting at 0x000f22d8... (76 %)\nWriting at 0x000f9461... (78 %)\nWriting at 0x001001e7... (80 %)\nWriting at 0x0010630f... (82 %)\nWriting at 0x0010b92e... (84 %)\nWriting at 0x00110f9d... (86 %)\nWriting at 0x00117031... (88 %)\nWriting at 0x0011cfdc... (90 %)\nWriting at 0x001289e2... (92 %)\nWriting at 0x0012ebaa... (94 %)\nWriting at 0x001353d2... (96 %)\nWriting at 0x0013d080... (98 %)\nWriting at 0x00144161... (100 %)\nWrote 1279040 bytes (824559 compressed) at 0x00010000 in 5.3 seconds (effective 1939.9 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T20:17:47.793483",
+    "firmware_sha256": "38569531cf6c2c85077417a82297671144803475af297f64464b346ab3ef617d",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.16 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.09 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279152 bytes to 824711...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fc2... (3 %)\nWriting at 0x00024e0e... (5 %)\nWriting at 0x0002c048... (7 %)\nWriting at 0x00031093... (9 %)\nWriting at 0x00036683... (11 %)\nWriting at 0x0003b9cc... (13 %)\nWriting at 0x00040c25... (15 %)\nWriting at 0x00045ddd... (17 %)\nWriting at 0x0004b172... (19 %)\nWriting at 0x00050502... (21 %)\nWriting at 0x00055944... (23 %)\nWriting at 0x0005aac0... (25 %)\nWriting at 0x0005fd3b... (27 %)\nWriting at 0x00064b17... (29 %)\nWriting at 0x00069c78... (31 %)\nWriting at 0x0006ef7e... (33 %)\nWriting at 0x0007421a... (35 %)\nWriting at 0x00079603... (37 %)\nWriting at 0x0007eb71... (39 %)\nWriting at 0x00083be3... (41 %)\nWriting at 0x00088caf... (43 %)\nWriting at 0x0008def6... (45 %)\nWriting at 0x00093244... (47 %)\nWriting at 0x0009849a... (49 %)\nWriting at 0x0009d8c8... (50 %)\nWriting at 0x000a689e... (52 %)\nWriting at 0x000ad3fa... (54 %)\nWriting at 0x000b3f5e... (56 %)\nWriting at 0x000bb86b... (58 %)\nWriting at 0x000c13cd... (60 %)\nWriting at 0x000c7725... (62 %)\nWriting at 0x000cd879... (64 %)\nWriting at 0x000d354b... (66 %)\nWriting at 0x000d8fae... (68 %)\nWriting at 0x000df1d9... (70 %)\nWriting at 0x000e5a8c... (72 %)\nWriting at 0x000ebeee... (74 %)\nWriting at 0x000f2267... (76 %)\nWriting at 0x000f93c6... (78 %)\nWriting at 0x001001a2... (80 %)\nWriting at 0x001062b8... (82 %)\nWriting at 0x0010b8f2... (84 %)\nWriting at 0x00110f1a... (86 %)\nWriting at 0x00116f92... (88 %)\nWriting at 0x0011cf82... (90 %)\nWriting at 0x0012899d... (92 %)\nWriting at 0x0012eb62... (94 %)\nWriting at 0x0013537e... (96 %)\nWriting at 0x0013cfee... (98 %)\nWriting at 0x001440b9... (100 %)\nWrote 1279152 bytes (824711 compressed) at 0x00010000 in 5.3 seconds (effective 1941.5 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T20:21:05.246644",
+    "firmware_sha256": "38569531cf6c2c85077417a82297671144803475af297f64464b346ab3ef617d",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.13 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.16 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.06 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279152 bytes to 824711...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fc2... (3 %)\nWriting at 0x00024e0e... (5 %)\nWriting at 0x0002c048... (7 %)\nWriting at 0x00031093... (9 %)\nWriting at 0x00036683... (11 %)\nWriting at 0x0003b9cc... (13 %)\nWriting at 0x00040c25... (15 %)\nWriting at 0x00045ddd... (17 %)\nWriting at 0x0004b172... (19 %)\nWriting at 0x00050502... (21 %)\nWriting at 0x00055944... (23 %)\nWriting at 0x0005aac0... (25 %)\nWriting at 0x0005fd3b... (27 %)\nWriting at 0x00064b17... (29 %)\nWriting at 0x00069c78... (31 %)\nWriting at 0x0006ef7e... (33 %)\nWriting at 0x0007421a... (35 %)\nWriting at 0x00079603... (37 %)\nWriting at 0x0007eb71... (39 %)\nWriting at 0x00083be3... (41 %)\nWriting at 0x00088caf... (43 %)\nWriting at 0x0008def6... (45 %)\nWriting at 0x00093244... (47 %)\nWriting at 0x0009849a... (49 %)\nWriting at 0x0009d8c8... (50 %)\nWriting at 0x000a689e... (52 %)\nWriting at 0x000ad3fa... (54 %)\nWriting at 0x000b3f5e... (56 %)\nWriting at 0x000bb86b... (58 %)\nWriting at 0x000c13cd... (60 %)\nWriting at 0x000c7725... (62 %)\nWriting at 0x000cd879... (64 %)\nWriting at 0x000d354b... (66 %)\nWriting at 0x000d8fae... (68 %)\nWriting at 0x000df1d9... (70 %)\nWriting at 0x000e5a8c... (72 %)\nWriting at 0x000ebeee... (74 %)\nWriting at 0x000f2267... (76 %)\nWriting at 0x000f93c6... (78 %)\nWriting at 0x001001a2... (80 %)\nWriting at 0x001062b8... (82 %)\nWriting at 0x0010b8f2... (84 %)\nWriting at 0x00110f1a... (86 %)\nWriting at 0x00116f92... (88 %)\nWriting at 0x0011cf82... (90 %)\nWriting at 0x0012899d... (92 %)\nWriting at 0x0012eb62... (94 %)\nWriting at 0x0013537e... (96 %)\nWriting at 0x0013cfee... (98 %)\nWriting at 0x001440b9... (100 %)\nWrote 1279152 bytes (824711 compressed) at 0x00010000 in 5.3 seconds (effective 1938.1 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T20:23:15.951291",
+    "firmware_sha256": "7004f5c18ffe26b00081927b525f9846eb98a8d25c22bc8594d0156eb90cc601",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.11 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.18 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.07 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279216 bytes to 824763...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fbd... (3 %)\nWriting at 0x00024e04... (5 %)\nWriting at 0x0002c047... (7 %)\nWriting at 0x00031094... (9 %)\nWriting at 0x00036685... (11 %)\nWriting at 0x0003b9cd... (13 %)\nWriting at 0x00040c28... (15 %)\nWriting at 0x00045ddd... (17 %)\nWriting at 0x0004b173... (19 %)\nWriting at 0x00050503... (21 %)\nWriting at 0x00055943... (23 %)\nWriting at 0x0005aac0... (25 %)\nWriting at 0x0005fd3c... (27 %)\nWriting at 0x00064b18... (29 %)\nWriting at 0x00069c79... (31 %)\nWriting at 0x0006ef7f... (33 %)\nWriting at 0x0007421b... (35 %)\nWriting at 0x00079605... (37 %)\nWriting at 0x0007eb73... (39 %)\nWriting at 0x00083be2... (41 %)\nWriting at 0x00088cae... (43 %)\nWriting at 0x0008def6... (45 %)\nWriting at 0x00093244... (47 %)\nWriting at 0x0009849c... (49 %)\nWriting at 0x0009d8b8... (50 %)\nWriting at 0x000a68bc... (52 %)\nWriting at 0x000ad40d... (54 %)\nWriting at 0x000b3f71... (56 %)\nWriting at 0x000bb87c... (58 %)\nWriting at 0x000c13e2... (60 %)\nWriting at 0x000c7735... (62 %)\nWriting at 0x000cd886... (64 %)\nWriting at 0x000d3558... (66 %)\nWriting at 0x000d8fcd... (68 %)\nWriting at 0x000df1ea... (70 %)\nWriting at 0x000e5a72... (72 %)\nWriting at 0x000ebed8... (74 %)\nWriting at 0x000f224b... (76 %)\nWriting at 0x000f93c6... (78 %)\nWriting at 0x00100192... (80 %)\nWriting at 0x001062c1... (82 %)\nWriting at 0x0010b91a... (84 %)\nWriting at 0x00110f2e... (86 %)\nWriting at 0x00116fac... (88 %)\nWriting at 0x0011cf91... (90 %)\nWriting at 0x001289af... (92 %)\nWriting at 0x0012eb30... (94 %)\nWriting at 0x0013538d... (96 %)\nWriting at 0x0013cfc2... (98 %)\nWriting at 0x001440ac... (100 %)\nWrote 1279216 bytes (824763 compressed) at 0x00010000 in 5.3 seconds (effective 1936.0 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T20:25:00.311777",
+    "firmware_sha256": "9e41af66996836134ea62212da66ba653e91b888d791caf9463b80141ee2adf9",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.11 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.17 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.07 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting....\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279296 bytes to 824795...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fbd... (3 %)\nWriting at 0x00024df6... (5 %)\nWriting at 0x0002c04f... (7 %)\nWriting at 0x0003109a... (9 %)\nWriting at 0x00036688... (11 %)\nWriting at 0x0003b9d5... (13 %)\nWriting at 0x00040c28... (15 %)\nWriting at 0x00045de0... (17 %)\nWriting at 0x0004b176... (19 %)\nWriting at 0x00050507... (21 %)\nWriting at 0x0005594a... (23 %)\nWriting at 0x0005aac7... (25 %)\nWriting at 0x0005fd3f... (27 %)\nWriting at 0x00064b21... (29 %)\nWriting at 0x00069c80... (31 %)\nWriting at 0x0006ef86... (33 %)\nWriting at 0x00074222... (35 %)\nWriting at 0x0007960e... (37 %)\nWriting at 0x0007eb77... (39 %)\nWriting at 0x00083bea... (41 %)\nWriting at 0x00088cac... (43 %)\nWriting at 0x0008defd... (45 %)\nWriting at 0x00093247... (47 %)\nWriting at 0x000984a5... (49 %)\nWriting at 0x0009d89d... (50 %)\nWriting at 0x000a68bf... (52 %)\nWriting at 0x000ad415... (54 %)\nWriting at 0x000b3f69... (56 %)\nWriting at 0x000bb873... (58 %)\nWriting at 0x000c13da... (60 %)\nWriting at 0x000c7732... (62 %)\nWriting at 0x000cd882... (64 %)\nWriting at 0x000d3556... (66 %)\nWriting at 0x000d8fca... (68 %)\nWriting at 0x000df1e8... (70 %)\nWriting at 0x000e5a65... (72 %)\nWriting at 0x000ebec5... (74 %)\nWriting at 0x000f221e... (76 %)\nWriting at 0x000f93a7... (78 %)\nWriting at 0x0010016f... (80 %)\nWriting at 0x001062ae... (82 %)\nWriting at 0x0010b909... (84 %)\nWriting at 0x00110efd... (86 %)\nWriting at 0x00116f83... (88 %)\nWriting at 0x0011cf87... (90 %)\nWriting at 0x001289b1... (92 %)\nWriting at 0x0012eb20... (94 %)\nWriting at 0x0013538f... (96 %)\nWriting at 0x0013cfdb... (98 %)\nWriting at 0x001440d1... (100 %)\nWrote 1279296 bytes (824795 compressed) at 0x00010000 in 5.3 seconds (effective 1937.6 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  },
+  {
+    "time": "2026-11-04T20:27:17.507690",
+    "firmware_sha256": "0b890a442cd7a21c8235da5563ae9f9be0874f20babd8dad1eac62b763b315e3",
+    "operations": [
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "no_reset",
+          "--no-stub",
+          "read_mac"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nEnabling default SPI flash mode...\nMAC: 30:ed:a0:e2:fe:c0\nStaying in bootloader.\n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "2",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz",
+          "--fsFile",
+          "C:\\Users\\yamas\\AppData\\Local\\Temp\\filtered_reply-E368-85bac224.fs"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"SRAM Program\" for device#1...\n\n Programing: [                         ] 1%                 \n Programing: [                         ] 2%                 \n Programing: [                         ] 3%                 \n Programing: [#                        ] 4%                 \n Programing: [#                        ] 5%                 \n Programing: [#                        ] 6%                 \n Programing: [#                        ] 7%                 \n Programing: [##                       ] 8%                 \n Programing: [##                       ] 9%                 \n Programing: [##                       ] 10%                 \n Programing: [##                       ] 11%                 \n Programing: [###                      ] 12%                 \n Programing: [###                      ] 13%                 \n Programing: [###                      ] 14%                 \n Programing: [###                      ] 15%                 \n Programing: [####                     ] 16%                 \n Programing: [####                     ] 17%                 \n Programing: [####                     ] 18%                 \n Programing: [####                     ] 19%                 \n Programing: [#####                    ] 20%                 \n Programing: [#####                    ] 21%                 \n Programing: [#####                    ] 22%                 \n Programing: [#####                    ] 23%                 \n Programing: [######                   ] 24%                 \n Programing: [######                   ] 25%                 \n Programing: [######                   ] 26%                 \n Programing: [######                   ] 27%                 \n Programing: [#######                  ] 28%                 \n Programing: [#######                  ] 29%                 \n Programing: [#######                  ] 30%                 \n Programing: [#######                  ] 31%                 \n Programing: [########                 ] 32%                 \n Programing: [########                 ] 33%                 \n Programing: [########                 ] 34%                 \n Programing: [########                 ] 35%                 \n Programing: [#########                ] 36%                 \n Programing: [#########                ] 37%                 \n Programing: [#########                ] 38%                 \n Programing: [#########                ] 39%                 \n Programing: [##########               ] 40%                 \n Programing: [##########               ] 41%                 \n Programing: [##########               ] 42%                 \n Programing: [##########               ] 43%                 \n Programing: [###########              ] 44%                 \n Programing: [###########              ] 45%                 \n Programing: [###########              ] 46%                 \n Programing: [###########              ] 47%                 \n Programing: [############             ] 48%                 \n Programing: [############             ] 49%                 \n Programing: [############             ] 50%                 \n Programing: [############             ] 51%                 \n Programing: [#############            ] 52%                 \n Programing: [#############            ] 53%                 \n Programing: [#############            ] 54%                 \n Programing: [#############            ] 55%                 \n Programing: [##############           ] 56%                 \n Programing: [##############           ] 57%                 \n Programing: [##############           ] 58%                 \n Programing: [##############           ] 59%                 \n Programing: [###############          ] 60%                 \n Programing: [###############          ] 61%                 \n Programing: [###############          ] 62%                 \n Programing: [###############          ] 63%                 \n Programing: [################         ] 64%                 \n Programing: [################         ] 65%                 \n Programing: [################         ] 66%                 \n Programing: [################         ] 67%                 \n Programing: [#################        ] 68%                 \n Programing: [#################        ] 69%                 \n Programing: [#################        ] 70%                 \n Programing: [#################        ] 71%                 \n Programing: [##################       ] 72%                 \n Programing: [##################       ] 73%                 \n Programing: [##################       ] 74%                 \n Programing: [##################       ] 75%                 \n Programing: [###################      ] 76%                 \n Programing: [###################      ] 77%                 \n Programing: [###################      ] 78%                 \n Programing: [###################      ] 79%                 \n Programing: [####################     ] 80%                 \n Programing: [####################     ] 81%                 \n Programing: [####################     ] 82%                 \n Programing: [####################     ] 83%                 \n Programing: [#####################    ] 84%                 \n Programing: [#####################    ] 85%                 \n Programing: [#####################    ] 86%                 \n Programing: [#####################    ] 87%                 \n Programing: [######################   ] 88%                 \n Programing: [######################   ] 89%                 \n Programing: [######################   ] 90%                 \n Programing: [######################   ] 91%                 \n Programing: [#######################  ] 92%                 \n Programing: [#######################  ] 93%                 \n Programing: [#######################  ] 94%                 \n Programing: [#######################  ] 95%                 \n Programing: [######################## ] 96%                 \n Programing: [######################## ] 97%                 \n Programing: [######################## ] 98%                 \n Programing: [######################## ] 99%                 \n Programming...: [#########################] 100%                 \n User Code is: 0x0000E368\n Status Code is: 0x00006020\n Finished.\n Cost 6.03 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "73",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read User Code\" for device#1...\n User Code is: 0x0000E368\n Finished.\n Cost 0.14 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "D:/github/airpocket-soundman/tab5-tang-primer20k-carrier/fpga/build/tools/gowin-programmer-1.9.12.04/Programmer/bin/programmer_cli.exe",
+          "--device",
+          "GW2A-18C",
+          "--operation_index",
+          "74",
+          "--cable-index",
+          "4",
+          "--location",
+          "6177",
+          "--frequency",
+          "2.5MHz"
+        ],
+        "exit": 0,
+        "output": " Target Cable: USB Debugger A/0/6177/null@2.5MHz\n Target Device: GW2A-18C(0x0000081B)\n Operation \"Read Status Register\" for device#1...\n Status Code is: 0x00006020\n Finished.\n Cost 0.09 second(s)\n  \n"
+      },
+      {
+        "command": [
+          "C:/Users/yamas/.espressif/python_env/idf5.5_py3.13_env/Scripts/python.exe",
+          "-m",
+          "esptool",
+          "--chip",
+          "esp32p4",
+          "--port",
+          "COM4",
+          "--before",
+          "default_reset",
+          "--after",
+          "hard_reset",
+          "write_flash",
+          "--flash_mode",
+          "dio",
+          "--flash_size",
+          "16MB",
+          "--flash_freq",
+          "80m",
+          "0x10000",
+          "build-tab5-speed/m5os.bin"
+        ],
+        "exit": 0,
+        "output": "esptool.py v4.11.dev2\nSerial port COM4\nConnecting...\nChip is ESP32-P4 (revision v1.3)\nFeatures: High-Performance MCU\nCrystal is 40MHz\nUSB mode: USB-Serial/JTAG\nMAC: 30:ed:a0:e2:fe:c0\nUploading stub...\nRunning stub...\nStub running...\nConfiguring flash size...\nFlash will be erased from 0x00010000 to 0x00148fff...\nCompressed 1279104 bytes to 824714...\nWriting at 0x00010000... (1 %)\nWriting at 0x00019fb7... (3 %)\nWriting at 0x00024dff... (5 %)\nWriting at 0x0002c041... (7 %)\nWriting at 0x0003108d... (9 %)\nWriting at 0x0003667e... (11 %)\nWriting at 0x0003b9c6... (13 %)\nWriting at 0x00040c20... (15 %)\nWriting at 0x00045dd7... (17 %)\nWriting at 0x0004b16c... (19 %)\nWriting at 0x000504fb... (21 %)\nWriting at 0x0005593c... (23 %)\nWriting at 0x0005aabb... (25 %)\nWriting at 0x0005fd36... (27 %)\nWriting at 0x00064b11... (29 %)\nWriting at 0x00069c72... (31 %)\nWriting at 0x0006ef79... (33 %)\nWriting at 0x00074215... (35 %)\nWriting at 0x000795fe... (37 %)\nWriting at 0x0007eb6c... (39 %)\nWriting at 0x00083bdd... (41 %)\nWriting at 0x00088ca9... (43 %)\nWriting at 0x0008def0... (45 %)\nWriting at 0x0009323e... (47 %)\nWriting at 0x00098496... (49 %)\nWriting at 0x0009d8b1... (50 %)\nWriting at 0x000a6898... (52 %)\nWriting at 0x000ad3f5... (54 %)\nWriting at 0x000b3f5b... (56 %)\nWriting at 0x000bb86c... (58 %)\nWriting at 0x000c13d0... (60 %)\nWriting at 0x000c772c... (62 %)\nWriting at 0x000cd87e... (64 %)\nWriting at 0x000d354d... (66 %)\nWriting at 0x000d8fbb... (68 %)\nWriting at 0x000df1dd... (70 %)\nWriting at 0x000e5a5c... (72 %)\nWriting at 0x000ebec1... (74 %)\nWriting at 0x000f223b... (76 %)\nWriting at 0x000f938c... (78 %)\nWriting at 0x00100155... (80 %)\nWriting at 0x0010627c... (82 %)\nWriting at 0x0010b8c3... (84 %)\nWriting at 0x00110edf... (86 %)\nWriting at 0x00116f67... (88 %)\nWriting at 0x0011cf4f... (90 %)\nWriting at 0x00128973... (92 %)\nWriting at 0x0012eb2f... (94 %)\nWriting at 0x00135351... (96 %)\nWriting at 0x0013cfc4... (98 %)\nWriting at 0x00144090... (100 %)\nWrote 1279104 bytes (824714 compressed) at 0x00010000 in 5.3 seconds (effective 1940.3 kbit/s)...\nHash of data verified.\n\nLeaving...\nHard resetting via RTS pin...\n"
+      }
+    ]
+  }
+]

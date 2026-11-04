@@ -1,5 +1,141 @@
 # Standalone animated CPU/FPGA fractal application
 
+## Animation pipeline update — 2026-11-04
+
+Installed at the same128x128 source resolution, enlarged to512x512. The earlier
+19x fixed-tile result was not application FPS. GPU Julia playback improved from
+about1FPS to5.5–6.3FPS after its first frame; this remains below smooth30/60FPS.
+The GPU is not universally faster.
+
+| Frozen phase0, median of five repeats | CPU full frame | FPGA full frame | CPU compute | FPGA including transport | LCD (CPU/FPGA) |
+|---|---:|---:|---:|---:|---:|
+| Mandelbrot |190ms|170ms|96ms|75ms|93/93ms|
+| Julia |160ms|160ms|76ms|69ms|82/88ms|
+
+Use `frame_ms` for the frozen comparison: paused FPS includes idle time.
+[Measurements](validation/fractal-animation-final-2026-11-04.json) and
+[artifact hashes](validation/fractal-animation-summary-2026-11-04.json) are retained.
+
+Focused input polling removes per-tile10ms waits. A palette lookup, suppressed
+fast-frame progress and static window chrome reduce presentation work. `0`
+freezes phase0. Slow frames still publish progress. Optional
+`DISPLAY_IOC_BLIT_SCALED` exposes existing nearest-neighbor kernel drawing;
+older display firmware uses an expanded single-blit fallback. Workspace is now
+919596 bytes (about898KiB) in PSRAM; stack remains4KiB. Frames contain actual
+computed pixels. No prerecorded images or reduced benchmark resolution.
+
+Identical shared setters are cached only within an exclusive successful GPU
+session. Origins, DRAW and validated TILE readback always execute. Pure host
+codecs compile with-O2; physical clocks, CRC and failure policies are unchanged.
+USB TX writes EP1 directly: the stock LL read/modify/write helper consumed
+concurrent RX keys. Full-packet ZLP and unplug bounds remain.
+
+[Hardware functional checks](validation/fractal-animation-functional-2026-11-04.json)
+passed both scenes,32/64/128/256 comparisons, controls and cleanup. Heap used
+bytes returned to baseline; display errors/timeouts were0.
+[Endurance](validation/fpga-animation-session-endurance-2026-11-04.json) passed
+1152 tiles and1179648 exact reference pixels. The21 app model cases cover both
+legacy and scaled-display paths. Physical LCD appearance was not independently
+assessed.
+
+
+## Communication update — 2026-11-04 (installed and physically tested)
+
+The5732-byte SD app now opens one optional GPU session per complete frame,
+renders all32x32 tiles, and closes it before LCD presentation or cancelled
+input. An older firmware returning ERR_NOSYS for BEGIN uses the existing
+single-tile ABI; a failed physical exchange is never retried or replaced.
+GPU milliseconds include BEGIN/END overhead. Per-tile `elapsed_us` in a held
+session excludes the separate BEGIN/END; the fixed benchmark also reports
+full-case `wall_ms` for fair comparison.
+
+The dedicated host firmware uses GPIO control TX/RX with1us software waits
+and continuous5MHz DMA image readback. Bounded GPU ioctls temporarily raise
+caller priority while keeping interrupts enabled. This prevents the measured
+148ms scheduler gap from exceeding the FPGA100ms no-strobe timeout. The P4
+USB console now terminates full64-byte packets with a ZLP, so complete GPU
+reports reach the PC without waiting for another key.
+
+The [final UI test](validation/fractal-speed-optimized-2026-11-04.json) passed
+all resolutions, both scenes, complete comparisons, pause/resume, GPU playback,
+CPU switching during playback and exit with memory restored. The
+[endurance test](validation/fpga-device-speed-endurance-2026-11-04.json)
+passed1,152 tiles and1,179,648 exact pixel comparisons across72 sessions.
+20 host scenarios cover both session-enabled and old-ABI control/cancellation.
+
+A fixed16-tile Mandelbrot benchmark improved from about1.86s to97ms (about19x).
+This is communication plus device work, not LCD FPS. See the
+[summary and exact artifact hashes](validation/fpga-speed-summary-2026-11-04.json).
+Physical display appearance has not been independently assessed.
+
+`apps/m5ex/fpgabench.c` builds an optional finite SD executable. It renders16
+identical tiles per case,3 repetitions each of Mandelbrot/Julia, and verifies
+all pixels against the CPU reference. `run /sd/fpgabench.m5ex` runs it without
+LCD output. `tools/test_fpga_device_hardware.py` captures and checks its reports;
+it does not program either board. For repeated tests use `--runs 12` and supply
+the installed app/firmware paths and an output JSON path as required by `--help`.
+
+## Previous presentation-only revision
+
+## Presentation update — 2026-11-04 (installed; CPU/FPGA hardware tested)
+
+
+The standalone `fractal.m5ex` viewer uses a title bar, large status text and
+a 512-pixel image area on Tab5. PLAYING, PAUSED and ERROR distinguish animation
+state. Before rendering, the screen publishes CPU rendering or FPGA rendering /
+waiting, completed tiles, percentage, and elapsed time. Progress is refreshed
+between tiles at most every 150 ms; a single blocking FPGA tile cannot update
+the display until the device call returns or times out. Q is handled between
+tiles. The previous completed image stays visible during computation.
+
+Text is 2x and the title is 3x. The M5EX API currently exposes display ioctls,
+not the native window service, so this viewer draws its own frame.
+
+A vivid blue/cyan/yellow/red/magenta palette is applied at presentation time.
+CPU/FPGA computation and exact pixel comparisons retain their original colors,
+so no different FPGA bitstream is required for this display update.
+
+Controls: C CPU, G FPGA, M Mandelbrot, J Julia, R resolution, V compare,
+Space/A play/pause, Q/Escape close.
+
+Build:
+```powershell
+python tools/m5exbuild.py --arch riscv apps/m5ex/fractal.c -o build-tab5/fractal.m5ex
+```
+
+Validation: the 16 host-model scenarios cover pixel presentation, comparison,
+animation, resolution changes, cancellation, display/device errors and cleanup.
+Title size, large text and progress presence are checked. RISC-V M5EX build
+passes. The 5600-byte app was uploaded to `/sd/fractal.m5ex` with CRC32 `6a6bb1f0`
+verified. The [CPU hardware record](validation/fractal-studio-cpu-hardware-2026-11-04.json)
+confirms animation, pause/idle/resume, both scenes, all resolutions and exit
+with internal/PSRAM used bytes restored. Display errors/timeouts stayed zero.
+One internal allocation miss is expected from the internal-first allocator
+falling back to PSRAM for the workspace. Physical visual quality was not assessed.
+
+The [first FPGA attempt](validation/fractal-studio-hardware-2026-11-04.json)
+failed with ERR_IO (-6); ID returned eight FF bytes and CRC failure. FPGA
+recovery is recorded separately below.
+
+USB JTAG initially reported USERCODE 0x0573, whose image remains unidentified.
+The carrier development chat supplied the known MeOS-compatible filtered-reply
+image (SHA256 `85bac22420a81bbaaef26a2edff81a3deb0e2bb114a97f106c1deede8062d717`).
+With P4 held in ROM, SRAM programming and independent USER/STATUS reads verified
+0xE368/0x6020. After P4 reboot, 1MHz ID succeeded. Flash was not written.
+See the [USB recovery log](validation/fractal-studio-usb-recovery-2026-11-04.json).
+
+The [complete retest](validation/fractal-studio-recovered-hardware-2026-11-04.json)
+passed CPU/GPU modes, animation pause/resume, all four resolutions, exact
+1024/4096/16384/65536-pixel Julia comparisons, GPU continuous playback and
+switching back to CPU during GPU playback. Internal/PSRAM used bytes returned
+to baseline on exit, and display errors/timeouts were zero, with submitted and
+retired batches equal. Active-frame status can include shell console painting;
+this is not an independent LCD visual assessment or sustained-load qualification.
+The [scene retest](validation/fractal-studio-scenes-hardware-2026-11-04.json)
+also checks Mandelbrot and Julia with exact 128x128 comparisons.
+
+## Previous revision and hardware records
+
 ## Current revision and stop status — 2026-11-04
 
 The SD application now starts CPU Julia animation at a true128x128 resolution.

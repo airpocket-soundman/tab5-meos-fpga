@@ -1,0 +1,785 @@
+{
+  "date": "2026-11-04",
+  "port": "COM4",
+  "app_sha256": "ee04d87f4af2a676e778e8f58c481c3217dd6a45ff4184e597e926b4818b57c3",
+  "checks": [
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":94416,\"free\":102192,\"largest\":98064,\"peak\":128944,\"alloc_count\":276,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8594720,\"alloc_count\":103,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=8044 batches=32 submitted=32 retired=32 errors=0 timeouts=0 max_us=840457 back=1 active=0\r\n> "
+    },
+    {
+      "command": "CPU Julia animation",
+      "key": null,
+      "results": [
+        {
+          "fractal": true,
+          "frame": 1,
+          "animation": true,
+          "phase_ms": 0,
+          "fps_milli": 1992,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 77,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 189
+        },
+        {
+          "fractal": true,
+          "frame": 2,
+          "animation": true,
+          "phase_ms": 554,
+          "fps_milli": 1960,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 34,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 200
+        },
+        {
+          "fractal": true,
+          "frame": 3,
+          "animation": true,
+          "phase_ms": 1054,
+          "fps_milli": 2000,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 31,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 210
+        }
+      ],
+      "output": "started /sd/fractal.m5ex as app 13  (permissions CD-----)\r\n> {\"fractal\":true,\"frame\":1,\"animation\":true,\"phase_ms\":0,\"fps_milli\":1992,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":77,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":189}\r\n{\"fractal\":true,\"frame\":2,\"animation\":true,\"phase_ms\":554,\"fps_milli\":1960,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":34,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":200}\r\n{\"fractal\":true,\"frame\":3,\"animation\":true,\"phase_ms\":1054,\"fps_milli\":2000,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":31,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":210}\r\n"
+    },
+    {
+      "command": "pause",
+      "key": " ",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 4,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 1562,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 37,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 219
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":4,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":1562,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":37,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":219}\r\n"
+    },
+    {
+      "command": "paused idle 800ms",
+      "output": "",
+      "pass": true
+    },
+    {
+      "command": "Mandelbrot CPU",
+      "key": "M",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 5,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 680,
+          "engine": "cpu",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 82,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 190
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":5,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":680,\"engine\":\"cpu\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":82,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":190}\r\n"
+    },
+    {
+      "command": "Julia CPU",
+      "key": "J",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 6,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 1612,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 37,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 210
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":6,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":1612,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":37,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":210}\r\n"
+    },
+    {
+      "command": "CPU resolution 256",
+      "key": "R",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 7,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 892,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 256,
+          "height": 256,
+          "tiles": 64,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 149,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 370
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":7,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":892,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":256,\"height\":256,\"tiles\":64,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":149,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":370}\r\n"
+    },
+    {
+      "command": "CPU resolution 32",
+      "key": "R",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 8,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 2380,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 32,
+          "height": 32,
+          "tiles": 1,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 3,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 159
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":8,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":2380,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":32,\"height\":32,\"tiles\":1,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":3,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":159}\r\n"
+    },
+    {
+      "command": "CPU resolution 64",
+      "key": "R",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 9,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 2173,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 64,
+          "height": 64,
+          "tiles": 4,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 10,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 180
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":9,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":2173,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":64,\"height\":64,\"tiles\":4,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":10,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":180}\r\n"
+    },
+    {
+      "command": "CPU resolution 128",
+      "key": "R",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 10,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 1587,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 38,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 210
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":10,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":1587,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":38,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":210}\r\n"
+    },
+    {
+      "command": "FPGA128 only",
+      "key": "G",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 11,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 925,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 103,
+          "gpu_transport_compute_us": 97430,
+          "draw_ms": 220
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":11,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":925,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":103,\"gpu_transport_compute_us\":97430,\"draw_ms\":220}\r\n"
+    },
+    {
+      "command": "compare 128",
+      "key": "V",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 12,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 909,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 16384,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 41,
+          "gpu_measured": true,
+          "gpu_ms": 100,
+          "gpu_transport_compute_us": 97895,
+          "draw_ms": 208
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":12,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":909,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":16384,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":41,\"gpu_measured\":true,\"gpu_ms\":100,\"gpu_transport_compute_us\":97895,\"draw_ms\":208}\r\n"
+    },
+    {
+      "command": "compare 256",
+      "key": "R",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 13,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 295,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 256,
+          "height": 256,
+          "tiles": 64,
+          "compared_pixels": 65536,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 167,
+          "gpu_measured": true,
+          "gpu_ms": 399,
+          "gpu_transport_compute_us": 391173,
+          "draw_ms": 364
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":13,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":295,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":256,\"height\":256,\"tiles\":64,\"compared_pixels\":65536,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":167,\"gpu_measured\":true,\"gpu_ms\":399,\"gpu_transport_compute_us\":391173,\"draw_ms\":364}\r\n"
+    },
+    {
+      "command": "compare 32",
+      "key": "R",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 14,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 2222,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 32,
+          "height": 32,
+          "tiles": 1,
+          "compared_pixels": 1024,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 3,
+          "gpu_measured": true,
+          "gpu_ms": 9,
+          "gpu_transport_compute_us": 6264,
+          "draw_ms": 169
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":14,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":2222,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":32,\"height\":32,\"tiles\":1,\"compared_pixels\":1024,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":3,\"gpu_measured\":true,\"gpu_ms\":9,\"gpu_transport_compute_us\":6264,\"draw_ms\":169}\r\n"
+    },
+    {
+      "command": "compare 64",
+      "key": "R",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 15,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 1612,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 64,
+          "height": 64,
+          "tiles": 4,
+          "compared_pixels": 4096,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 10,
+          "gpu_measured": true,
+          "gpu_ms": 27,
+          "gpu_transport_compute_us": 24732,
+          "draw_ms": 179
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":15,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":1612,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":64,\"height\":64,\"tiles\":4,\"compared_pixels\":4096,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":10,\"gpu_measured\":true,\"gpu_ms\":27,\"gpu_transport_compute_us\":24732,\"draw_ms\":179}\r\n"
+    },
+    {
+      "command": "compare 128",
+      "key": "R",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 16,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 917,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 16384,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 40,
+          "gpu_measured": true,
+          "gpu_ms": 102,
+          "gpu_transport_compute_us": 97945,
+          "draw_ms": 208
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":16,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":917,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":16384,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":40,\"gpu_measured\":true,\"gpu_ms\":102,\"gpu_transport_compute_us\":97945,\"draw_ms\":208}\r\n"
+    },
+    {
+      "command": "GPU only clear compare",
+      "key": "G",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 17,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 925,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 101,
+          "gpu_transport_compute_us": 97453,
+          "draw_ms": 220
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":17,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":925,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":101,\"gpu_transport_compute_us\":97453,\"draw_ms\":220}\r\n"
+    },
+    {
+      "command": "Mandelbrot switch",
+      "key": "M",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 18,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 943,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 109,
+          "gpu_transport_compute_us": 104287,
+          "draw_ms": 190
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":18,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":943,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":109,\"gpu_transport_compute_us\":104287,\"draw_ms\":190}\r\n"
+    },
+    {
+      "command": "Mandelbrot compare 0",
+      "key": "V",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 19,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 787,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 16384,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 85,
+          "gpu_measured": true,
+          "gpu_ms": 107,
+          "gpu_transport_compute_us": 104730,
+          "draw_ms": 178
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":19,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":787,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":16384,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":85,\"gpu_measured\":true,\"gpu_ms\":107,\"gpu_transport_compute_us\":104730,\"draw_ms\":178}\r\n"
+    },
+    {
+      "command": "Mandelbrot compare 1",
+      "key": "V",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 20,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 787,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 16384,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 82,
+          "gpu_measured": true,
+          "gpu_ms": 109,
+          "gpu_transport_compute_us": 105209,
+          "draw_ms": 178
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":20,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":787,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":16384,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":82,\"gpu_measured\":true,\"gpu_ms\":109,\"gpu_transport_compute_us\":105209,\"draw_ms\":178}\r\n"
+    },
+    {
+      "command": "Mandelbrot compare 2",
+      "key": "V",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 21,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 787,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 16384,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 84,
+          "gpu_measured": true,
+          "gpu_ms": 109,
+          "gpu_transport_compute_us": 105185,
+          "draw_ms": 178
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":21,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":787,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":16384,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":84,\"gpu_measured\":true,\"gpu_ms\":109,\"gpu_transport_compute_us\":105185,\"draw_ms\":178}\r\n"
+    },
+    {
+      "command": "GPU only Mandelbrot",
+      "key": "G",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 22,
+          "animation": false,
+          "phase_ms": 1564,
+          "fps_milli": 934,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 111,
+          "gpu_transport_compute_us": 104242,
+          "draw_ms": 180
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":22,\"animation\":false,\"phase_ms\":1564,\"fps_milli\":934,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":111,\"gpu_transport_compute_us\":104242,\"draw_ms\":180}\r\n"
+    },
+    {
+      "command": "FPGA animation resume",
+      "key": " ",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 23,
+          "animation": true,
+          "phase_ms": 1564,
+          "fps_milli": 943,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 111,
+          "gpu_transport_compute_us": 104318,
+          "draw_ms": 179
+        },
+        {
+          "fractal": true,
+          "frame": 24,
+          "animation": true,
+          "phase_ms": 2507,
+          "fps_milli": 1063,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 110,
+          "gpu_transport_compute_us": 102865,
+          "draw_ms": 179
+        },
+        {
+          "fractal": true,
+          "frame": 25,
+          "animation": true,
+          "phase_ms": 3447,
+          "fps_milli": 1075,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 109,
+          "gpu_transport_compute_us": 101755,
+          "draw_ms": 179
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":23,\"animation\":true,\"phase_ms\":1564,\"fps_milli\":943,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":111,\"gpu_transport_compute_us\":104318,\"draw_ms\":179}\r\n{\"fractal\":true,\"frame\":24,\"animation\":true,\"phase_ms\":2507,\"fps_milli\":1063,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":110,\"gpu_transport_compute_us\":102865,\"draw_ms\":179}\r\n{\"fractal\":true,\"frame\":25,\"animation\":true,\"phase_ms\":3447,\"fps_milli\":1075,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":109,\"gpu_transport_compute_us\":101755,\"draw_ms\":179}\r\n"
+    },
+    {
+      "command": "CPU switch during GPU animation",
+      "key": "C",
+      "results": [
+        {
+          "fractal": true,
+          "frame": 26,
+          "animation": true,
+          "phase_ms": 4495,
+          "fps_milli": 1538,
+          "engine": "cpu",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 70,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 190
+        },
+        {
+          "fractal": true,
+          "frame": 27,
+          "animation": true,
+          "phase_ms": 5016,
+          "fps_milli": 1960,
+          "engine": "cpu",
+          "scene": "mandelbrot",
+          "width": 128,
+          "height": 128,
+          "tiles": 16,
+          "compared_pixels": 0,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 72,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 170
+        }
+      ],
+      "output": "{\"fractal\":true,\"frame\":26,\"animation\":true,\"phase_ms\":4495,\"fps_milli\":1538,\"engine\":\"cpu\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":70,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":190}\r\n{\"fractal\":true,\"frame\":27,\"animation\":true,\"phase_ms\":5016,\"fps_milli\":1960,\"engine\":\"cpu\",\"scene\":\"mandelbrot\",\"width\":128,\"height\":128,\"tiles\":16,\"compared_pixels\":0,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":72,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":170}\r\n"
+    },
+    {
+      "command": "quit",
+      "output": ""
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":94416,\"free\":102192,\"largest\":98064,\"peak\":129040,\"alloc_count\":327,\"fail_count\":1},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8875360,\"alloc_count\":122,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=10037 batches=174 submitted=174 retired=174 errors=0 timeouts=0 max_us=840457 back=1 active=0\r\n> "
+    }
+  ],
+  "visual_inspection": false,
+  "firmware_sha256": "b93ad466debcde7e3d4d0a3944d0df8c8587f25da63c02df67165786fb47f39d",
+  "allocation_note": "Expected one internal allocation miss followed by PSRAM fallback; used bytes restored",
+  "display_note": "No errors/timeouts; submitted equals retired. active may include console painting.",
+  "result": "passed"
+}

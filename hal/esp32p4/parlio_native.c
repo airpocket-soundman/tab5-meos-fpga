@@ -32,6 +32,7 @@
 #include "soc/gpio_ext_struct.h"
 #include "soc/soc_etm_source.h"
 #include "soc/interrupts.h"
+#include "parlio_gpio_map.h"
 
 _Static_assert(SOC_PARLIO_GROUPS==1&&SOC_PARLIO_TX_UNITS_PER_GROUP==1&&SOC_PARLIO_RX_UNITS_PER_GROUP==1,
                "Retest native PARLIO ownership for this target");
@@ -373,6 +374,54 @@ int hal_parlio_set_rx_frequency(hal_parlio_t *c,uint32_t hz)
     if(c->busy||c->failed||c->tx_started||c->rx_started||c->gate_armed||c->stream)return ERR_BUSY;
     c->rx_hz=hz;c->stats.rx_frequency_hz=hz;
     return 0;
+}
+int hal_parlio_short_tx(hal_parlio_t *c,const uint8_t *src,size_t n,uint64_t deadline)
+{
+    if(!c||c!=native_owner||!src||n!=8)return ERR_INVAL;
+    if(c->busy||c->failed||!stream_safe_tx(c))return ERR_BUSY;
+    const uint32_t low_mask=(3u<<18)|(1u<<5)|(1u<<3)|(1u<<4)|(1u<<2);
+    const uint32_t high_mask=(1u<<16)|(1u<<15);
+    if((GPIO.enable.val&low_mask)!=low_mask||(GPIO.enable1.val&high_mask)!=high_mask||
+       !(GPIO.enable.val&(1u<<CLOCK_PIN))||hal_gpio_read(CLOCK_PIN)||hal_gpio_read(DIR_PIN)||hal_gpio_read(READY_PIN)||
+       GPIO.func_out_sel_cfg[CLOCK_PIN].out_sel!=SIG_GPIO_OUT_IDX)return ERR_BUSY;
+    for(unsigned i=0;i<8;i++)if(GPIO.func_out_sel_cfg[data_pins[i]].out_sel!=SIG_GPIO_OUT_IDX)return ERR_BUSY;
+    int error=0;uint32_t irq=arch_irq_disable();
+    for(size_t i=0;i<n;i++){
+        if(hal_time_now_us()>=deadline){error=ERR_TIMEOUT;break;}
+        for(unsigned bit=0;bit<8;bit++)gpio_ll_set_level(&GPIO,data_pins[bit],(src[i]>>bit)&1u);
+        hal_delay_us(1);gpio_ll_set_level(&GPIO,CLOCK_PIN,1);hal_delay_us(1);
+        gpio_ll_set_level(&GPIO,CLOCK_PIN,0);hal_delay_us(1);
+    }
+    gpio_ll_set_level(&GPIO,CLOCK_PIN,0);arch_irq_restore(irq);
+    c->stats.stage=error?"short_gpio_tx_failed":"short_gpio_tx";
+    if(error)c->failed=true;
+    return error;
+}
+int hal_parlio_short_rx(hal_parlio_t *c,uint8_t *dst,size_t n,size_t *received,uint64_t deadline)
+{
+    if(received)*received=0;
+    if(!c||c!=native_owner||!dst||!received||n<8||n>24)return ERR_INVAL;
+    if(c->busy||c->failed||!stream_safe_tx(c))return ERR_BUSY;
+    const uint32_t low_mask=(3u<<18)|(1u<<5)|(1u<<3)|(1u<<4)|(1u<<2);
+    const uint32_t high_mask=(1u<<16)|(1u<<15);
+    if((GPIO.enable.val&low_mask)||(GPIO.enable1.val&high_mask)||
+       !(GPIO.enable.val&(1u<<CLOCK_PIN))||hal_gpio_read(CLOCK_PIN)||!hal_gpio_read(DIR_PIN)||
+       GPIO.func_out_sel_cfg[CLOCK_PIN].out_sel!=SIG_GPIO_OUT_IDX)return ERR_BUSY;
+    int error=0;
+    uint32_t irq=arch_irq_disable();
+    for(size_t i=0;i<n;i++){
+        if(hal_time_now_us()>=deadline){error=ERR_TIMEOUT;break;}
+        hal_delay_us(1);
+        uint32_t low=GPIO.in.val,high=GPIO.in1.val;
+        dst[i]=parlio_gpio_byte(low,high);(*received)++;
+        gpio_ll_set_level(&GPIO,CLOCK_PIN,1);hal_delay_us(1);
+        gpio_ll_set_level(&GPIO,CLOCK_PIN,0);hal_delay_us(1);
+    }
+    gpio_ll_set_level(&GPIO,CLOCK_PIN,0);
+    arch_irq_restore(irq);
+    c->stats.stage=error?"short_gpio_failed":"short_gpio";
+    if(error)c->failed=true;
+    return error;
 }
 int hal_parlio_tx(hal_parlio_t *c,const uint8_t *src,size_t n,uint64_t deadline,hal_parlio_cancel_t cancel,void *arg)
 {

@@ -227,3 +227,35 @@ its efb525cf frozen binary was not found locally for an exact baseline rerun.
 The standalone [fractal application](FRACTAL_APP.md) uses a conservative1MHz
 GPU device call. Its successful1024-pixel comparisons validate that application,
 not high-rate bulk operation, full GUI integration or DDR3.
+
+
+## GPU fixed-policy transport update — 2026-11-04
+
+The current `/dev/fpga` policy supersedes the conservative1MHz per-tile policy
+above: short8-byte requests/replies use owned GPIO with1us setup/half-cycle
+and2us guards; full TILE replies use continuous5MHz DMA. Native DMA TX remains
+for long BATCH frames, configured at1MHz in the device policy. Short GPIO TX
+is reported separately as `gpio_tx_completed`, not as DMA completion. The
+CLI enables this division explicitly with `--fast-control`; its default
+conservative diagnostic path is preserved.
+
+`FPGA_IOC_FRACTAL_BEGIN` / `END` (NULL arguments) negotiate and release an
+optional task-owned frame session. RENDER stays ABI-version1. Output is valid
+only after complete validated readback; callers require successful END before
+presenting a held frame. Communication failure closes without retry. A local
+invalid argument leaves an existing session for explicit END/close. Other
+tasks cannot use/end an owner's session. Owner close/death tears it down;
+unsafe DMA teardown retains the kernel context and protected IO lease.
+
+The synchronous GPU ioctl raises task priority only while servicing the
+bounded operation and restores it on every return. DMA/LCD/USB interrupts
+stay enabled; only short GPIO bit loops mask IRQs (nominal24us TX /72us RX,
+not the whole frame). This addresses a measured148449us in-transaction gap
+against the carrier100ms no-strobe limit. Original failures are preserved.
+
+[Final qualification](validation/fpga-speed-summary-2026-11-04.json):1,152
+tiles /1,179,648 exact pixels /72 sessions, with no transport failures, using
+frozen E368. Fixed16-tile Mandelbrot time was1.86s before and97ms after; final
+full-case time includes negotiation/close and CPU checking. Prior8MHz failure
+and the absence of a20MHz MeOS qualification remain unchanged. No FPGA RTL,
+clock phase, electrical allocation or power changes.

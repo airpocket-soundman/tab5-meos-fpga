@@ -302,15 +302,17 @@ bool display_init(void)
     return true;
 }
 
-static void display_fill_rect_unlocked(int x, int y, int w, int h, uint16_t color)
+static void __attribute__((optimize("O2"))) display_fill_rect_unlocked(int x, int y, int w, int h, uint16_t color)
 {
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > DISPLAY_WIDTH)  w = DISPLAY_WIDTH  - x;
     if (y + h > DISPLAY_HEIGHT) h = DISPLAY_HEIGHT - y;
     if (w <= 0 || h <= 0 || !s_fb) return;
-    for (int i = 0; i < w; i++)
-        for (int j = 0; j < h; j++) put(x + i, y + j, color);
+    for (int i = 0; i < w; i++) {
+        uint16_t *column = &s_draw[(size_t)(DISPLAY_WIDTH - 1 - (x + i)) * PANEL_W + y];
+        for (int j = 0; j < h; j++) column[j] = color;
+    }
     fb_flush_rows(DISPLAY_WIDTH - x - w, DISPLAY_WIDTH - 1 - x);
 }
 
@@ -524,7 +526,7 @@ static void display_read_bitmap_unlocked(int x, int y, int w, int h, uint16_t *o
     }
 }
 
-static void display_draw_bitmap_scaled_unlocked(int x, int y, int w, int h, const uint16_t *px, int scale)
+static void __attribute__((optimize("O2"))) display_draw_bitmap_scaled_unlocked(int x, int y, int w, int h, const uint16_t *px, int scale)
 {
     if (scale <= 1) { display_draw_bitmap(x, y, w, h, px); return; }
     if (!s_fb || !px || w <= 0 || h <= 0) return;

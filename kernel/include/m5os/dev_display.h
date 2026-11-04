@@ -17,10 +17,13 @@
 #define DISPLAY_IOC_BACKLIGHT    0x0108   /* arg: uint8_t* 0..255   */
 #define DISPLAY_IOC_BEGIN_FRAME  0x0109   /* arg: NULL; same-task batch, ERR_BUSY if unavailable */
 #define DISPLAY_IOC_END_FRAME    0x010a   /* arg: NULL; publish same-task batch */
+#define DISPLAY_IOC_BLIT_SCALED  0x010c  /* arg: display_scaled_blit_t*; nearest neighbor, scale1..16 */
 #define DISPLAY_IOC_CONSOLE_PAUSE 0x010b  /* arg: bool*; per-task lease, restores prior state on release/close */
 
 typedef struct { uint16_t width, height; } display_info_t;
 typedef struct { int16_t x, y, w, h; uint16_t color; } display_rect_t;
 typedef struct { int16_t x, y; uint16_t fg, bg; uint8_t scale; const char *text; } display_text_t;
 typedef struct { int16_t x, y, w, h; const uint16_t *pixels; } display_blit_t;
+typedef struct { display_blit_t image; uint16_t scale; } display_scaled_blit_t;
+
 typedef struct { int16_t y0, y1; uint16_t fg, bg; uint8_t scale; } display_term_t;   /* band [y0,y1) */

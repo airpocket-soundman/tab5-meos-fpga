@@ -16,8 +16,15 @@ void display_draw_rect(int x,int y,int w,int h,uint16_t c){(void)x;(void)y;(void
 void display_draw_char(int x,int y,char c,uint16_t fg,uint16_t bg,int s){(void)x;(void)y;(void)c;(void)fg;(void)bg;(void)s;draws++;}
 void display_draw_text(int x,int y,const char*t,uint16_t fg,uint16_t bg,int s){(void)x;(void)y;(void)t;(void)fg;(void)bg;(void)s;draws++;}
 void display_draw_bitmap(int x,int y,int w,int h,const uint16_t*p){(void)x;(void)y;(void)w;(void)h;(void)p;draws++;}
+void display_draw_bitmap_scaled(int x,int y,int w,int h,const uint16_t*p,int scale){
+ assert(x==3&&y==4&&w==32&&h==32&&p&&scale==4);draws++;
+}
 int main(void){
  display_dev_register();bool on=true,off=false;uint16_t color=0;
+ display_scaled_blit_t scaled={.image={.x=3,.y=4,.w=32,.h=32,.pixels=&color},.scale=4};
+ assert(!display_ioctl(NULL,DISPLAY_IOC_BLIT_SCALED,&scaled));assert(draws==1);draws=0;
+ scaled.scale=0;assert(display_ioctl(NULL,DISPLAY_IOC_BLIT_SCALED,&scaled)==ERR_INVAL&&!draws);
+ scaled.scale=17;assert(display_ioctl(NULL,DISPLAY_IOC_BLIT_SCALED,&scaled)==ERR_INVAL&&!draws);scaled.scale=4;
  assert(!display_ioctl(NULL,DISPLAY_IOC_CONSOLE_PAUSE,&on)&&paused);
  assert(!display_ioctl(NULL,DISPLAY_IOC_BEGIN_FRAME,NULL)&&lease_frame);
  self=&b;assert(display_ioctl(NULL,DISPLAY_IOC_CLEAR,&color)==ERR_BUSY);assert(display_write(NULL,"x",1)==ERR_BUSY);assert(draws==0);

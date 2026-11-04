@@ -161,3 +161,11 @@ option(M5OS_FPGA_DOCK_VERIFIED "Allow explicit Dock commands after electrical re
 if(M5OS_FPGA_DOCK_VERIFIED)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE M5OS_FPGA_DOCK_VERIFIED=1)
 endif()
+
+# Pure host framing/CRC/stream processing is on every GPU tile's hot path.
+# Keep protocol semantics/golden tests; no clock or platform HAL policy change.
+set_source_files_properties(
+    ${M5OS_ROOT}/drivers/fpga/fpga_wire.c
+    ${M5OS_ROOT}/drivers/fpga/fpga_stream.c
+    ${M5OS_ROOT}/drivers/fpga/fpga_link.c
+    PROPERTIES COMPILE_OPTIONS "-O2")
