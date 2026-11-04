@@ -9,11 +9,11 @@ An experimental MeOS fork for a graphical M5Stack Tab5 environment with FPGA-ass
 
 BMP shell viewing is available with `image FILE.bmp` and `image --info FILE.bmp`; see [scope and validation](docs/IMAGE_VIEWER.md). FPGA protocol/mock diagnostics are implemented; [physical LINK validation scope](docs/FPGA_LINK.md).
 
-Physical low-speed LINK passed after cable correction. Native PARLIO/AXI DMA then passed at1MHz and5MHz: identity,513 LINK transactions, six TILE scenes/12288 words and three64-record batches/6144 words per rate. The E368 image supports TILE/batch; legacy GFX commands require a different image. A subsequent build passed TX5MHz/RX8MHz; RX10MHz failed the first echo after identity, and16/20MHz were not attempted. DDR3, sustained load and GUI integration remain pending. See [native transport and hardware scope](docs/FPGA_PARLIO.md).
+Physical low-speed LINK passed after cable correction. Native PARLIO/AXI DMA then passed at1MHz and5MHz: identity,513 LINK transactions, six TILE scenes/12288 words and three64-record batches/6144 words per rate. The E368 image supports TILE/batch; legacy GFX commands require a different image. TX5MHz/RX8MHz passed once but failed on repeat after139 successful transactions with controlled known images;8MHz is experimental, not stable-qualified. An earlier RX10MHz trial failed; the final controlled run stopped at8MHz before10/16/20MHz. DDR3, sustained load and GUI integration remain pending. See [native transport and hardware scope](docs/FPGA_PARLIO.md).
 
 ## Current status
 
-Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard command input and USB card-reader mounting/listing also passed limited checks. `lsusb` shows native USB topology and mounts; see [diagnostics](docs/USB_DIAGNOSTICS.md) and [USB implementation](docs/USB_IMPLEMENTATION.md). Sustained input under load, high-speed mixed-speed hubs, FPGA RX rates above8MHz, GUI extensions and full peripheral regression remain unverified.
+Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard command input and USB card-reader mounting/listing also passed limited checks. `lsusb` shows native USB topology and mounts; see [diagnostics](docs/USB_DIAGNOSTICS.md) and [USB implementation](docs/USB_IMPLEMENTATION.md). Sustained input under load, high-speed mixed-speed hubs, experimental FPGA RX rates above5MHz, GUI extensions and full peripheral regression remain unverified.
 
 USB Ethernet (RTL8153 CDC-ECM) passed link, DHCP, ping and SSH tests. The SSH server and client ran concurrently on hardware. Console ANSI/DEC extensions passed host tests; touch is being rechecked after adding ST7123/ST7121 input. USB storage reads and writes now pass alongside Ethernet ping without packet loss in the tested runs. C6 was updated to the official MCU application. Wi-Fi initialization, scanning, WPA2 association, DHCP, DNS and HTTP traffic passed on hardware with Ethernet unplugged. See [Ethernet](docs/USB_ETHERNET_IMPLEMENTATION.md), [SSH server](docs/SSH_SERVER_IMPLEMENTATION.md) and [terminal](docs/TERMINAL_IMPLEMENTATION.md) implementation records.
 
@@ -60,3 +60,5 @@ The bilingual site lives in `docs/site/`. Run `python tools/build_pages.py` afte
 - [Carrier second-report review and executed 2D/3D calibration](docs/CARRIER_R2_REVIEW_2026-10-24.md)
 
 - [Carrier third-report audit and remediation instructions](docs/CARRIER_R3_AUDIT_HANDOFF_2026-10-24.md)
+
+Before the final retest, external FPGA UserCode9678 was detected and both images restored.1/5MHz passed again;8MHz failed CRC.10/16/20MHz were not attempted in that controlled run.

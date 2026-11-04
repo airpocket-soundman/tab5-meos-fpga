@@ -293,3 +293,16 @@ Re-fetched carrier origin/main, still `53c023929b4f8cf42a6e02725160c0f0015dd162`
 Frozen P4 firmware SHA256 `8efab4aa17e84c5892baf440d6a677e8358348bd8e1e00245a0bac6f7f5722f8` passed finite native TX/RX at both1MHz and5MHz: ID,513 LINK transactions, six tile scenes/12288 words, and three64-record batches/6144 words. ETM hardware event/task and GPIOLOW proof passed with no RX FIFO overflow. See [1MHz evidence](validation/parlio-etm-indexfix-1mhz-2026-11-04.json), [5MHz evidence](validation/parlio-etm-5mhz-2026-11-04.json), and [implementation details](FPGA_PARLIO.md). This is finite capture, not streaming/ring DMA, DDR3 validation or sustained GUI throughput. Higher rates and subsequent split-frequency/pin-lease changes need separate target regression.
 
 The subsequent minimal-module split-rate firmware (1178128 bytes, SHA256 `290d245feb56233a27da3e1e422edd416fcd7bdef59d5d5dbc6da4d36562ba73`) passed the same ID/513/tile6/batch3 suites at TX5MHz/RX5MHz and TX5MHz/RX8MHz. RX10MHz passed identity but failed the first echo's data validation; the trial stopped and16/20MHz were not attempted. [Split-rate evidence](validation/parlio-split-rates-2026-11-04.json) supersedes the earlier pending split-rate regression statement for this bounded scope only. No high-rate electrical sign-off, continuous DMA, full peripheral-load concurrency or DDR3 validation is implied.
+
+Repeat qualification correction: diagnostic firmware `7d3221d711e09f2f535210db46cf69dd00b5b7dfedaf6cd1af58f2b6b65be7a8` (1178608 bytes) failed the RX8MHz513-transaction trial after10 successful transactions following reload of the same E368 image. RX10MHz failed the first echo. [Original24-byte failure capture](validation/parlio-first-failure-capture-2026-11-04.json) is retained. Therefore8MHz is experimental despite the earlier bounded suite pass; it is not stable-qualified.16/20MHz remain unattempted and prior1MHz/5MHz evidence remains valid for its recorded scope.
+
+
+### Controlled retest after external write detection (2026-11-04)
+
+UserCode9678 was found instead of E368. Earlier repeat failures are not assumed
+to have continuous known-image conditions. Restored qualified E368 SRAM and
+MeOS7d3221d...1178608B; final1MHz/5MHz ID/513/tile6/batch3 passed. RX8MHz failed
+CRC after139 successes. E368 was checked before/after each rate, and P4 flash
+digest matched afterward. Final run stopped before10/16/20MHz. No pin,
+electrical, FPGA RTL or protocol change. See
+[controlled retest](validation/parlio-controlled-retest-2026-11-04.json).

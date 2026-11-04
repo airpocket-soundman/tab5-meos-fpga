@@ -1,0 +1,12 @@
+{
+  "carrier_revision": "53c023929b4f8cf42a6e02725160c0f0015dd162",
+  "actual_readback_pixels": 1024,
+  "max_triangle_batch": 64,
+  "max_request_bytes": 1290,
+  "tagged_and_untagged": true,
+  "display_failure_and_bounds": true,
+  "poison_and_no_replay": true,
+  "frame_limit_bytes": 512,
+  "hardware_access": false,
+  "result": "pass"
+}

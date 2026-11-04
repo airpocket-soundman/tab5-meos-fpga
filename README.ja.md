@@ -9,11 +9,11 @@ FPGAによる描画支援を組み込んだ、M5Stack Tab5向けMeOSのGUI環境
 
 `image FILE.bmp` / `image --info FILE.bmp` によるBMP表示・情報取得を追加しました。[対応範囲と検証](docs/IMAGE_VIEWER.md)。FPGA通信のコーデック・mock診断も追加済みですが、[低速実通信の検証範囲](docs/FPGA_LINK.md)です。
 
-公式Dockとの低速LINKに加え、ネイティブPARLIO／AXI DMAの送受信を1MHz・5MHzで実機確認。各速度でID、513通信、TILE 6シーン／12288語、64レコードのバッチ3回／6144語が成功しました。E368はTILE／batch対応で、旧GFXコマンドには別イメージが必要です。後続ビルドでTX5MHz／RX8MHzも成功。RX10MHzはID後の最初のechoで検証失敗し、16／20MHzは未試験です。DDR3・長時間負荷・GUI統合は未確認。[実装と実機検証範囲](docs/FPGA_PARLIO.md)を参照。
+公式Dockとの低速LINKに加え、ネイティブPARLIO／AXI DMAの送受信を1MHz・5MHzで実機確認。各速度でID、513通信、TILE 6シーン／12288語、64レコードのバッチ3回／6144語が成功しました。E368はTILE／batch対応で、旧GFXコマンドには別イメージが必要です。TX5MHz／RX8MHzは一度成功しましたが、再試験で既知イメージでの139通信成功後に失敗。8MHzは実験段階で安定確認済みとは扱いません。過去のRX10MHz試験も失敗していますが、最終管理試験では8MHzで停止し10／16／20MHzは未実施です。DDR3・長時間負荷・GUI統合は未確認。[実装と実機検証範囲](docs/FPGA_PARLIO.md)を参照。
 
 ## 現在の状態
 
-基準版とサイズ最適化版のビルド・書き込み、Tab5の起動とシリアルシェルを確認済みです。microSDと、Full-Speedハブ経由のUSBメモリ2台（exFAT・FAT）で読み書き・再起動後保持を確認しました。ハブ配下キーボードのコマンド入力とUSBカードリーダーのマウント・一覧取得も確認。`lsusb`で接続とマウント先を表示できます。[接続診断](docs/USB_DIAGNOSTICS.md)、[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照してください。入力中の長時間負荷、High-Speed異速度混在、8MHzを超えるFPGA RX通信、GUI拡張、周辺機能全体の回帰は未検証です。
+基準版とサイズ最適化版のビルド・書き込み、Tab5の起動とシリアルシェルを確認済みです。microSDと、Full-Speedハブ経由のUSBメモリ2台（exFAT・FAT）で読み書き・再起動後保持を確認しました。ハブ配下キーボードのコマンド入力とUSBカードリーダーのマウント・一覧取得も確認。`lsusb`で接続とマウント先を表示できます。[接続診断](docs/USB_DIAGNOSTICS.md)、[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照してください。入力中の長時間負荷、High-Speed異速度混在、5MHzを超える実験的FPGA RX通信、GUI拡張、周辺機能全体の回帰は未検証です。
 
 USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSHサーバー／クライアントの同時利用を実機確認しました。端末制御の拡張はホスト試験済み。タッチはST7123/ST7121入力を追加して再検証中です。USBストレージの読み書きとEthernet pingの併用試験ではパケット損失がなくなりました。C6は公式MCUアプリへ更新し、Wi-Fi初期化・検索・WPA2接続・DHCPを確認しました。Ethernetを外した状態でDNS・HTTP通信も実機確認済みです。[Ethernet](docs/USB_ETHERNET_IMPLEMENTATION.md)、[SSHサーバー](docs/SSH_SERVER_IMPLEMENTATION.md)、[端末機能](docs/TERMINAL_IMPLEMENTATION.md)の実装記録を参照してください。
 
@@ -60,3 +60,5 @@ USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSH
 - [キャリア第2レポートのレビューと2D・3D解析](docs/CARRIER_R2_REVIEW_2026-10-24.md)
 
 - [キャリア第3レポートの監査結果・修正指示](docs/CARRIER_R3_AUDIT_HANDOFF_2026-10-24.md)
+
+最終試験前に別書き込みのUserCode9678を検出し、両イメージを復元。1／5MHzは再合格、8MHzはCRC不一致。最終試験では10／16／20MHzは未実施。

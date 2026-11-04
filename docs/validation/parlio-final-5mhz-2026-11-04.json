@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-04",
+  "firmware": {
+    "sha256": "7d3221d711e09f2f535210db46cf69dd00b5b7dfedaf6cd1af58f2b6b65be7a8",
+    "bytes": 1178608
+  },
+  "checks": [
+    {
+      "command": "fpga --parlio dock-jumper-v0 5000000 id",
+      "results": []
+    }
+  ],
+  "qualification": "Historical observation only: external FPGA UserCode9678 was subsequently detected; known-image continuity not proven. Superseded by parlio-controlled-retest-2026-11-04.json."
+}

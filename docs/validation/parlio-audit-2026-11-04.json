@@ -45,7 +45,7 @@
     "parlio-final-lcd-memory-2026-11-04.json"
   ],
   "limitations": [
-    "10MHz RX failed payload comparison;16/20MHz not attempted",
+    "Final controlled8MHz RX failed CRC after139 successes; final10/16/20MHz not attempted",
     "Legacy GFX_ENABLE1 protocol is not supported by E368 tile engine; tagged unsupported currently classified data",
     "Forced task termination quarantines resources until proven-safe teardown or reboot",
     "Public IDF DMA/ETM allocator coexistence requires a common broker",
@@ -53,7 +53,7 @@
     "Firmware is a minimal FPGA diagnostic profile, not the full feature profile"
   ],
   "next_instructions": [
-    "Use TX5MHz/RX8MHz or lower tested clocks for current Dock wiring",
+    "Use tested1MHz/5MHz TX/RX for current Dock wiring;8MHz remains experimental",
     "Keep GPIO17 exclusive/unwired and preserve fixed Dock pin assignment",
     "Do not claim accepted divider settings as verified clocks",
     "Before increasing clocks capture actual failed response/offset/CRC and compare finite RX phase/gating with reference continuous ring implementation",
@@ -71,5 +71,14 @@
     "display_errors": 0,
     "display_timeouts": 0,
     "visual_quality_review": false
-  }
+  },
+  "final_controlled_retest": "parlio-controlled-retest-2026-11-04.json",
+  "external_write_detected_usercode": "00009678",
+  "final_result": "1MHz/5MHz all bounded suites passed;8MHz CRC failure after139 successes with E368 before/after; final flash digest matched",
+  "completed_followup_tasks": [
+    "First failure bounded96-byte original capture diagnostics; host and target build verified",
+    "Reusable32x32 surface API; host tests and actual SDK5.4.4 syntax probe only",
+    "Optionallarge_fpga profile plus same-config size comparison CI definition; no full-feature CI run claimed"
+  ],
+  "stopped": true
 }

@@ -127,3 +127,53 @@ attempted. See [split-rate evidence](validation/parlio-split-rates-2026-11-04.js
 The10MHz failure is an experimental limit, not a supported operating point;
 accepted divider settings remain distinct from tested operation. These minimal
 module tests do not establish USB/Wi-Fi/peripheral-load coexistence.
+
+**Controlled retest:** external reflashing was confirmed when FPGA UserCode9678
+was found. Earlier failures do not establish continuous known-image conditions.
+Both known images were restored: MeOS1178608 bytes, SHA256
+`7d3221d711e09f2f535210db46cf69dd00b5b7dfedaf6cd1af58f2b6b65be7a8`,
+and qualified E368 SRAM. Final1MHz/5MHz ID/513/tile6/batch3 suites passed,
+with E368 checked before/after each rate. RX8MHz then failed after139 successes:
+the24-byte capture contains a header at offset7 but its8-byte candidate CRC is
+invalid. EOF/ETM proof passed and no FIFO error was reported.8MHz remains
+experimental even with the controlled baseline. The final run stopped there;
+10/16/20MHz were not attempted. MeOS flash subsequently matched the frozen
+binary by digest. See [controlled evidence](validation/parlio-controlled-retest-2026-11-04.json).
+No further timing/phase changes were attempted after the stop request.
+
+## Production surface API: host-tested scope
+
+`fpga_surface` adds a reusable32×32 RGB565 tile API over an existing serialized
+wire session: begin/clear, queue up to64 triangles, explicit batch flush,
+complete validated tile readback, and cached LCD presentation. Its caller-owned
+workspace is5386 bytes (records1280 + wire body2058 + color cache2048), separate
+from session/transport storage. Only a fully validated readback publishes an
+image generation. A command failure poisons the surface until session reset;
+there is no CPU pixel substitution, automatic replay or fallback. Presentation
+uses a display batch and does not acquire a new physical session. This API has
+host-test coverage only; it is not a verified GUI, DDR3 framebuffer or additional
+hardware surface result.
+
+## Full-feature integration build
+
+Use `-DM5OS_PROFILE=large_fpga` to retain the complete `large` selection
+(built-in camera, UVC/MJPEG, MicroPython/camera and SL) while adding
+`fpga_parlio` and its `fpga` dependency. The existing three published firmware
+profiles remain unchanged; this is an opt-in integration build. Physical
+command authorization remains a separate build gate.
+
+`tests/test_fpga_profile.py` exercises the real CMake resolver and native source
+filter, including the production surface source. The optional FPGA CI workflow
+builds `large` and `large_fpga` using ESP-IDF5.5.2, one identical sdkconfig and
+compiler, then retains binary sizes/hashes and ELF section reports. A measured
+resource delta is valid only after both matching builds succeed; no CI result
+or full-feature resource comparison is claimed yet.
+
+Local compile probes against the actual ESP-IDF5.5.2 headers (revision
+`30aaf64524299d3bde422ca9a2848090d1bc5d0f`) passed the native HAL and built-in
+camera source with the existing RISC-V compiler and Newlib selection. These are
+syntax probes using the existing5.4.4-generated configuration plus the5.5.2
+`CONFIG_LIBC_NEWLIB` selection, not full5.5.2 configure/link or hardware tests.
+The local5.4.4 full-camera build has a pre-existing camera API mismatch; the
+published firmware workflow already targets5.5.2. Minimal FPGA image sizes must
+not be compared with camera/Python-enabled builds as the isolated FPGA cost.

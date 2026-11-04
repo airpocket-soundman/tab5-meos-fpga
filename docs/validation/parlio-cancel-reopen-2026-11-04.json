@@ -1,0 +1,132 @@
+{
+  "date": "2026-11-04",
+  "firmware_sha256": "290d245feb56233a27da3e1e422edd416fcd7bdef59d5d5dbc6da4d36562ba73",
+  "checks": [
+    {
+      "command": "fpga --parlio dock-jumper-v0 5000000 test --rx-hz 8000000",
+      "ctrl_c_sent": true,
+      "results": [
+        {
+          "backend": "native-parlio",
+          "rx": "finite-dma",
+          "hz": 5000000,
+          "rx_hz": 8000000,
+          "lcd_submitted": false,
+          "result": "cancelled",
+          "sync_capable": true,
+          "tile_capable": false,
+          "batch_capable": false,
+          "test_transactions": 89,
+          "compared_pixels": 0,
+          "scenes_passed": 0,
+          "data": [
+            212,
+            43
+          ],
+          "tx_dma_completed": 91,
+          "rx_dma_completed": 90,
+          "tx_channel": 2,
+          "rx_channel": 2,
+          "phase_verified": true,
+          "parlio_raw": 0,
+          "dma_raw": 3,
+          "stage": "rx_complete",
+          "reset_required": true,
+          "last_rx_bytes": 24,
+          "rx_phase_verified": true,
+          "quarantined": false,
+          "gate_gpio": 17,
+          "etm_channel": 49,
+          "gpio_task_channel": 7,
+          "rx_gate_verified": true,
+          "rx_gate_closed": true,
+          "gate_event_seen": true,
+          "gate_task_seen": true,
+          "gate_ready_mask": 2047,
+          "gate_gpio_enable": 4439808,
+          "gate_gpio_mux": 1280,
+          "gate_gpio_task": 3840,
+          "gate_etm_event": 199,
+          "gate_etm_task": 16
+        }
+      ]
+    },
+    {
+      "command": "fpga --parlio dock-jumper-v0 5000000 id --rx-hz 8000000",
+      "ctrl_c_sent": false,
+      "results": [
+        {
+          "backend": "native-parlio",
+          "rx": "finite-dma",
+          "hz": 5000000,
+          "rx_hz": 8000000,
+          "lcd_submitted": false,
+          "result": "ok",
+          "sync_capable": true,
+          "tile_capable": false,
+          "batch_capable": false,
+          "test_transactions": 1,
+          "compared_pixels": 0,
+          "scenes_passed": 0,
+          "data": [
+            84,
+            80
+          ],
+          "tx_dma_completed": 2,
+          "rx_dma_completed": 1,
+          "tx_channel": 2,
+          "rx_channel": 2,
+          "phase_verified": true,
+          "parlio_raw": 0,
+          "dma_raw": 3,
+          "stage": "rx_complete",
+          "reset_required": false,
+          "last_rx_bytes": 24,
+          "rx_phase_verified": true,
+          "quarantined": false,
+          "gate_gpio": 17,
+          "etm_channel": 49,
+          "gpio_task_channel": 7,
+          "rx_gate_verified": true,
+          "rx_gate_closed": true,
+          "gate_event_seen": true,
+          "gate_task_seen": true,
+          "gate_ready_mask": 2047,
+          "gate_gpio_enable": 4439808,
+          "gate_gpio_mux": 1280,
+          "gate_gpio_task": 3840,
+          "gate_etm_event": 199,
+          "gate_etm_task": 16
+        }
+      ]
+    },
+    {
+      "command": "mem --json",
+      "ctrl_c_sent": false,
+      "results": [
+        {
+          "schema": 1,
+          "units": "bytes",
+          "internal": {
+            "total": 196608,
+            "used": 94416,
+            "free": 102192,
+            "largest": 98064,
+            "peak": 98528,
+            "alloc_count": 14,
+            "fail_count": 0
+          },
+          "psram": {
+            "total": 29360128,
+            "used": 8588864,
+            "free": 20771264,
+            "largest": 20771248,
+            "peak": 8592256,
+            "alloc_count": 9,
+            "fail_count": 0
+          }
+        }
+      ]
+    }
+  ]
+}
