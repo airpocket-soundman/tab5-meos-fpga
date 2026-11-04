@@ -11,6 +11,8 @@ BMP shell viewing is available with `image FILE.bmp` and `image --info FILE.bmp`
 
 Physical low-speed LINK passed after cable correction. Native PARLIO/AXI DMA then passed at1MHz and5MHz: identity,513 LINK transactions, six TILE scenes/12288 words and three64-record batches/6144 words per rate. The E368 image supports TILE/batch; legacy GFX commands require a different image. TX5MHz/RX8MHz passed once but failed on repeat after139 successful transactions with controlled known images;8MHz is experimental, not stable-qualified. An earlier RX10MHz trial failed; the final controlled run stopped at8MHz before10/16/20MHz. DDR3, sustained load and GUI integration remain pending. See [native transport and hardware scope](docs/FPGA_PARLIO.md).
 
+Standalone CPU/FPGA fractal application passed SD-loaded native execution, both 1024-pixel scene comparisons and exit cleanup on Tab5; see [build, controls and bounded hardware results](docs/FRACTAL_APP.md).
+
 ## Current status
 
 Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard command input and USB card-reader mounting/listing also passed limited checks. `lsusb` shows native USB topology and mounts; see [diagnostics](docs/USB_DIAGNOSTICS.md) and [USB implementation](docs/USB_IMPLEMENTATION.md). Sustained input under load, high-speed mixed-speed hubs, experimental FPGA RX rates above5MHz, GUI extensions and full peripheral regression remain unverified.

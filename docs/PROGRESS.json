@@ -225,8 +225,20 @@
         "ja": "FPGA LINK・ネイティブDMA・GPU試験"
       },
       "detail": {
-        "en": "After detecting external FPGA UserCode9678, known MeOS and E368 images were restored. Final1MHz/5MHz tests each passed ID,513 exchanges,6 tile scenes/12288 words and3x64-record batches/6144 words. E368 was checked before/after each rate; MeOS flash digest matched afterward. RX8MHz failed CRC after139 successes and remains experimental; final10/16/20MHz tests were not attempted. Surface API is host-tested only; full-profile CI is defined, not run. DDR3, sustained load and GUI integration remain unverified. See [implementation and evidence](docs/FPGA_PARLIO.md).",
-        "ja": "別書き込みのUserCode9678を確認後、MeOSとE368を既知の成果物で復元。最終試験では1MHz・5MHzで各ID、513通信、タイル6シーン／12288語、64命令バッチ3回／6144語が合格。各速度の前後でE368、終了後にMeOSフラッシュの一致を確認。RX8MHzは139通信成功後にCRC不一致で失敗し実験段階です。最終試験は10／16／20MHzの前で停止。surface APIはホスト試験のみ、全機能構成CIは定義済み・未実行。DDR3・継続負荷・GUI統合は未確認。[実装・証拠](docs/FPGA_PARLIO.md)を参照。"
+        "en": "Native8-bit PARLIO/AXI DMA now defaults to the source GPU scaled1024x4 continuous bulk ring plus GPIO short replies. The port aligns soft validation, READY-before-DIR, NEG clock phase and CAP0 pad drive; OS interrupt/allocation integration differs and short control timing remains conservative. FinalE368 tests passed tile6scenes/12288words and3x64-record batches/6144words at1/5MHz. RX8MHz failed CRC and higher rates were not attempted; noMeOS20MHz success is claimed. The separate loaded fractal app passed both1024-pixel CPU/FPGA comparisons at1MHz. Long-duration/full-feature coexistence, DDR3 and GUI remain pending. See [implementation/evidence](docs/FPGA_PARLIO.md).",
+        "ja": "8ビットPARLIO／AXI DMAの標準経路を先行GPU版と同じ1024×4連続リング＋短い応答はGPIOへ変更。soft validation、READYを待ってからDIR切替、NEG位相、CAP0駆動を照合。OSの割り込み・確保処理と短い制御応答の保守的なタイミングは差分です。最終E368試験は1／5MHzでタイル6シーン・12288語、64命令バッチ3回・6144語が合格。RX8MHzはCRC不一致で停止し、それ以上は未実施。MeOSで20MHz成功とは扱いません。独立フラクタルアプリは1MHzで両図形の1024画素比較に合格。長時間・全機能併用、DDR3、GUIは未確認。[実装と証拠](docs/FPGA_PARLIO.md)を参照。"
+      }
+    },
+    {
+      "id": "standalone-fractal",
+      "status": "verified",
+      "title": {
+        "ja": "独立アプリ：CPU／FPGAフラクタル",
+        "en": "Standalone application: CPU/FPGA fractal"
+      },
+      "detail": {
+        "ja": "3264バイトのRISC-V M5EXをSDから起動し、C/G切替・Mandelbrot/Julia・両画像の1024画素比較・終了後回収を実機確認。32×32画素の拡大表示で、512×512画素計算やGUI全体の完成ではない。CPU計算2～7ms、FPGA呼出しは通信込み約111msで現状は高速化を示さない。LCDエラー0、終了後の内部RAM/PSRAM使用量は開始前と一致。[仕様・実機ログ](docs/FRACTAL_APP.md)。",
+        "en": "A 3264-byte RISC-V M5EX loaded from SD passed CPU/FPGA switching, Mandelbrot/Julia, both 1024-pixel comparisons and exit cleanup on hardware. It upscales a 32x32 tile, not 512x512 computation or a complete GUI. CPU calculation took 2–7ms; FPGA calls including transport took about 111ms, so no speedup is claimed. LCD errors were zero and post-exit internal/PSRAM use matched baseline. [Scope and hardware record](docs/FRACTAL_APP.md)."
       }
     },
     {

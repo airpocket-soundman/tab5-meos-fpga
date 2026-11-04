@@ -306,3 +306,38 @@ CRC after139 successes. E368 was checked before/after each rate, and P4 flash
 digest matched afterward. Final run stopped before10/16/20MHz. No pin,
 electrical, FPGA RTL or protocol change. See
 [controlled retest](validation/parlio-controlled-retest-2026-11-04.json).
+
+
+## Continuous transport alignment review (2026-11-04)
+
+Re-fetched carrier53c023929b4f8cf42a6e02725160c0f0015dd162 and GPU host
+7a4f83e85978ce2c9a94dc3df0322636d7a7b355. Reviewed committed Dock wiring,
+constraints, generated-board/audit references and qualified E368 image handoff.
+The8-bit DATA/CLK/READY/DIR pin table and electrical requirements are unchanged;
+all unrelated carrier dirty work is preserved. No FPGA RTL changes are made.
+
+Align MeOS host with the source scaled_1024x4 continuous bulk path: internal
+free-running RX clock, soft delimiter,4x1024-byte ring,8192-byte stash/window,
+5120-byte capture lease, persistent TX and GPIO short replies. GPIO17 remains
+input in this mode; finite ETM-gated RX is only an explicit comparison mode.
+Only scheduler/interrupt/allocator integration differs. Use the same E368 SRAM
+image and verify its UserCode and frozen P4 image around hardware tests because
+external reflashing was previously observed.20MHz remains a test target until
+this native port passes strict actual-pixel/CRC and lifecycle tests.
+
+
+Electrical-setting parity: the reviewed GPU main/dock_gpu.cpp lines261-262
+sets GPIO_DRIVE_CAP_0 on all eight DATA pads, CLK and DIR. This native port must
+apply the same pad drive while its IO lease is active, save/restore prior drive
+on proven-safe close and preserve it under quarantine. This aligns an existing
+Dock setting; no wiring or voltage change. Do not attribute high-rate errors
+to drive strength until the aligned hardware trial is recorded.
+
+
+Final alignment trial: firmware6c41bd04...1189568B includes READY-before-DIR
+and2us bulk guards, cold unmapped-clock initialization, CAP0 readback and
+native-app opt-in. E368 before/after:1/5MHz tile6+batch3 pass;8MHz CRC fails.
+Full actual windows are in parlio-continuous-ready-parity-2026-11-04.json.
+No20MHz MeOS result is claimed. The standalone1MHz fractal app separately passed
+CPU/FPGA comparisons for both scenes; it does not establish DDR3 or high-rate
+qualification. No carrier/pin/RTL/voltage modification was made.

@@ -21,12 +21,14 @@ fpga --parlio dock-jumper-v0 1000000 test
 
 The CLI also exposes capability, GPU and explicit hybrid diagnostics. Consult
 its help for the current command list; `--gpio-rx` explicitly selects the
-hybrid path and `--rx-hz HZ` selects an independent finite-DMA RX divider.
+hybrid path; `--finite-rx` selects the previous finite comparison and
+`--rx-hz HZ` selects an independent receive divider.
 
 ## Transport and API
 
-The `hal_parlio` adapter uses polling and bounded deadlines rather than
-FreeRTOS queues, callbacks or public ESP-IDF driver allocation. It reserves the
+The finite adapter polls with bounded deadlines. Continuous RX uses an owned
+DMA interrupt through the existing MeOS/IDF vector dispatcher and a copied-block
+SPSC queue, without FreeRTOS tasks or queues. It reserves the
 PARLIO module and unused AXI GDMA channels, preserving unrelated channels and
 avoiding shared DMA/ETM resets. The LCD uses a separate DW-GDMA controller.
 Native register reservations are not registered in ESP-IDF software allocators;
@@ -34,7 +36,8 @@ future AXI GDMA/ETM users must share the native reservation policy.
 
 Internal DMA allocation includes128-byte-aligned, isolated descriptor and
 payload storage with explicit cache synchronization. One request is outstanding
-at a time. Completion requires actual EOF, descriptor ownership/count, cache,
+at a time. Finite completion checks actual EOF and descriptor ownership/count;
+continuous completion checks the copied-block lease/closed parsing horizon, cache,
 phase and FIFO/error checks. Unknown completion is not automatically replayed.
 Unproven DMA quiescence quarantines the allocation and peripheral ownership.
 `hal_parlio_close` reports whether resources were actually released; callers
@@ -75,13 +78,13 @@ late event cannot modify a later pin owner. IRQ masking is not the stop mechanis
 
 ## Clock selection and limits
 
-TX supports500kHz,1,2 and5MHz. RX defaults to the TX rate. The software-only,
+The finite comparison backend supports TX500kHz,1,2 and5MHz. RX defaults to the TX rate. The software-only,
 idle-only `hal_parlio_set_rx_frequency` setter accepts500kHz,1,2,5,8,10,16 and
 20MHz. It does not change pins or clock registers until the next RX.500kHz
 uses XTAL40MHz/div80; the other rates use exact integer PLL160MHz divisors.
 Accepted divider settings do not imply hardware validation. No4MHz setting is
-currently exposed. Continuous/ring DMA,40MHz operation and sustained bandwidth
-remain separate work.
+currently exposed. Continuous mode accepts1MHz and above from the same set;
+40MHz and sustained bandwidth remain outside this implementation.
 
 ## Canonical protocol and GPU checks
 
@@ -177,3 +180,50 @@ syntax probes using the existing5.4.4-generated configuration plus the5.5.2
 The local5.4.4 full-camera build has a pre-existing camera API mismatch; the
 published firmware workflow already targets5.5.2. Minimal FPGA image sizes must
 not be compared with camera/Python-enabled builds as the isolated FPGA cost.
+
+
+## Continuous reference alignment (current default)
+
+The default CLI receive policy is now `bulk-continuous+short-gpio`, following
+GPU host7a4f83e's bulk-only division. Explicit `--finite-rx` retains the prior
+ETM-gated finite comparison; `--gpio-rx` selects GPIO reception. Do not interpret
+a successful short ID/echo test as a DMA bulk-rate qualification.
+
+The native port matches the scaled1024x4 profile: four1024-byte DMA blocks,
+8192-byte SPSC stash and parser window,5120-byte capture lease, internal
+PLL160MHz clock with NEG register pair0/0 and inverted pad clock, soft
+validation, persistent ring, READY-low plus one real trailing block closure,
+and normal4096-byte ring EOF that does not destroy the session. The task drains
+pending ISR publication before final UNIQUE/CRC acceptance. No prefix, missing
+byte or pixel is manufactured. A normalized-body transport explicitly returns
+only the actual validated2058-byte TILE body; finite tagged-window validation
+is unchanged. DMA queue storage is internal, never a retained DMA-buffer view.
+
+Initial cold attachment now happens while the Core clock is OFF; warm requests
+enable soft validation before mapping the running clock. The bulk handoff waits
+READY=1 with DIR=0, then CLK HIGH,2us,DIR HIGH,2us. DATA8/CLK/DIR use the source's
+CAP0 drive with readback; saved drive settings return only after safe teardown.
+GPIO17 is not used for VALID in continuous mode. Task termination/quarantine
+retains callback memory and IO leases until safe teardown or reboot.
+
+This is a native MeOS port, not the unmodified FreeRTOS driver binary. Allocation,
+IRQ dispatch and waits use MeOS integration. Short GPIO replies still use
+conservative100us software bit intervals, so source25ns GPIO timings and its
+full-frame benchmark performance are not reproduced. Register-policy parity
+alone cannot establish identical electrical timing.
+
+Final frozen firmware SHA256
+`6c41bd04b8d4196d4b054190d5a0be8fc31458cc0428ec34a6d3b46ea9d99425`
+(1189568 bytes, minimal FPGA modules plus native-M5EX opt-in) passed tile6 scenes/
+12288 color-depth words and3x64-record batches/6144 words at1MHz and5MHz.
+RX8MHz failed strict CRC acceptance on the first tile; the test stopped before
+10/16/20MHz. E368 was checked before/after each rate. Original raw failure windows
+are retained in [final ready/drive parity test](validation/parlio-continuous-ready-parity-2026-11-04.json).
+Earlier candidates passed8MHz once but do not override this final result. No
+20MHz MeOS success, stable high-rate qualification or speedup is claimed.
+The source handoff's20MHz success remains a separate recorded ESP-IDF result;
+its efb525cf frozen binary was not found locally for an exact baseline rerun.
+
+The standalone [fractal application](FRACTAL_APP.md) uses a conservative1MHz
+GPU device call. Its successful1024-pixel comparisons validate that application,
+not high-rate bulk operation, full GUI integration or DDR3.

@@ -1,0 +1,274 @@
+{
+  "date": "2026-11-04",
+  "firmware": {
+    "sha256": "6c41bd04b8d4196d4b054190d5a0be8fc31458cc0428ec34a6d3b46ea9d99425",
+    "bytes": 1189568,
+    "native_m5ex": true,
+    "pmp_idram_split": false
+  },
+  "checks": [
+    {
+      "command": "mem --json",
+      "results": [
+        {
+          "schema": 1,
+          "units": "bytes",
+          "internal": {
+            "total": 196608,
+            "used": 94416,
+            "free": 102192,
+            "largest": 98064,
+            "peak": 98528,
+            "alloc_count": 12,
+            "fail_count": 0
+          },
+          "psram": {
+            "total": 29360128,
+            "used": 8588864,
+            "free": 20771264,
+            "largest": 20771248,
+            "peak": 8588864,
+            "alloc_count": 7,
+            "fail_count": 0
+          }
+        }
+      ],
+      "output": "I (101) esp_image: segment 3: paddr=000b0020 vaddr=40000020 sizemem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":94416,\"free\":102192,\"largest\":98064,\"peak\":98528,\"alloc_count\":12,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8588864,\"alloc_count\":7,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "put --ack /sd/m5hello.m5ex",
+      "results": [],
+      "output": "put --ack /sd/m5hello.m5ex\r\nput: ready\r\nput: ack 57\r\nput: ack 114\r\nput: ack 171\r\nput: ack 228\r\nput: ack 260\r\nput: wrote 260 bytes, crc32 636e54f0\r\n> "
+    },
+    {
+      "command": "run /sd/m5hello.m5ex",
+      "results": [],
+      "output": "run /sd/m5hello.m5ex\r\nstarted /sd/m5hello.m5ex as app 1  (permissions C------)\r\n> Hello from a LOADED M5EX app (pid 10, loaded code, API v1)\r\n"
+    },
+    {
+      "command": "put --ack /sd/fractal.m5ex",
+      "results": [],
+      "output": "put --ack /sd/fractal.m5ex\r\nput: ready\r\nput: ack 57\r\nput: ack 114\r\nput: ack 171\r\nput: ack 228\r\nput: ack 285\r\nput: ack 342\r\nput: ack 399\r\nput: ack 456\r\nput: ack 513\r\nput: ack 570\r\nput: ack 627\r\nput: ack 684\r\nput: ack 741\r\nput: ack 798\r\nput: ack 855\r\nput: ack 912\r\nput: ack 969\r\nput: ack 1026\r\nput: ack 1083\r\nput: ack 1140\r\nput: ack 1197\r\nput: ack 1254\r\nput: ack 1311\r\nput: ack 1368\r\nput: ack 1425\r\nput: ack 1482\r\nput: ack 1539\r\nput: ack 1596\r\nput: ack 1653\r\nput: ack 1710\r\nput: ack 1767\r\nput: ack 1824\r\nput: ack 1881\r\nput: ack 1938\r\nput: ack 1995\r\nput: ack 2052\r\nput: ack 2109\r\nput: ack 2166\r\nput: ack 2223\r\nput: ack 2280\r\nput: ack 2337\r\nput: ack 2394\r\nput: ack 2451\r\nput: ack 2508\r\nput: ack 2565\r\nput: ack 2622\r\nput: ack 2679\r\nput: ack 2736\r\nput: ack 2793\r\nput: ack 2850\r\nput: ack 2907\r\nput: ack 2964\r\nput: ack 3021\r\nput: ack 3078\r\nput: ack 3135\r\nput: ack 3192\r\nput: ack 3249\r\nput: ack 3264\r\nput: wrote 3264 bytes, crc32 a7da2bce\r\n> "
+    },
+    {
+      "command": "run /sd/fractal.m5ex",
+      "results": [
+        {
+          "fractal": true,
+          "engine": "cpu",
+          "scene": "mandelbrot",
+          "width": 32,
+          "height": 32,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 2,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 160
+        }
+      ],
+      "output": "run /sd/fractal.m5ex\r\nstarted /sd/fractal.m5ex as app 2  (permissions CD-----)\r\n> {\"fractal\":true,\"engine\":\"cpu\",\"scene\":\"mandelbrot\",\"width\":32,\"height\":32,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":2,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":160}\r\n"
+    },
+    {
+      "command": "key g",
+      "results": [
+        {
+          "fractal": true,
+          "engine": "fpga",
+          "scene": "mandelbrot",
+          "width": 32,
+          "height": 32,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 111,
+          "gpu_transport_compute_us": 110589,
+          "draw_ms": 149
+        }
+      ],
+      "output": "{\"fractal\":true,\"engine\":\"fpga\",\"scene\":\"mandelbrot\",\"width\":32,\"height\":32,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":111,\"gpu_transport_compute_us\":110589,\"draw_ms\":149}\r\n"
+    },
+    {
+      "command": "key j",
+      "results": [
+        {
+          "fractal": true,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 32,
+          "height": 32,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": false,
+          "cpu_ms": 0,
+          "gpu_measured": true,
+          "gpu_ms": 111,
+          "gpu_transport_compute_us": 111351,
+          "draw_ms": 149
+        }
+      ],
+      "output": "{\"fractal\":true,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":32,\"height\":32,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":false,\"cpu_ms\":0,\"gpu_measured\":true,\"gpu_ms\":111,\"gpu_transport_compute_us\":111351,\"draw_ms\":149}\r\n"
+    },
+    {
+      "command": "key v",
+      "results": [
+        {
+          "fractal": true,
+          "engine": "fpga",
+          "scene": "julia",
+          "width": 32,
+          "height": 32,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 7,
+          "gpu_measured": true,
+          "gpu_ms": 111,
+          "gpu_transport_compute_us": 111397,
+          "draw_ms": 151
+        }
+      ],
+      "output": "{\"fractal\":true,\"engine\":\"fpga\",\"scene\":\"julia\",\"width\":32,\"height\":32,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":7,\"gpu_measured\":true,\"gpu_ms\":111,\"gpu_transport_compute_us\":111397,\"draw_ms\":151}\r\n"
+    },
+    {
+      "command": "key c",
+      "results": [
+        {
+          "fractal": true,
+          "engine": "cpu",
+          "scene": "julia",
+          "width": 32,
+          "height": 32,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 7,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 142
+        }
+      ],
+      "output": "{\"fractal\":true,\"engine\":\"cpu\",\"scene\":\"julia\",\"width\":32,\"height\":32,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":7,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":142}\r\n"
+    },
+    {
+      "command": "key m",
+      "results": [
+        {
+          "fractal": true,
+          "engine": "cpu",
+          "scene": "mandelbrot",
+          "width": 32,
+          "height": 32,
+          "compare": false,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 2,
+          "gpu_measured": false,
+          "gpu_ms": 0,
+          "gpu_transport_compute_us": 0,
+          "draw_ms": 148
+        }
+      ],
+      "output": "{\"fractal\":true,\"engine\":\"cpu\",\"scene\":\"mandelbrot\",\"width\":32,\"height\":32,\"compare\":false,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":2,\"gpu_measured\":false,\"gpu_ms\":0,\"gpu_transport_compute_us\":0,\"draw_ms\":148}\r\n"
+    },
+    {
+      "command": "key v",
+      "results": [
+        {
+          "fractal": true,
+          "engine": "cpu",
+          "scene": "mandelbrot",
+          "width": 32,
+          "height": 32,
+          "compare": true,
+          "mismatch": -1,
+          "error": 0,
+          "cpu_measured": true,
+          "cpu_ms": 2,
+          "gpu_measured": true,
+          "gpu_ms": 111,
+          "gpu_transport_compute_us": 110944,
+          "draw_ms": 156
+        }
+      ],
+      "output": "{\"fractal\":true,\"engine\":\"cpu\",\"scene\":\"mandelbrot\",\"width\":32,\"height\":32,\"compare\":true,\"mismatch\":-1,\"error\":0,\"cpu_measured\":true,\"cpu_ms\":2,\"gpu_measured\":true,\"gpu_ms\":111,\"gpu_transport_compute_us\":110944,\"draw_ms\":156}\r\n"
+    },
+    {
+      "command": "quit",
+      "results": [],
+      "output": "\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "results": [
+        {
+          "schema": 1,
+          "units": "bytes",
+          "internal": {
+            "total": 196608,
+            "used": 94416,
+            "free": 102192,
+            "largest": 98064,
+            "peak": 147120,
+            "alloc_count": 31,
+            "fail_count": 0
+          },
+          "psram": {
+            "total": 29360128,
+            "used": 8588864,
+            "free": 20771264,
+            "largest": 20771248,
+            "peak": 8594672,
+            "alloc_count": 17,
+            "fail_count": 0
+          }
+        }
+      ],
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":94416,\"free\":102192,\"largest\":98064,\"peak\":147120,\"alloc_count\":31,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8594672,\"alloc_count\":17,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "results": [],
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=4234 batches=35 submitted=35 retired=35 errors=0 timeouts=0 max_us=295978 back=1 active=0\r\n> "
+    },
+    {
+      "command": "ps",
+      "results": [],
+      "output": "ps\r\nPID  NAME             PRI  STATE       APP\r\n1    idle             0    RUNNABLE    -\r\n2    appd             3    SLEEPING    -\r\n3    wifid            1    SLEEPING    -\r\n4    fbcon            2    SLEEPING    -\r\n6    kbd              3    SLEEPING    -\r\n7    osk              3    SLEEPING    -\r\n8    usbkbd           3    SLEEPING    -\r\n9    shell            2    RUNNING     -\r\n> "
+    }
+  ],
+  "hello_sha256": "e671f76efb93a34ae83ec7cc41be037095add8212056f22e30963a0c187535b7",
+  "app_sha256": "ef95077f98b1f3f164d4e30fb4ac5966891125968341ff98abf40e0ed4b6035f",
+  "result": "pass",
+  "left_running": {
+    "path": "/sd/fractal.m5ex",
+    "after_final_digest_verification": true,
+    "initial_render": {
+      "fractal": true,
+      "engine": "cpu",
+      "scene": "mandelbrot",
+      "width": 32,
+      "height": 32,
+      "compare": false,
+      "mismatch": -1,
+      "error": 0,
+      "cpu_measured": true,
+      "cpu_ms": 2,
+      "gpu_measured": false,
+      "gpu_ms": 0,
+      "gpu_transport_compute_us": 0,
+      "draw_ms": 151
+    }
+  }
+}

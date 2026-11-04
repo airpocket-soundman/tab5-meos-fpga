@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-04",
+  "firmware": {
+    "sha256": "cdd543850caa2b4c71c958abd956f510013a38e3594c465c7913acbc7c6ac2be",
+    "bytes": 1189520
+  },
+  "checks": [
+    {
+      "command": "mem --json",
+      "results": [
+        {
+          "schema": 1,
+          "units": "bytes",
+          "internal": {
+            "total": 196608,
+            "used": 94416,
+            "free": 102192,
+            "largest": 98064,
+            "peak": 118960,
+            "alloc_count": 27,
+            "fail_count": 0
+          },
+          "psram": {
+            "total": 29360128,
+            "used": 8588864,
+            "free": 20771264,
+            "largest": 20771248,
+            "peak": 8597776,
+            "alloc_count": 17,
+            "fail_count": 0
+          }
+        }
+      ],
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":94416,\"free\":102192,\"largest\":98064,\"peak\":118960,\"alloc_count\":27,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8597776,\"alloc_count\":17,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "put --ack /sd/m5hello.m5ex",
+      "results": [],
+      "output": "put --ack /sd/m5hello.m5ex\r\nput: ready\r\nput: ack 57\r\nput: ack 114\r\nput: ack 171\r\nput: ack 228\r\nput: ack 260\r\nput: wrote 260 bytes, crc32 636e54f0\r\n> "
+    },
+    {
+      "command": "run /sd/m5hello.m5ex",
+      "results": [],
+      "output": "run /sd/m5hello.m5ex\r\nstarted /sd/m5hello.m5ex as app 1  (permissions C------)\r\n> Guru Meditation Error: Core  0 panic'ed (Instruction access fault). Exception was unhandled.\r\n\r\nCore  0 register dump:\r\nMEPC    : 0x4ff580f0  RA      : 0x4ff01a20  SP      : 0x4ff591f0  GP      : 0x4ff0d200  \r\nTP      : 0x00000000  T0      : 0xb0000000  T1      : 0x4ff013ee  T2      : 0x00000000  \r\nS0/FP   : 0x40043680  S1      : 0x4ff581d0  A0      : 0x40110278  A1      : 0x00000000  \r\nA2      : 0x00000001  A3      : 0x00000002  A4      : 0x4ff9b000  A5      : 0x4ff580f0  \r\nA6      : 0x00000004  A7      : 0x00000011  S2      : 0x00000000  S3      : 0x00000000  \r\nS4      : 0x00000000  S5      : 0x00000000  S6      : 0x00000000  S7      : 0x00000000  \r\nS8      : 0x00000000  S9      : 0x00000000  S10     : 0x00000000  S11     : 0x00000000  \r\nT3      : 0x00000010  T4      : 0x00000050  T5      : 0x00000001  T6      : 0x18e518e5  \r\nMSTATUS : 0x80007880  MTVEC   : 0x4ff00003  MCAUSE  : 0x00000001  MTVAL   : 0x4ff580f0  \r\nMHARTID : 0x00000000  \r\n\r\nStack memory:\r\n4ff591f0: 0xf4eeb10c 0x00016e10 0x00001010 0x00000000 0x4ff48090 0x00000000 0x41084108 0x41084108\r\n4ff59210: 0x41084108 0x41084108 0x41084108 0x01084108 0x01080108 0x41084108 0x41084108 0x41084108\r\n4ff59230: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59250: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59270: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59290: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff592b0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff592d0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff592f0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59310: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59330: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59350: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59370: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59390: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff593b0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff593d0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff593f0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59410: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59430: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59450: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59470: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59490: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff594b0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff594d0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff594f0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59510: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59530: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59550: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59570: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff59590: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff595b0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108\r\n4ff595d0: 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x41084108 0x13084108\r\n\r\n\r\n\r\nELF file SHA256: 6136d887b\r\n\r\nRebooting...\r\nESP-ROM:esp32p4-eco2-20240710\r\nBuild:Jul 10 2024\r\nrst:0xc (SW_CPU_RESET),boot:0x20c (SPI_FAST_FLASH_BOOT)\r\nCore0 Saved PC:0x4ff00b86\r\nCore1 Saved PC:0x4fc058d8\r\nSPI mode:DIO, clock div:1\r\nload:0x4ff33ce0,len:0x183c\r\nload:0x4ff2abd0,len:0xff4\r\nload:0x4ff2cbd0,len:0x344c\r\nentry 0x4ff2abda\r\nI (21) boot: ESP-IDF v5.4.4 2nd stage bootloader\r\nI (21) boot: compile time Nov  3 2026 16:46:43\r\nW (21) boot: Unicore bootloader\r\nI (22) boot: chip revision: v1.3\r\nI (22) boot: efuse block revision: v0.3\r\nI (22) qio_mode: Enabling default flash chip QIO\r\nI (23) boot.esp32p4: SPI Speed      : 80MHz\r\nI (23) boot.esp32p4: SPI Mode       : QIO\r\nI (23) boot.esp32p4: SPI Flash Size : 16MB\r\nI (24) boot: Enabling RNG early entropy source...\r\nI (24) boot: Partition Table:\r\nI (24) boot: ## Label            Usage          Type ST Offset   Length\r\nI (25) boot:  0 nvs              WiFi data        01 02 00009000 00006000\r\nI (25) boot:  1 phy_init         RF data          01 01 0000f000 00001000\r\nI (26) boot:  2 factory          factory app      00 00 00010000 003e0000\r\nI (26) boot:  3 imedict          Unknown data     01 40 00400000 00600000\r\nI (27) boot:  4 wasmapps         Unknown data     01 41 00a00000 00200000\r\nI (28) boot: End of partition table\r\nI (28) esp_image: segment 0: paddr=00010020 vaddr=40080020 size=93f88h (606088) map\r\nI (104) esp_image: segment 1: paddr=000a3fb0 vaddr=30100000 size=00068h (   104) load\r\nI (106) esp_image: segment 2: paddr=000a4020 vaddr=4ff00000 size=0bff8h ( 49144) load\r\nI (114) esp_image: segment 3: paddr=000b0020 vaddr=40000020 size=7e0ach (516268) map\r\nI (179) esp_image: segment 4: paddr=0012e0d4 vaddr=4ff0bff8 size=009f8h (  2552) load\r\nI (181) esp_image: segment 5: paddr=0012ead4 vaddr=4ff0ca00 size=03b8ch ( 15244) load\r\nI (187) boot: Loaded app from partition at offset 0x10000\r\nI (187) boot: Disabling RNG early entropy source...\r\nI (193) hex_psram: vendor id    : 0x0d (AP)\r\nI (193) hex_psram: Latency      : 0x01 (Fixed)\r\nI (193) hex_psram: DriveStr.    : 0x00 (25 Ohm)\r\nI (194) hex_psram: dev id       : 0x03 (generation 4)\r\nI (194) hex_psram: density      : 0x07 (256 Mbit)\r\nI (194) hex_psram: good-die     : 0x06 (Pass)\r\nI (195) hex_psram: SRF          : 0x02 (Slow Refresh)\r\nI (195) hex_psram: BurstType    : 0x00 ( Wrap)\r\nI (195) hex_psram: BurstLen     : 0x03 (2048 Byte)\r\nI (196) hex_psram: BitMode      : 0x01 (X16 Mode)\r\nI (196) hex_psram: Readlatency  : 0x04 (14 cycles@Fixed)\r\nI (196) hex_psram: DriveStrength: 0x00 (1/1)\r\nI (197) MSPI DQS: tuning success, best phase id is 0\r\n"
+    }
+  ],
+  "hello_sha256": "e671f76efb93a34ae83ec7cc41be037095add8212056f22e30963a0c187535b7",
+  "result": "failed",
+  "error": "native hello did not execute"
+}

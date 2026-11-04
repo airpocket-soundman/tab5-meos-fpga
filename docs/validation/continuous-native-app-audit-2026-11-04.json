@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-04",
+  "carrier_revision": "53c023929b4f8cf42a6e02725160c0f0015dd162",
+  "gpu_host_revision": "7a4f83e85978ce2c9a94dc3df0322636d7a7b355",
+  "target_build": {
+    "sha256": "6c41bd04b8d4196d4b054190d5a0be8fc31458cc0428ec34a6d3b46ea9d99425",
+    "bytes": 1189568,
+    "native_m5ex": true,
+    "pmp_idram_split": false
+  },
+  "sdk": "ESP-IDF5.4.4",
+  "modules": [
+    "fpga_parlio",
+    "fpga_gfx"
+  ],
+  "native_m5ex_opt_in": true,
+  "standard_published_profiles_changed": false,
+  "fpga_usercode": "E368",
+  "fpga_image_sha256": "85bac22420a81bbaaef26a2edff81a3deb0e2bb114a97f106c1deede8062d717",
+  "host_checks_passed": [
+    "actual stream ISR model: EOF persistence, READY trailing block, budget, errors",
+    "SPSC/unchanged canonical parser:1024 offsets,wrap,loss,CRC uniqueness",
+    "wire:4515 independent vectors and normalized-body error contract",
+    "parallel HAL bridge:finite/GPIO/continuous lifecycle/quarantine",
+    "CAP0 actual helper: prior state/readback/safe restore",
+    "GPU device ABI/permissions/no-copy/error/safe close",
+    "display frame/console lease/foreign close/dead-task recovery",
+    "UART focus actual kernel/device:exclusive input and recovery",
+    "RISC-V actual GCC relocation equivalence vs static link",
+    "actual P4 exec HAL split guard/cache publication/loader abort/reclaim",
+    "standalone app10 mocked scenarios; no GPU fallback"
+  ],
+  "hardware": {
+    "continuous": "1/5MHz tile6scenes12288words and3x64-record6144words pass;8MHz CRC fails and stops",
+    "native_application": "m5hello and standalonefractalm5ex execute from microSD; C/G/M/J/V/Q verified; both scenes1024pixels match",
+    "resources": "application exit restores internal94416 and PSRAM8588864 used bytes; kernel internal peak147120 of196608; SDK heap/static firmware are outside this counter",
+    "display": "errors0,timeouts0 after7 app renders",
+    "artifact_verification": "P4 flash digest matched frozen BIN and E368 checked before/after rates",
+    "current_state": "fractal running in CPU Mandelbrot mode from /sd/fractal.m5ex"
+  },
+  "app": {
+    "path": "/sd/fractal.m5ex",
+    "bytes": 3264,
+    "sha256": "ef95077f98b1f3f164d4e30fb4ac5966891125968341ff98abf40e0ed4b6035f",
+    "embedded": false
+  },
+  "limitations": [
+    "No MeOS20MHz success;8MHz remains experimental",
+    "Short GPIO reply timing100us remains slower than source25ns configuration",
+    "Native IRQ/allocator integration is a port, not an unchanged FreeRTOS binary",
+    "Referenceefb525cf frozenP4binary not found for exact hardware rerun",
+    "No full-feature/coexistence/long soak/DDR3/full GUI qualification",
+    "App computes32x32 pixels, upscales presentation; CPU2-7ms vsGPUendtoend~111ms is not a speedup",
+    "Native M5EX needs explicit SDK RWX-IDRAM opt-in; base defaults keep split and refuse execution",
+    "Whole ring IRQ coalescing cannot be mathematically excluded; strict CRC/sequence/content tests remain mandatory"
+  ],
+  "next_instructions": [
+    "Do not raise default RX beyond verified1/5MHz",
+    "Compare exact proven GPU firmware on the same physical wiring before attributing high-rate failures",
+    "Inspect failed raw windows and physical CLK/DATA phase; never synthesize missing bytes or weaken CRC",
+    "Optimize control/transaction overhead separately from engine cycles before claiming acceleration",
+    "Keep fractal application outside embedded images; update the SD file independently"
+  ]
+}
