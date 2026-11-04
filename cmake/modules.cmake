@@ -72,6 +72,12 @@ m5os_profile(medium DESCRIPTION "Core plus the built-in camera, MicroPython with
 m5os_profile(large  DESCRIPTION "Everything stable: also the USB camera with Motion-JPEG. The experimental BLE HID host is not included."
                     MODULES camera uvc mjpeg camsrc micropython mp_camera sl)
 
+# Opt-in integration build, not a fourth published/flasher size. Keep every
+# large-profile feature: selecting fpga_parlio alone intentionally builds a
+# minimal diagnostic image and cannot establish camera/Python coexistence.
+m5os_profile(large_fpga DESCRIPTION "Large profile plus optional native FPGA PARLIO/GDMA; electrical command gate remains separate."
+                    MODULES camera uvc mjpeg camsrc micropython mp_camera sl fpga_parlio)
+
 function(_m5os_in_list item list_var out_var)
     list(FIND ${list_var} "${item}" idx)
     if(idx EQUAL -1)

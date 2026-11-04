@@ -1,0 +1,56 @@
+name: Optional FPGA integration build
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['cmake/**', 'main/**', 'kernel/**', 'hal/**', 'drivers/**', 'user/**', 'tests/test_fpga_profile.py', '.github/workflows/fpga-integration.yml']
+  push:
+    branches: [main]
+    paths: ['cmake/**', 'main/**', 'kernel/**', 'hal/**', 'drivers/**', 'user/**', 'tests/test_fpga_profile.py', '.github/workflows/fpga-integration.yml']
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve profiles and check source inclusion
+        run: python tests/test_fpga_profile.py
+      - name: Build matching large and large_fpga configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh"
+          export M5OS_BOARD=tab5
+          # Reuse one sdkconfig; module selection is a CMake compile definition.
+          # No reviewed physical-board gate is enabled and no image is flashed.
+          for profile in large large_fpga; do
+            idf.py -B "build-ci-$profile" -DSDKCONFIG="$RUNNER_TEMP/sdkconfig.fpga-ci" -DIDF_TARGET=esp32p4 -DM5OS_PROFILE="$profile" -DM5OS_FPGA_DOCK_VERIFIED=OFF build
+            cp "$RUNNER_TEMP/sdkconfig.fpga-ci" "build-ci-$profile/sdkconfig.used"
+            riscv32-esp-elf-size -A "build-ci-$profile/m5os.elf" > "build-ci-$profile/elf-sections.txt"
+          done
+          cmp build-ci-large/sdkconfig.used build-ci-large_fpga/sdkconfig.used
+          python - <<'PY'
+          import hashlib,json,pathlib,subprocess
+          builds={}
+          for profile in ('large','large_fpga'):
+              p=pathlib.Path('build-ci-'+profile)
+              builds[profile]={'bin_bytes':(p/'m5os.bin').stat().st_size,
+                               'bin_sha256':hashlib.sha256((p/'m5os.bin').read_bytes()).hexdigest(),
+                               'sdkconfig_sha256':hashlib.sha256((p/'sdkconfig.used').read_bytes()).hexdigest()}
+          report={'idf_revision':subprocess.check_output(['git','-C',__import__('os').environ['IDF_PATH'],'rev-parse','HEAD'],text=True).strip(),
+                  'profiles':builds,'bin_delta_bytes':builds['large_fpga']['bin_bytes']-builds['large']['bin_bytes'],
+                  'scope':'Same SDK/config/compiler; whole-profile compile/link and static section report only. No hardware/RAM peak/coexistence validation.'}
+          pathlib.Path('fpga-profile-comparison.json').write_text(json.dumps(report,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: optional-fpga-integration
+          path: |
+            fpga-profile-comparison.json
+            build-ci-*/m5os.bin
+            build-ci-*/m5os.map
+            build-ci-*/sdkconfig.used
+            build-ci-*/elf-sections.txt
+          if-no-files-found: error
