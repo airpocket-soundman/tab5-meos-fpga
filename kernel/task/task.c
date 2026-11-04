@@ -87,6 +87,6 @@ void task_ps(void)
     for (int i = 0; i < TASK_MAX; i++) {
         const task_t *t = &g_tasks[i];
         if (t->state == TASK_UNUSED) continue;
-        kprintf("%-3u %-15s %-3u %s\n", t->id, t->name, t->priority, task_state_name(t->state));
+        kprintf("%-3u %-15s %-3u %s\n", (unsigned)(t->id), t->name, t->priority, task_state_name(t->state));
     }
 }

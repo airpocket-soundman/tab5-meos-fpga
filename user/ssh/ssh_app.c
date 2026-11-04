@@ -917,7 +917,7 @@ static int ssh_recv_packet(ssh_session_t *s, uint8_t **out_payload, uint32_t tim
              * can otherwise wrap 4+packet_length and request a huge read. */
             if (pkt_len < 5u || pkt_len > SSH_MAX_PKT - 4u ||
                 ((pkt_len + 4u) & 7u) != 0) {
-                kprintf("ssh: bad unencrypted packet length %u\n", pkt_len);
+                kprintf("ssh: bad unencrypted packet length %u\n", (unsigned)(pkt_len));
                 return -1;
             }
             if (tcp_read_exact(s->sock, s->rx_pkt + 4, pkt_len, 8000, 8000) != (int)pkt_len) return -1;
@@ -937,7 +937,7 @@ static int ssh_recv_packet(ssh_session_t *s, uint8_t **out_payload, uint32_t tim
                 size_t dlen = 0;
                 buf_get_u32(s->rx_pkt + 5, payload_len, &pos, &reason);
                 if (buf_get_str(s->rx_pkt + 5, payload_len, &pos, &desc, &dlen) && dlen > 0) {
-                    kprintf("\nssh: remote disconnected (%u): ", reason);
+                    kprintf("\nssh: remote disconnected (%u): ", (unsigned)(reason));
                     kconsole_write((const char *)desc, dlen);
                     kprintf("\n");
                 }
@@ -953,7 +953,7 @@ static int ssh_recv_packet(ssh_session_t *s, uint8_t **out_payload, uint32_t tim
             if (pkt_len < 12u || pkt_len > SSH_MAX_PKT - 4u) return -1;
             size_t total_len = 4u + pkt_len;
             if ((total_len & 15u) != 0) {
-                kprintf("ssh: bad encrypted packet length %u\n", pkt_len);
+                kprintf("ssh: bad encrypted packet length %u\n", (unsigned)(pkt_len));
                 return -1;
             }
             if (total_len > 16u) {
@@ -967,7 +967,7 @@ static int ssh_recv_packet(ssh_session_t *s, uint8_t **out_payload, uint32_t tim
             uint8_t diff = 0;
             for (int i = 0; i < 32; i++) diff |= (uint8_t)(rx_mac[i] ^ exp_mac[i]);
             if (diff != 0) {
-                kprintf("ssh: MAC verification failed on seq %u\n", s->seq_s2c);
+                kprintf("ssh: MAC verification failed on seq %u\n", (unsigned)(s->seq_s2c));
                 return -1;
             }
             s->seq_s2c++;
@@ -986,7 +986,7 @@ static int ssh_recv_packet(ssh_session_t *s, uint8_t **out_payload, uint32_t tim
                 size_t dlen = 0;
                 buf_get_u32(s->rx_pkt + 5, payload_len, &pos, &reason);
                 if (buf_get_str(s->rx_pkt + 5, payload_len, &pos, &desc, &dlen) && dlen > 0) {
-                    kprintf("\nssh: remote disconnected (%u): ", reason);
+                    kprintf("\nssh: remote disconnected (%u): ", (unsigned)(reason));
                     kconsole_write((const char *)desc, dlen);
                     kprintf("\n");
                 }

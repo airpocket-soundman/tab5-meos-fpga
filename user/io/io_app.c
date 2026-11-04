@@ -206,8 +206,8 @@ static int command(int argc, char **v, void (*out)(const char *)) {
     if (rc)
       return result(rc, out);
     ksnprintf(b, sizeof b,
-              "GPIO%u raw=%d bits=12 attenuation_code=%u (uncalibrated)\n", a,
-              raw, c);
+              "GPIO%u raw=%d bits=12 attenuation_code=%u (uncalibrated)\n", (unsigned)(a),
+              raw, (unsigned)(c));
     out(b);
     return 0;
   }
@@ -237,8 +237,8 @@ static int command(int argc, char **v, void (*out)(const char *)) {
       if (rc)
         return result(rc, out);
       ksnprintf(b, sizeof b,
-                "GPIO%u PWM actual_hz=%u requested_duty_permille=%u\n", a,
-                actual, d);
+                "GPIO%u PWM actual_hz=%u requested_duty_permille=%u\n", (unsigned)(a),
+                (unsigned)(actual), (unsigned)(d));
       out(b);
       return 0;
     }
@@ -252,7 +252,7 @@ static int command(int argc, char **v, void (*out)(const char *)) {
       rc = io_i2c_open(owner, &cfg, &h);
       if (rc)
         return result(rc, out);
-      ksnprintf(b, sizeof b, "i2c handle=%u\n", h);
+      ksnprintf(b, sizeof b, "i2c handle=%u\n", (unsigned)(h));
       out(b);
       return 0;
     }
@@ -320,7 +320,7 @@ static int command(int argc, char **v, void (*out)(const char *)) {
       rc = io_spi_open(owner, &cfg, &h);
       if (rc)
         return result(rc, out);
-      ksnprintf(b, sizeof b, "spi handle=%u\n", h);
+      ksnprintf(b, sizeof b, "spi handle=%u\n", (unsigned)(h));
       out(b);
       return 0;
     }
@@ -350,7 +350,7 @@ static int command(int argc, char **v, void (*out)(const char *)) {
       rc = io_uart_open(owner, &cfg, &h);
       if (rc)
         return result(rc, out);
-      ksnprintf(b, sizeof b, "uart handle=%u\n", h);
+      ksnprintf(b, sizeof b, "uart handle=%u\n", (unsigned)(h));
       out(b);
       return 0;
     }

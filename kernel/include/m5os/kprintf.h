@@ -5,9 +5,10 @@
  * Own implementation on purpose: newlib's printf takes a FreeRTOS-backed
  * lock (see IDF newlib/locks.c) and we must not touch FreeRTOS. */
 void kputs(const char *s);
-/* GCC's printf-format check assumes uint32_t is "unsigned int"; that holds on Xtensa but not on RISC-V
- * (newlib: "unsigned long"), where it would reject every %u of a uint32_t although both are 32 bits and
- * our formatter treats them the same.  So the check stays on for Xtensa builds only. */
+/* Keep compiler format checking on Xtensa. Fixed-width integer typedefs vary
+ * between toolchains (including GCC14 Xtensa); pass explicit unsigned values
+ * to the minimal formatter's %u/%x rather than assuming uint32_t is unsigned
+ * int. RISC-V checking remains unchanged until its optional modules are audited. */
 #ifdef __XTENSA__
 #  define M5_PRINTF_CHECK(fmt_idx, arg_idx)  __attribute__((format(printf, fmt_idx, arg_idx)))
 #else

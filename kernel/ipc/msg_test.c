@@ -179,7 +179,7 @@ bool msg_selftest(void)
     task_sleep(SETTLE_MS);
     kmem_internal_stats(&now);
     CK(now.used == base.used);                                    /* exact: every other task's mailbox and stack came back */
-    if (now.used != base.used) kprintf("  heap used changed by %d bytes (base %u, now %u)\n", (int)(now.used - base.used), (uint32_t)base.used, (uint32_t)now.used);
+    if (now.used != base.used) kprintf("  heap used changed by %d bytes (base %u, now %u)\n", (int)(now.used - base.used), (unsigned)((uint32_t)base.used), (unsigned)((uint32_t)now.used));
     kprintf("msg selftest: %s\n", ok ? "PASS" : "FAIL");
     return ok;
 }

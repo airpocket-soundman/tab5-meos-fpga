@@ -391,7 +391,7 @@ void kernel_main(void)
     kmem_stats_t mi, mp;
     kmem_internal_stats(&mi);
     kmem_psram_stats(&mp);
-    kprintf("Heap: internal %u KB, PSRAM %u KB\n", (uint32_t)(mi.total / 1024u), (uint32_t)(mp.total / 1024u));
+    kprintf("Heap: internal %u KB, PSRAM %u KB\n", (unsigned)((uint32_t)(mi.total / 1024u)), (unsigned)((uint32_t)(mp.total / 1024u)));
 
     bool lcd_ok = display_init();                    /* driver bring-up (kernel side) */
     kprintf("LCD: %s\n", lcd_ok ? "ok" : "FAILED");

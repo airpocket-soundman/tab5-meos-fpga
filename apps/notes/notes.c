@@ -14,7 +14,7 @@ void notes_main(void *arg)
     int fd = vfs_open(NOTES_PATH, VFS_O_WRITE | VFS_O_CREATE | VFS_O_APPEND);
     if (fd < 0 || out < 0) return;
     char line[64];
-    int n = ksnprintf(line, sizeof line, "note from pid %u at %u ms\n", task_current()->id, (uint32_t)(hal_time_now_us() / 1000u));
+    int n = ksnprintf(line, sizeof line, "note from pid %u at %u ms\n", (unsigned)(task_current()->id), (unsigned)((uint32_t)(hal_time_now_us() / 1000u)));
     vfs_write(fd, line, (size_t)n);
     vfs_close(fd);
 

@@ -130,7 +130,7 @@ static bool test_heap(heap_t *h, const char *name)
     heap_free(h, b); heap_free(h, a); heap_free(h, c);
     heap_stats(h, &after);
     if (after.free != before.free || after.largest_free != before.largest_free) {
-        kprintf("  %s: coalescing FAILED (largest %u -> %u)\n", name, (uint32_t)before.largest_free, (uint32_t)after.largest_free);
+        kprintf("  %s: coalescing FAILED (largest %u -> %u)\n", name, (unsigned)((uint32_t)before.largest_free), (unsigned)((uint32_t)after.largest_free));
         return false;
     }
 
@@ -164,8 +164,8 @@ static bool test_heap(heap_t *h, const char *name)
     if (!heap_check(h) || after.used != before.used || after.free != before.free ||
         after.largest_free != before.largest_free) {
         kprintf("  %s: leak or fragmentation after churn (free %u -> %u, largest %u -> %u)\n", name,
-                (uint32_t)before.free, (uint32_t)after.free,
-                (uint32_t)before.largest_free, (uint32_t)after.largest_free);
+                (unsigned)((uint32_t)before.free), (unsigned)((uint32_t)after.free),
+                (unsigned)((uint32_t)before.largest_free), (unsigned)((uint32_t)after.largest_free));
         return false;
     }
     return true;
@@ -207,6 +207,6 @@ bool kmem_selftest(void)
 
     kmem_internal_stats(&st);
     kprintf("internal heap: total %u KB  used %u B  peak %u B  largest free %u KB\n",
-            (uint32_t)(st.total / 1024), (uint32_t)st.used, (uint32_t)st.peak_used, (uint32_t)(st.largest_free / 1024));
+            (unsigned)((uint32_t)(st.total / 1024)), (unsigned)((uint32_t)st.used), (unsigned)((uint32_t)st.peak_used), (unsigned)((uint32_t)(st.largest_free / 1024)));
     return ok;
 }

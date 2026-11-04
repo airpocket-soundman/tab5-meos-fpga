@@ -142,11 +142,11 @@ static void dump_state(const char *where)
     int n = app_list(all, APP_MAX);
     kprintf("  --- state at %s ---\n", where);
     for (int i = 0; i < n; i++)
-        kprintf("  app %u %s %s pid %u tasks %u\n", all[i].app_id, all[i].name, app_state_name(all[i].state), all[i].owner_task, all[i].tasks);
+        kprintf("  app %u %s %s pid %u tasks %u\n", (unsigned)(all[i].app_id), all[i].name, app_state_name(all[i].state), (unsigned)(all[i].owner_task), (unsigned)(all[i].tasks));
     gui_print_windows();
     task_info_t t[TASK_MAX];
     int nt = task_snapshot(t, TASK_MAX);
-    for (int i = 0; i < nt; i++) kprintf("  task %u %s %s app %u\n", t[i].id, t[i].name, task_state_name(t[i].state), t[i].app_id);
+    for (int i = 0; i < nt; i++) kprintf("  task %u %s %s app %u\n", (unsigned)(t[i].id), t[i].name, task_state_name(t[i].state), (unsigned)(t[i].app_id));
 }
 
 static void drain(void) { msg_t m; while (msg_try_receive(&m) == ERR_OK) { } }
