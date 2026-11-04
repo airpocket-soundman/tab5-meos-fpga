@@ -35,21 +35,23 @@ static bool frequency(const char *s, uint32_t *out, bool rx) {
 static int usage(void) {
   kprintf("fpga --parlio dock-jumper-v0 HZ "
           "id|caps|test|gpu-test|gpu-verify|tile-test|tile-demo|batch-test "
-          "[--gpio-rx | --rx-hz HZ]\nHZ: 500000,1000000,2000000,5000000; tagged finite DMA "
-          "RX is default.\n--gpio-rx explicitly selects GPIO receive with DMA "
+          "[--gpio-rx | --finite-rx] [--rx-hz HZ]\nHZ: 500000,1000000,2000000,5000000; bulk continuous DMA "
+          "RX plus short GPIO replies is default.\n--gpio-rx explicitly selects GPIO receive with DMA "
           "transmit. RX additionally accepts 8000000,10000000,16000000,20000000.\n"
-          "--rx-hz changes only finite DMA RX; no automatic fallback/retry.\n");
+          "--finite-rx selects the previous finite DMA strategy. No automatic fallback/retry.\n");
   return 1;
 }
 int fpga_parallel_cmd_main(int argc, char **argv) {
-  bool hybrid = false, rx_selected = false;
+  bool hybrid = false, finite = false, rx_selected = false;
   uint32_t hz = 0, rx_hz = 0;
   if (argc < 5 || strcmp(argv[2], "dock-jumper-v0") ||
       !frequency(argv[3], &hz, false))
     return usage();
   for (int i = 5; i < argc; i++) {
-    if (!strcmp(argv[i], "--gpio-rx") && !hybrid)
+    if (!strcmp(argv[i], "--gpio-rx") && !hybrid && !finite)
       hybrid = true;
+    else if(!strcmp(argv[i],"--finite-rx")&&!finite&&!hybrid)
+      finite=true;
     else if (!strcmp(argv[i], "--rx-hz") && !rx_selected && i + 1 < argc) {
       if (!frequency(argv[++i], &rx_hz, true))
         return usage();
@@ -103,8 +105,12 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
   if (!e && caps)
     e = fpga_wire_batch_caps(&wire, 100000);
   if (!e) {
-    bus.native_rx = !hybrid;
+    bus.native_rx = finite;
     bus.tagged = !hybrid;
+    if(!hybrid&&!finite){
+      e=fpga_parallel_continuous(&bus);
+      if(!e)e=fpga_wire_transport(&wire,&fpga_parallel_stream_wire_ops,&bus);
+    }
   }
   if (!e && tile)
     e = batch ? fpga_tile_batch_test_run(&wire, tw, &tr, !hybrid, 64, 30000000)
@@ -131,6 +137,19 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
 #endif
   if (e)
     bus.failed = true;
+  /* Preserve actual failed bulk bytes before safe close frees the queue.
+   * Sampling must already be closed with pending callbacks drained. */
+  if (e && bus.stream && bus.stream_stats.closed && !bus.stream_stats.pending &&
+      bus.stream->parser.window_size &&
+      bus.stream->parser.window_size <= FPGA_STREAM_WINDOW) {
+    link_stream *p = &bus.stream->parser;
+    kprintf("{\"stream_failure\":true,\"parser_result\":%u,\"window_bytes\":%u,\"request_hex\":\"",
+            (unsigned)p->result, (unsigned)p->window_size);
+    for (unsigned i = 0; i < 8; i++) kprintf("%02x", p->request[i]);
+    kprintf("\",\"raw_hex\":\"");
+    for (size_t i = 0; i < p->window_size; i++) kprintf("%02x", p->window[i]);
+    kprintf("\"}\n");
+  }
   fpga_parallel_close(&bus);
   if (!e && bus.error)
     e = bus.error;
@@ -165,8 +184,8 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
           "\"rx_gate_verified\":%s,\"rx_gate_closed\":%s,\"gate_event_seen\":%"
           "s,\"gate_task_seen\":%s,"
           "\"gate_ready_mask\":%u,\"gate_gpio_enable\":%u,\"gate_gpio_mux\":%u,"
-          "\"gate_gpio_task\":%u,\"gate_etm_event\":%u,\"gate_etm_task\":%u}\n",
-          hybrid ? "gpio" : "finite-dma", hz,
+          "\"gate_gpio_task\":%u,\"gate_etm_event\":%u,\"gate_etm_task\":%u,\"drive_cap_zero_verified\":%s}\n",
+          hybrid ? "gpio" : finite ? "finite-dma" : "bulk-continuous+short-gpio", hz,
           hybrid ? 0 : bus.stats.rx_frequency_hz, shown ? "true" : "false", fpga_link_error(e),
           wire.sync_capable ? "true" : "false",
           wire.tile_capable ? "true" : "false",
@@ -185,7 +204,16 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
           bus.stats.gate_task_seen ? "true" : "false",
           bus.stats.gate_ready_mask, bus.stats.gate_gpio_enable,
           bus.stats.gate_gpio_mux, bus.stats.gate_gpio_task,
-          bus.stats.gate_etm_event, bus.stats.gate_etm_task);
+          bus.stats.gate_etm_event, bus.stats.gate_etm_task,
+          bus.stats.drive_cap_zero_verified?"true":"false");
+  if(!hybrid&&!finite)
+    kprintf("{\"stream\":true,\"blocks\":%u,\"bytes\":%u,\"epoch_bytes\":%u,"
+            "\"eofs\":%u,\"stop_reason\":%u,\"late_bytes\":%u,\"irq_raw\":%u,"
+            "\"closed\":%s,\"fatal\":%s,\"pending\":%s}\n",
+            bus.stream_stats.blocks,bus.stream_stats.bytes,bus.stream_stats.epoch_bytes,
+            bus.stream_stats.eofs,bus.stream_stats.stop_reason,bus.stream_stats.late_bytes,
+            bus.stream_stats.irq_raw,bus.stream_stats.closed?"true":"false",
+            bus.stream_stats.fatal?"true":"false",bus.stream_stats.pending?"true":"false");
   if (tile)
     kprintf("{\"gpu_tile_test\":true,\"result\":\"%s\",\"scenes\":%u,"
             "\"pixels\":%u,\"scene\":%u,\"plane\":%u,\"pixel\":%u,\"expected\":"

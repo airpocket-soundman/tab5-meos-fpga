@@ -1,4 +1,4 @@
-/* Native finite Dock PARLIO/GDMA. No ESP-IDF peripheral driver/FreeRTOS calls.
+/* Native Dock PARLIO/GDMA, finite and scaled continuous RX. No ESP-IDF peripheral driver/FreeRTOS calls.
  * Register sequence follows Espressif IDF5.5.2 and the validated GPU host;
  * local IDF5.4.4 phase enums differ, so phase bits are explicit/read back.
  * Pins and protocol are owned by tab5-tang-primer20k-carrier. */
@@ -13,6 +13,7 @@
 #include <m5os/mutex.h>
 #include <string.h>
 #include "esp_cache.h"
+#include "esp_intr_alloc.h"
 #include "esp_rom_gpio.h"
 #include "hal/axi_dma_ll.h"
 #include "hal/parlio_ll.h"
@@ -30,6 +31,7 @@
 #include "soc/soc_etm_struct.h"
 #include "soc/gpio_ext_struct.h"
 #include "soc/soc_etm_source.h"
+#include "soc/interrupts.h"
 
 _Static_assert(SOC_PARLIO_GROUPS==1&&SOC_PARLIO_TX_UNITS_PER_GROUP==1&&SOC_PARLIO_RX_UNITS_PER_GROUP==1,
                "Retest native PARLIO ownership for this target");
@@ -39,6 +41,7 @@ _Static_assert(PARLIO_LL_TX_DATA_LINE_AS_VALID_SIG==15,
 enum { CLOCK_PIN=16, DIR_PIN=51, READY_PIN=45, GATE_PIN=17, DMA_CAPACITY=2688,
        DMA_ALIGN=128, POLL_LIMIT=500000 };
 static const int data_pins[8]={18,19,5,3,4,2,48,47};
+struct native_stream;
 struct hal_parlio {
     uint32_t hz,rx_hz;
     int tx_channel,rx_channel;
@@ -49,10 +52,42 @@ struct hal_parlio {
     int etm_channel,gpio_task_channel;
     uint32_t gate_task_saved;
     hal_parlio_stats_t stats;
+    struct native_stream *stream;
+    bool drive_saved;
+    gpio_drive_cap_t drive_previous[10];
 };
+/* Electrical parity with tab5-fpga-gpu7a4f83e main/dock_gpu.cpp261-262:
+ * DATA[8], CLK and DIR all use GPIO_DRIVE_CAP_0. Caller owns these IO pins.
+ * Capture every old setting before any write; quarantine keeps our settings
+ * until full HAL teardown proves that DMA cannot drive the bus anymore. */
+static int drive_pin(unsigned i)
+{
+    return i<8?data_pins[i]:i==8?CLOCK_PIN:DIR_PIN;
+}
+static bool apply_drive(hal_parlio_t *c)
+{
+    if(!c->drive_saved){
+        for(unsigned i=0;i<10;i++)gpio_ll_get_drive_capability(&GPIO,drive_pin(i),&c->drive_previous[i]);
+        c->drive_saved=true;
+    }
+    for(unsigned i=0;i<10;i++)gpio_ll_set_drive_capability(&GPIO,drive_pin(i),GPIO_DRIVE_CAP_0);
+    for(unsigned i=0;i<10;i++){
+        gpio_drive_cap_t actual;
+        gpio_ll_get_drive_capability(&GPIO,drive_pin(i),&actual);
+        if(actual!=GPIO_DRIVE_CAP_0)return false;
+    }
+    return true;
+}
+static void restore_drive(hal_parlio_t *c)
+{
+    if(!c->drive_saved)return;
+    for(unsigned i=0;i<10;i++)gpio_ll_set_drive_capability(&GPIO,drive_pin(i),c->drive_previous[i]);
+    c->drive_saved=false;
+}
 static mutex_t resource_lock=MUTEX_INIT;
 static hal_parlio_t *native_owner;
 static void rx_gate_disarm(hal_parlio_t *c);
+static bool stream_safe_tx(hal_parlio_t *c);
 
 static int check(uint64_t deadline,hal_parlio_cancel_t cancel,void *arg)
 {
@@ -322,7 +357,11 @@ int hal_parlio_open(uint32_t hz,hal_parlio_t **out)
     axi_dma_ll_tx_connect_to_periph(&AXI_DMA,c->tx_channel,GDMA_TRIG_PERIPH_PARLIO,3);
     c->stats.frequency_hz=hz;c->stats.rx_frequency_hz=hz;
     c->stats.tx_channel=c->tx_channel;c->stats.rx_channel=c->rx_channel;
-    c->stats.stage="open_unmapped";native_owner=c;*out=c;mutex_unlock(&resource_lock);return 0;
+    bool drive_ok=apply_drive(c);
+    c->stats.drive_cap_zero_verified=drive_ok;
+    c->stats.stage=drive_ok?"open_unmapped":"drive_cap_readback";
+    c->failed=!drive_ok;
+    native_owner=c;*out=c;mutex_unlock(&resource_lock);return drive_ok?0:ERR_IO;
 }
 int hal_parlio_set_rx_frequency(hal_parlio_t *c,uint32_t hz)
 {
@@ -331,14 +370,14 @@ int hal_parlio_set_rx_frequency(hal_parlio_t *c,uint32_t hz)
        hz!=8000000&&hz!=10000000&&hz!=16000000&&hz!=20000000)return ERR_INVAL;
     /* This API shares the existing caller-serialization contract with TX/RX.
      * Do not alter a failed/quarantined owner or an active descriptor/gate. */
-    if(c->busy||c->failed||c->tx_started||c->rx_started||c->gate_armed)return ERR_BUSY;
+    if(c->busy||c->failed||c->tx_started||c->rx_started||c->gate_armed||c->stream)return ERR_BUSY;
     c->rx_hz=hz;c->stats.rx_frequency_hz=hz;
     return 0;
 }
 int hal_parlio_tx(hal_parlio_t *c,const uint8_t *src,size_t n,uint64_t deadline,hal_parlio_cancel_t cancel,void *arg)
 {
     if(!c||c!=native_owner||!src||n<8||n>HAL_PARLIO_MAX_TX)return ERR_INVAL;
-    if(c->busy||c->failed)return ERR_BUSY;
+    if(c->busy||c->failed||!stream_safe_tx(c))return ERR_BUSY;
     c->busy=true;c->stats.tx_attempts++;c->stats.stage="tx_precondition";
     c->stats.tx_phase_verified=false;c->stats.parlio_raw=0;c->stats.dma_raw=0;
     uint64_t began=hal_time_now_us();int error=check(deadline,cancel,arg);
@@ -414,12 +453,13 @@ int hal_parlio_tx(hal_parlio_t *c,const uint8_t *src,size_t n,uint64_t deadline,
 /* The separate finite RX helper is included here to share the reserved channel,
  * aligned storage, deadlines and cleanup rather than allocating another owner. */
 #include "parlio_native_rx.inc"
+#include "parlio_native_stream.inc"
 
 int hal_parlio_rx(hal_parlio_t *c,uint8_t *dst,size_t n,size_t *received,uint64_t deadline,hal_parlio_cancel_t cancel,void *arg)
 {
     if(received)*received=0;
     if(!c||c!=native_owner||!dst||!received||!n||n>HAL_PARLIO_MAX_RX)return ERR_INVAL;
-    if(c->busy||c->failed)return ERR_BUSY;
+    if(c->busy||c->failed||c->stream)return ERR_BUSY;
     c->busy=true;c->stats.rx_attempts++;
     uint64_t began=hal_time_now_us();int error=native_rx(c,dst,n,deadline,cancel,arg);
     c->stats.elapsed_us=(uint32_t)(hal_time_now_us()-began);c->stats.last_error=error;
@@ -434,6 +474,7 @@ void hal_parlio_get_stats(const hal_parlio_t *c,hal_parlio_stats_t *out)
 bool hal_parlio_close(hal_parlio_t *c)
 {
     if(!c||c!=native_owner||c->busy)return false;
+    if(!hal_parlio_stream_stop(c))return false;
     mutex_lock(&resource_lock);
     rx_gate_disarm(c);
     rcc_tx_clock(false);parlio_ll_tx_start(&PARL_IO,false);
@@ -451,6 +492,7 @@ bool hal_parlio_close(hal_parlio_t *c)
     axi_dma_ll_rx_clear_interrupt_status(&AXI_DMA,c->rx_channel,GDMA_LL_RX_EVENT_MASK);
     release_gate(c);
     restore_bus(false);
+    restore_drive(c);
     flags=arch_irq_disable();_parlio_ll_enable_bus_clock(0,false);arch_irq_restore(flags);
     /* Leave AXI clock alone: another unrelated channel may now use it. */
     native_owner=NULL;uint8_t *allocation=c->allocation;mutex_unlock(&resource_lock);kfree(allocation);

@@ -1,6 +1,7 @@
 #pragma once
 #include "fpga_gpio.h"
 #include "fpga_wire.h"
+#include "fpga_stream.h"
 #include <m5os/hal_parlio.h>
 typedef struct {
   io_owner_t owner;
@@ -13,9 +14,13 @@ typedef struct {
   bool (*cancel)(void *);
   void *cancel_context;
   hal_parlio_stats_t stats;
+  fpga_stream_t *stream;
+  hal_parlio_stream_status_t stream_stats;
 } fpga_parallel_t;
 /* Zero initialize; caller serializes the whole command, not just exchanges. */
 int fpga_parallel_open(fpga_parallel_t *, const char *profile, uint32_t hz);
 void fpga_parallel_close(fpga_parallel_t *);
+int fpga_parallel_continuous(fpga_parallel_t *);
 extern const fpga_wire_ops_t fpga_parallel_wire_ops;
+extern const fpga_wire_ops_t fpga_parallel_stream_wire_ops;
 extern const fpga_link_ops_t fpga_parallel_link_ops;

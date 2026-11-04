@@ -3,13 +3,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Dock native finite DMA only. Caller owns all pins and serializes the handle.
+/* Dock native finite and scaled continuous DMA. Caller owns all pins and serializes the handle.
  * No boot hook. Open allocates/claims peripheral resources but never maps pads.
  * tx restores CLK GPIO LOW and all DATA inputs on every attempted transfer.
  * rx requires CLK HIGH, DIR HIGH, READY HIGH and all DATA already inputs.
  * Adapter-owned peripheral polls use an absolute deadline plus poll cap.
  * Cache/allocator operations retain their platform implementation contracts.
- * No retry, GPIO fallback, FreeRTOS queue or ISR allocation. */
+ * No retry, automatic GPIO fallback or FreeRTOS queue. Continuous mode
+ * owns an SDK interrupt allocation routed through the existing MeOS vectors. */
 typedef struct hal_parlio hal_parlio_t;
 typedef bool (*hal_parlio_cancel_t)(void *);
 enum { HAL_PARLIO_CANCELLED = -20, HAL_PARLIO_MAX_TX = 1290,
@@ -19,6 +20,7 @@ typedef struct {
     uint32_t tx_bytes, rx_bytes, elapsed_us, parlio_raw, dma_raw;
     int tx_channel, rx_channel, last_error;
     bool tx_phase_verified;
+    bool drive_cap_zero_verified; /* All10 bus outputs read back CAP0 at open. */
     uint32_t last_rx_bytes;
     bool rx_phase_verified, dma_quarantined;
     int gate_gpio, etm_channel, gpio_task_channel;
@@ -43,3 +45,18 @@ void hal_parlio_get_stats(const hal_parlio_t *, hal_parlio_stats_t *);
 /* True only after DMA is quiescent and all resources actually released.
  * False retains ownership/storage; caller must retain the IO pin lease. */
 bool hal_parlio_close(hal_parlio_t *);
+
+/* Scaled reference stream:4x1024-byte direct DMA ring, persistent between
+ * replies. Callback runs in the owned DMA ISR; copy bytes before returning,
+ * never retain a ring pointer. Offset is session-monotonic modulo32, origin0.
+ * Returning false poisons/stops validation; there is no overwrite/drop retry. */
+typedef bool (*hal_parlio_stream_block_t)(void *,const uint8_t *,size_t,uint32_t);
+typedef struct {
+    uint32_t blocks,bytes,epoch_bytes,eofs,stop_reason,late_bytes,irq_raw;
+    bool started,closed,fatal,ready_latched,pending;
+} hal_parlio_stream_status_t;
+int hal_parlio_stream_begin(hal_parlio_t *,hal_parlio_stream_block_t,void *,uint64_t deadline_us);
+int hal_parlio_stream_pause(hal_parlio_t *,uint64_t deadline_us);
+void hal_parlio_stream_status(hal_parlio_t *,hal_parlio_stream_status_t *);
+/* Stop/free only after DMA quiescence; false retains IRQ/memory/IO ownership. */
+bool hal_parlio_stream_stop(hal_parlio_t *);

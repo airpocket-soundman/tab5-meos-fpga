@@ -19,10 +19,13 @@ bool display_begin_frame(void){assert(closes==1&&paused);return fault!=1;}
 bool display_end_frame(void){return fault!=2;}
 void display_clear(uint16_t c){(void)c;}
 void display_draw_bitmap_scaled(int x,int y,int w,int h,const uint16_t*p,int s){(void)x;(void)y;(void)w;(void)h;(void)p;(void)s;draws++;}
-int fpga_parallel_open(fpga_parallel_t*b,const char*p,uint32_t hz){(void)p;opens++;b->native=(void*)b;b->stats.frequency_hz=hz;b->stats.rx_frequency_hz=hz;return 0;}
+int fpga_parallel_open(fpga_parallel_t*b,const char*p,uint32_t hz){(void)p;opens++;b->native=(void*)b;b->stats.frequency_hz=hz;b->stats.rx_frequency_hz=hz;b->stats.drive_cap_zero_verified=true;return 0;}
 void fpga_parallel_close(fpga_parallel_t*b){closes++;if(fault==3||fault==4)b->error=FPGA_LINK_IO;}
 int hal_parlio_set_rx_frequency(hal_parlio_t*h,uint32_t hz){fpga_parallel_t*b=(void*)h;b->stats.rx_frequency_hz=hz;return 0;}
 const fpga_wire_ops_t fpga_parallel_wire_ops={0};
+const fpga_wire_ops_t fpga_parallel_stream_wire_ops={.normalized_body=true};
+int fpga_parallel_continuous(fpga_parallel_t*b){assert(!b->native_rx);return 0;}
+int fpga_wire_transport(fpga_wire_t*w,const fpga_wire_ops_t*o,void*c){w->ops=o;w->context=c;return 0;}
 int fpga_wire_init(fpga_wire_t*w,const fpga_wire_ops_t*o,void*c,fpga_wire_workspace_t*s){w->ops=o;w->context=c;w->workspace=s;return 0;}
 int fpga_wire_caps(fpga_wire_t*w,uint32_t t){(void)t;w->sync_capable=true;return 0;}
 int fpga_wire_tile_caps(fpga_wire_t*w,uint32_t t){(void)t;w->tile_capable=true;return 0;}

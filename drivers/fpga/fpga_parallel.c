@@ -1,6 +1,7 @@
 #include "fpga_parallel.h"
 #include <m5os/hal_gpio.h>
 #include <m5os/hal_time.h>
+#include <m5os/kmalloc.h>
 #include <string.h>
 static const int pins[] = {18, 19, 5,  3,  4,  2, 48, 47,
                            16, 51, 45, 17, 52, 6, 7};
@@ -52,6 +53,7 @@ void fpga_parallel_close(fpga_parallel_t *b) {
   if (!b)
     return;
   if (b->native) {
+    if(b->stream)hal_parlio_stream_status(b->native,&b->stream_stats);
     hal_parlio_get_stats(b->native, &b->stats);
     if (!hal_parlio_close(b->native)) {
       /* Hardware may still own DMA/ETM. Preserve both leases, even if the
@@ -64,6 +66,8 @@ void fpga_parallel_close(fpga_parallel_t *b) {
     }
     b->native = NULL;
   }
+  /* The ISR callback retains this pointer until HAL teardown proves quiet. */
+  kfree(b->stream);b->stream=NULL;
   int cleanup=safe(b);
   if (b->owner_guarded) {
     if (cleanup || io_owner_protect(b->owner,false)) {
@@ -77,6 +81,15 @@ void fpga_parallel_close(fpga_parallel_t *b) {
     io_owner_close(b->owner);
   b->owner = 0;
   b->claimed = false;
+}
+int fpga_parallel_continuous(fpga_parallel_t *b) {
+  if(!b||!b->native||!b->claimed||b->failed)return FPGA_LINK_INVALID;
+  if(b->busy||b->stream)return FPGA_LINK_BUSY;
+  b->stream=kmalloc(sizeof *b->stream);
+  if(!b->stream)return FPGA_LINK_IO;
+  fpga_stream_reset(b->stream,0);
+  b->native_rx=false;
+  return 0;
 }
 int fpga_parallel_open(fpga_parallel_t *b, const char *profile, uint32_t hz) {
   if (!b || !profile || strcmp(profile, "dock-jumper-v0") ||
@@ -132,12 +145,48 @@ static int ready(fpga_parallel_t *b, uint64_t end, int expected) {
   }
   return FPGA_LINK_TIMEOUT;
 }
+static bool publish(void *p,const uint8_t *data,size_t n,uint32_t offset) {
+  return fpga_stream_publish(p,offset,data,n);
+}
+static int stream_receive(fpga_parallel_t *b,const uint8_t *tx,uint8_t *rx,
+                          size_t *actual,uint64_t end) {
+  int e=fpga_stream_begin(b->stream,tx)==LINK_STREAM_NEED_MORE?0:FPGA_LINK_DATA;
+  if(!e)e=translate(hal_parlio_stream_begin(b->native,publish,b->stream,end));
+  for(unsigned spins=0;!e;spins++) {
+    link_stream_result r=fpga_stream_poll(b->stream);
+    if(link_stream_failed(r)){e=FPGA_LINK_DATA;break;}
+    hal_parlio_stream_status(b->native,&b->stream_stats);
+    if(b->stream_stats.fatal){e=FPGA_LINK_IO;break;}
+    if(b->stream_stats.closed)break;
+    e=check(b,end);
+    if(!e&&spins>=1000000)e=FPGA_LINK_TIMEOUT;
+    if(!e)hal_delay_us(1);
+  }
+  /* Even failed validation must close sampling and drain callback publication.
+   * The queue remains alive until the later full HAL close proves quiescence. */
+  int paused=translate(hal_parlio_stream_pause(b->native,end));
+  if(!e)e=paused;
+  hal_parlio_stream_status(b->native,&b->stream_stats);
+  for(unsigned blocks=0;blocks<FPGA_STREAM_STASH/FPGA_STREAM_BLOCK;blocks++) {
+    link_stream_result r=fpga_stream_poll(b->stream);
+    if(link_stream_failed(r)&&!e)e=FPGA_LINK_DATA;
+  }
+  if(!e)e=ready(b,end,0);
+  bool proof=!e&&b->stream_stats.closed&&!b->stream_stats.fatal&&
+             !b->stream_stats.pending&&b->stream_stats.ready_latched;
+  link_stream_result final=fpga_stream_finish(b->stream,proof);
+  if(!e&&final!=LINK_STREAM_UNIQUE)e=FPGA_LINK_DATA;
+  const uint8_t *body=fpga_stream_body(b->stream);
+  if(!e&&!body)e=FPGA_LINK_DATA;
+  if(!e){memcpy(rx,body,FPGA_WIRE_TILE_BYTES);*actual=FPGA_WIRE_TILE_BYTES;}
+  return e;
+}
 static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
                     size_t cap, size_t *received, uint64_t end) {
   fpga_parallel_t *b = p;
   if (received)
     *received = 0;
-  if (!b || !tx || !rx || !received || !n || n > HAL_PARLIO_MAX_TX || !cap ||
+  if (!b || !tx || !rx || !received || n<8 || n > HAL_PARLIO_MAX_TX || !cap ||
       cap > FPGA_WIRE_CAPTURE_MAX)
     return FPGA_LINK_INVALID;
   if (b->busy)
@@ -145,6 +194,7 @@ static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
   if (!b->claimed || !b->native || b->failed)
     return FPGA_LINK_IO;
   b->busy = true;
+  bool bulk=b->stream&&cap==FPGA_WIRE_TILE_BYTES&&(tx[1]&127)==0x3b&&(tx[1]&128);
   b->attempted++;
   int e = check(b, end);
   size_t actual = 0;
@@ -164,23 +214,33 @@ static int exchange(void *p, const uint8_t *tx, size_t n, uint8_t *rx,
     e = translate(hal_parlio_tx(b->native, tx, n, end, cancelled, b));
   if (!e)
     e = inputs(b);
-  if (!e)
-    e = config(b, CLK, true, b->native_rx ? 1 : 0);
-  if (!e)
-    e = pause(b, end, 200);
-  if (!e)
-    e = set(b, DIR, 1);
-  if (!e)
-    e = pause(b, end, 200);
-  if (!e)
-    e = ready(b, end, 1);
-  if (!e && b->native_rx)
+  if(bulk){
+    /* Exact reference dock_gpu.cpp start(): completed reply READY is observed
+     * while DIR remains LOW, then preload idle-HIGH CLK before raising DIR.
+     * Neither that CLK transition nor an early DIR transition may advance an
+     * unfinished FPGA reply. These are explicit2us reference handoff guards. */
+    if(!e)e=ready(b,end,1);
+    if(!e)e=config(b,CLK,true,1);
+    if(!e)e=pause(b,end,2);
+    if(!e)e=set(b,DIR,1);
+    if(!e)e=pause(b,end,2);
+  } else {
+    /* Retain finite/GPIO comparison timing, including conservative software
+     * receive loops below; this is not full reference performance parity. */
+    if (!e)e = config(b, CLK, true, b->native_rx ? 1 : 0);
+    if (!e)e = pause(b, end, 200);
+    if (!e)e = set(b, DIR, 1);
+    if (!e)e = pause(b, end, 200);
+    if (!e)e = ready(b, end, 1);
+  }
+  if(!e&&bulk)e=stream_receive(b,tx,rx,&actual,end);
+  else if (!e && b->native_rx)
     e = config(b, 17, true,
                0); /* Claimed AUX0: internal hardware VALID gate. */
-  if (!e && b->native_rx)
+  if (!e && !bulk && b->native_rx)
     e = translate(
         hal_parlio_rx(b->native, rx, cap, &actual, end, cancelled, b));
-  else if (!e) {
+  else if (!e&&!bulk) {
     /* Explicit hybrid mode: transmit DMA, GPIO-controlled finite receive. */
     for (size_t j = 0; !e && j < cap; j++) {
       e = pause(b, end, 100);
@@ -231,7 +291,27 @@ static uint64_t now(void *p) {
   (void)p;
   return hal_time_now_us();
 }
-const fpga_wire_ops_t fpga_parallel_wire_ops = {exchange, now, cancelled};
+const fpga_wire_ops_t fpga_parallel_wire_ops = {exchange, now, cancelled,false};
+static int stream_exchange(void *p,const uint8_t *tx,size_t n,uint8_t *rx,
+                           size_t cap,size_t *received,uint64_t end) {
+  fpga_parallel_t *b=p;
+  if(!b||!b->stream||!received||!tx||!rx||n<8)return FPGA_LINK_INVALID;
+  *received=0;
+  if(cap==FPGA_WIRE_TILE_BYTES){
+    if((tx[1]&127)!=0x3b||!(tx[1]&128)||n!=8)return FPGA_LINK_UNSUPPORTED;
+    return exchange(p,tx,n,rx,cap,received,end);
+  }
+  /* Short replies remain the reference GPIO path. Normalize only bytes that
+   * the original strict finite validator actually accepted, never synthesize. */
+  if(cap!=8)return FPGA_LINK_UNSUPPORTED;
+  uint8_t raw[24],body[8];size_t count=0;unsigned offset=0;
+  int e=exchange(p,tx,n,raw,(tx[1]&128)?24:8,&count,end);
+  if(!e)e=fpga_wire_validate(tx,raw,count,body,8,&offset);
+  if(e){b->failed=true;if(!b->error)b->error=e;}
+  if(!e){memcpy(rx,body,8);*received=8;}
+  return e;
+}
+const fpga_wire_ops_t fpga_parallel_stream_wire_ops={stream_exchange,now,cancelled,true};
 static int begin(void *p, uint64_t t) {
   fpga_parallel_t *b = p;
   b->pending_length = 0;

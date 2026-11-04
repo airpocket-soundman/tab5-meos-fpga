@@ -38,12 +38,12 @@ foreach(feature BLUETOOTH FPGA_GFX FPGA_NPU FPGA_DIAG GFXBENCH)
 endforeach()
 set(M5OS_SRCS /repo/drivers/fpga/fpga_parallel.c /repo/user/fpga/fpga_parallel_app.c
     /repo/drivers/fpga/fpga_wire.c /repo/drivers/fpga/fpga_tile_test.c
-    /repo/drivers/fpga/fpga_surface.c /repo/hal/esp32p4/parlio_native.c
+    /repo/drivers/fpga/fpga_surface.c /repo/drivers/fpga/fpga_stream.c /repo/hal/esp32p4/parlio_native.c
     /repo/drivers/camera/camera_tab5.c /repo/user/micropython/mp_hal.c)
 @SOURCE_FILTER@
 list(LENGTH M5OS_SRCS source_count)
 if(PROFILE STREQUAL large_fpga)
-  if(NOT source_count EQUAL 8)
+  if(NOT source_count EQUAL 9)
     message(FATAL_ERROR "native sources unexpectedly excluded")
   endif()
 else()
