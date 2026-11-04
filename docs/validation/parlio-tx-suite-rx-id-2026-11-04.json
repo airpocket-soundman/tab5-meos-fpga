@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-04",
+  "baseline_usercode": "E368",
+  "checks": [
+    {
+      "command": "fpga --parlio dock-jumper-v0 500000 test --gpio-rx",
+      "result": {
+        "backend": "native-parlio",
+        "rx": "gpio",
+        "hz": 500000,
+        "result": "ok",
+        "sync_capable": true,
+        "tile_capable": false,
+        "batch_capable": false,
+        "test_transactions": 513,
+        "compared_pixels": 0,
+        "scenes_passed": 0,
+        "data": [
+          0,
+          255
+        ],
+        "tx_dma_completed": 514,
+        "rx_dma_completed": 0,
+        "tx_channel": 2,
+        "rx_channel": 2,
+        "phase_verified": true,
+        "parlio_raw": 4,
+        "dma_raw": 11,
+        "stage": "tx_complete",
+        "reset_required": false
+      }
+    },
+    {
+      "command": "fpga --parlio dock-jumper-v0 1000000 id",
+      "result": {
+        "backend": "native-parlio",
+        "rx": "finite-dma",
+        "hz": 1000000,
+        "result": "ok",
+        "sync_capable": true,
+        "tile_capable": false,
+        "batch_capable": false,
+        "test_transactions": 1,
+        "compared_pixels": 0,
+        "scenes_passed": 0,
+        "data": [
+          84,
+          80
+        ],
+        "tx_dma_completed": 2,
+        "rx_dma_completed": 1,
+        "tx_channel": 2,
+        "rx_channel": 2,
+        "phase_verified": true,
+        "parlio_raw": 0,
+        "dma_raw": 3,
+        "stage": "rx_complete",
+        "reset_required": false
+      }
+    }
+  ]
+}

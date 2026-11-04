@@ -74,7 +74,7 @@ FPGA側DDR3は明示的に転送する外部データ領域であり、通常の
 | ネイティブシェルからのGPIO操作 | `io`と`gpio`・`adc`・`pwm`・`i2c`・`spi`・`uart`コマンドを実装。ホスト試験・全体ビルド成功。実機の予約拒否、GPIO入力・解放、ADC生値、UART内部ループバックを確認。外部実測は未確認 | 外部機器・配線、ADC基準電圧、PWM波形とI2C／SPI／UART信号を検証 |
 | ADC・PWM・DAC | ADCは未校正の12ビット生値、PWMは専用タイマー／チャネル1組。汎用DACはSoCにないため対象外 | ADC基準電圧・PWM波形を外部測定。オーディオコーデックを汎用DACとは扱わない |
 | 外部I2C・SPI・UART | SoftI2Cは反復START・ACK／NACK・タイムアウト、SoftSPIはモード0〜3・8ビット全二重、UART1は8N1・FIFOポーリングを実装 | ソフト駆動の速度・間隔を外部測定。I2Cセンサー・SPI転送・UARTループバックを検証 |
-| FPGA描画・DDR3 | 本フォークでは未実装 | 上記「GUI化の段階と評価」に沿って実装 |
+| FPGA描画・DDR3 | 有限長DMAとGPU読み戻しをTX5MHz／RX8MHzまで確認。RX10MHzはデータ検証失敗、16／20MHzは未試験。併用経路のLCD表示を確認。DDR3は未確認 | 速度・継続負荷を検証し、DDR3領域管理とGUI統合へ進む |
 
 ### USB対応後のSSHサーバーと同時実行
 
@@ -233,4 +233,4 @@ Tang Primer 20K Coreを前提とし、FPGA・GUI・GPIO・通信・表示経路�
 
 ## 2026-10-26 実装記録
 
-[BMP画像表示](IMAGE_VIEWER.md)を追加。既存デコーダを使い縦横比を維持し、出力1行分の作業領域で描画します。JPEG/PNGは今後の検討項目です。[FPGA通信ソフトウェア基盤](FPGA_LINK.md)も追加しました。物理バス・DMA・DDR3接続の実装は未着手です。
+[BMP画像表示](IMAGE_VIEWER.md)を追加。既存デコーダを使い縦横比を維持し、出力1行分の作業領域で描画します。JPEG/PNGは今後の検討項目です。[FPGA通信ソフトウェア基盤](FPGA_LINK.md)も追加しました。物理LINKと有限長PARLIO／DMAの実機試験は完了。[ネイティブDMAの実装・検証範囲](docs/FPGA_PARLIO.md)を参照。DDR3接続とGUI統合は未実装です。

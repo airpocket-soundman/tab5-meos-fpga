@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-04",
+  "sha256": "442600f10942af49e1bd03e6d3075db4f70185e6ca67da0cbdf2f7a1e5addb88",
+  "bytes": 1175584,
+  "modules": "fpga_parlio,fpga_gfx",
+  "gate": "ON",
+  "internal_valid_gpio": 17,
+  "dip1": "ARM per user preference",
+  "fpga_usercode": "E368"
+}

@@ -9,11 +9,11 @@ An experimental MeOS fork for a graphical M5Stack Tab5 environment with FPGA-ass
 
 BMP shell viewing is available with `image FILE.bmp` and `image --info FILE.bmp`; see [scope and validation](docs/IMAGE_VIEWER.md). FPGA protocol/mock diagnostics are implemented; [physical LINK validation scope](docs/FPGA_LINK.md).
 
-Physical low-speed LINK to the official Dock passed ID, eight walking bits and a 513-exchange echo/inversion suite after correcting a cable connection. DDR3/DMA/high-speed/GFX hardware remain pending; see [physical LINK results](docs/FPGA_LINK.md).
+Physical low-speed LINK passed after cable correction. Native PARLIO/AXI DMA then passed at1MHz and5MHz: identity,513 LINK transactions, six TILE scenes/12288 words and three64-record batches/6144 words per rate. The E368 image supports TILE/batch; legacy GFX commands require a different image. A subsequent build passed TX5MHz/RX8MHz; RX10MHz failed the first echo after identity, and16/20MHz were not attempted. DDR3, sustained load and GUI integration remain pending. See [native transport and hardware scope](docs/FPGA_PARLIO.md).
 
 ## Current status
 
-Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard command input and USB card-reader mounting/listing also passed limited checks. `lsusb` shows native USB topology and mounts; see [diagnostics](docs/USB_DIAGNOSTICS.md) and [USB implementation](docs/USB_IMPLEMENTATION.md). Sustained input under load, high-speed mixed-speed hubs, higher-speed FPGA communication, GUI extensions and full peripheral regression remain unverified.
+Baseline and size-optimized firmware built and flashed; boot and serial shell verified on Tab5. microSD and two USB drives (exFAT/FAT) through a full-speed hub passed write/read/persistence tests. Hub keyboard command input and USB card-reader mounting/listing also passed limited checks. `lsusb` shows native USB topology and mounts; see [diagnostics](docs/USB_DIAGNOSTICS.md) and [USB implementation](docs/USB_IMPLEMENTATION.md). Sustained input under load, high-speed mixed-speed hubs, FPGA RX rates above8MHz, GUI extensions and full peripheral regression remain unverified.
 
 USB Ethernet (RTL8153 CDC-ECM) passed link, DHCP, ping and SSH tests. The SSH server and client ran concurrently on hardware. Console ANSI/DEC extensions passed host tests; touch is being rechecked after adding ST7123/ST7121 input. USB storage reads and writes now pass alongside Ethernet ping without packet loss in the tested runs. C6 was updated to the official MCU application. Wi-Fi initialization, scanning, WPA2 association, DHCP, DNS and HTTP traffic passed on hardware with Ethernet unplugged. See [Ethernet](docs/USB_ETHERNET_IMPLEMENTATION.md), [SSH server](docs/SSH_SERVER_IMPLEMENTATION.md) and [terminal](docs/TERMINAL_IMPLEMENTATION.md) implementation records.
 
@@ -21,7 +21,7 @@ Native SL completed on hardware serial, including ANSI screen restoration and Ct
 
 ## Planned work
 
-- FPGA communication, DDR3 buffers, rectangle fills, image copies and GUI integration.
+- Extend native FPGA communication; add DDR3 buffers, rectangle fills, image copies and GUI integration.
 - Shared local/SSH terminal: VT100 baseline, required VT220 features and xterm extensions, key input and scrollback.
 - USB UVC cameras; hardware validation and fixes for the existing Tab5 built-in camera driver.
 - USB mouse, touch integration including ST7123, and BLE keyboard/mouse support after feasibility checks.

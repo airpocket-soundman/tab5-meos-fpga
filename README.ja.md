@@ -9,11 +9,11 @@ FPGAによる描画支援を組み込んだ、M5Stack Tab5向けMeOSのGUI環境
 
 `image FILE.bmp` / `image --info FILE.bmp` によるBMP表示・情報取得を追加しました。[対応範囲と検証](docs/IMAGE_VIEWER.md)。FPGA通信のコーデック・mock診断も追加済みですが、[低速実通信の検証範囲](docs/FPGA_LINK.md)です。
 
-公式Dockとの低速LINK実通信で、ID・8bit walking-bit・513通信のecho/反転試験が成功しました。ケーブル修正後の確認です。DDR3・DMA・高速転送・GFX実機試験は未実施です。[実通信記録](docs/FPGA_LINK.md)。
+公式Dockとの低速LINKに加え、ネイティブPARLIO／AXI DMAの送受信を1MHz・5MHzで実機確認。各速度でID、513通信、TILE 6シーン／12288語、64レコードのバッチ3回／6144語が成功しました。E368はTILE／batch対応で、旧GFXコマンドには別イメージが必要です。後続ビルドでTX5MHz／RX8MHzも成功。RX10MHzはID後の最初のechoで検証失敗し、16／20MHzは未試験です。DDR3・長時間負荷・GUI統合は未確認。[実装と実機検証範囲](docs/FPGA_PARLIO.md)を参照。
 
 ## 現在の状態
 
-基準版とサイズ最適化版のビルド・書き込み、Tab5の起動とシリアルシェルを確認済みです。microSDと、Full-Speedハブ経由のUSBメモリ2台（exFAT・FAT）で読み書き・再起動後保持を確認しました。ハブ配下キーボードのコマンド入力とUSBカードリーダーのマウント・一覧取得も確認。`lsusb`で接続とマウント先を表示できます。[接続診断](docs/USB_DIAGNOSTICS.md)、[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照してください。入力中の長時間負荷、High-Speed異速度混在、FPGA高速通信、GUI拡張、周辺機能全体の回帰は未検証です。
+基準版とサイズ最適化版のビルド・書き込み、Tab5の起動とシリアルシェルを確認済みです。microSDと、Full-Speedハブ経由のUSBメモリ2台（exFAT・FAT）で読み書き・再起動後保持を確認しました。ハブ配下キーボードのコマンド入力とUSBカードリーダーのマウント・一覧取得も確認。`lsusb`で接続とマウント先を表示できます。[接続診断](docs/USB_DIAGNOSTICS.md)、[USB実装記録](docs/USB_IMPLEMENTATION.md)を参照してください。入力中の長時間負荷、High-Speed異速度混在、8MHzを超えるFPGA RX通信、GUI拡張、周辺機能全体の回帰は未検証です。
 
 USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSHサーバー／クライアントの同時利用を実機確認しました。端末制御の拡張はホスト試験済み。タッチはST7123/ST7121入力を追加して再検証中です。USBストレージの読み書きとEthernet pingの併用試験ではパケット損失がなくなりました。C6は公式MCUアプリへ更新し、Wi-Fi初期化・検索・WPA2接続・DHCPを確認しました。Ethernetを外した状態でDNS・HTTP通信も実機確認済みです。[Ethernet](docs/USB_ETHERNET_IMPLEMENTATION.md)、[SSHサーバー](docs/SSH_SERVER_IMPLEMENTATION.md)、[端末機能](docs/TERMINAL_IMPLEMENTATION.md)の実装記録を参照してください。
 
@@ -21,7 +21,7 @@ USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSH
 
 ## 実装予定
 
-- FPGA通信、DDR3バッファ、矩形塗りつぶし・画像コピー、GUI統合。
+- FPGA通信の拡張、DDR3バッファ、矩形塗りつぶし・画像コピー、GUI統合。
 - ローカル／SSH端末の共通化、VT100を基礎とするVT220の必要機能・xterm拡張、キー入力、スクロールバック。
 - USB UVCカメラ対応。Tab5内蔵カメラの既存ドライバを実機検証し、不足を修正。
 - USBマウス、ST7123を含むタッチ統合、実現性を調査した上でのBLEキーボード・マウス。

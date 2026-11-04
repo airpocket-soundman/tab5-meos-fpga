@@ -1,0 +1,51 @@
+{
+  "date": "2026-11-04",
+  "command": "fpga --parlio dock-jumper-v0 500000 tile-demo --gpio-rx",
+  "results": [
+    {
+      "backend": "native-parlio",
+      "rx": "gpio",
+      "hz": 500000,
+      "result": "ok",
+      "sync_capable": true,
+      "tile_capable": true,
+      "batch_capable": false,
+      "test_transactions": 0,
+      "compared_pixels": 0,
+      "scenes_passed": 0,
+      "data": [
+        0,
+        0
+      ],
+      "tx_dma_completed": 61,
+      "rx_dma_completed": 0,
+      "tx_channel": 2,
+      "rx_channel": 2,
+      "phase_verified": true,
+      "parlio_raw": 4,
+      "dma_raw": 11,
+      "stage": "tx_complete",
+      "reset_required": false,
+      "last_rx_bytes": 0,
+      "rx_phase_verified": false,
+      "quarantined": false
+    },
+    {
+      "gpu_tile_test": true,
+      "result": "ok",
+      "scenes": 6,
+      "pixels": 12288,
+      "scene": 5,
+      "plane": 1,
+      "pixel": 1023,
+      "expected": 0,
+      "received": 0,
+      "image_valid": true,
+      "mandelbrot_cycles": 15919,
+      "julia_cycles": 50155,
+      "elapsed_us": 8429078
+    }
+  ],
+  "display_started": true,
+  "visual_inspection": false
+}

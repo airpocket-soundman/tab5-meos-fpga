@@ -1,0 +1,75 @@
+{
+  "date": "2026-11-04",
+  "scope": "native MeOS PARLIO host and canonical GPU diagnostics",
+  "carrier_revision": "53c023929b4f8cf42a6e02725160c0f0015dd162",
+  "reference_host_revision": "7a4f83e85978ce2c9a94dc3df0322636d7a7b355",
+  "fpga_sram_sha256": "85bac22420a81bbaaef26a2edff81a3deb0e2bb114a97f106c1deede8062d717",
+  "fpga_usercode": "E368",
+  "firmware": {
+    "sha256": "290d245feb56233a27da3e1e422edd416fcd7bdef59d5d5dbc6da4d36562ba73",
+    "bytes": 1178128
+  },
+  "build": {
+    "sdk": "ESP-IDF 5.4.4",
+    "modules": [
+      "fpga_parlio",
+      "fpga_gfx"
+    ],
+    "electrical_review_gate": true,
+    "full_feature_profile": false
+  },
+  "host_checks_passed": [
+    "canonical wire:4515 independent vectors and source hashes",
+    "tile:6 independently generated color/depth scenes, corruption and strict errors",
+    "batch:counts1..64 tagged/untagged, maximum1290-byte requests",
+    "legacy GFX:1442 oracle vectors,22 scenes and display failures",
+    "native RX:8 clock rates x4 lengths and fault/preemption model",
+    "ETM:exclusive resources,1-based status,EOF proof,late event isolation",
+    "parallel transport:ownership,tagged legacy,errors,cancel,quarantine",
+    "parallel CLI:RX options,LCD/close failure authority and cleanup",
+    "IO services:protected dead-task pin leases; I2C/SPI/ADC/PWM/UART regressions"
+  ],
+  "audit_fixes": [
+    "GPIO17 explicit CPU output enable",
+    "ETM event/task status uses id-1",
+    "Hardware EOF closes VALID independent of CPU scheduling",
+    "Dead-task reaper cannot release protected PARLIO pins",
+    "HAL close must prove quiescence before IO release",
+    "Final JSON reflects display submission/close errors",
+    "Zero LCD framebuffer cannot report display success"
+  ],
+  "hardware_evidence": [
+    "parlio-etm-indexfix-1mhz-2026-11-04.json",
+    "parlio-etm-5mhz-2026-11-04.json",
+    "parlio-split-rates-2026-11-04.json",
+    "parlio-final-lcd-memory-2026-11-04.json"
+  ],
+  "limitations": [
+    "10MHz RX failed payload comparison;16/20MHz not attempted",
+    "Legacy GFX_ENABLE1 protocol is not supported by E368 tile engine; tagged unsupported currently classified data",
+    "Forced task termination quarantines resources until proven-safe teardown or reboot",
+    "Public IDF DMA/ETM allocator coexistence requires a common broker",
+    "Continuous ring DMA, sustained load, power-off isolation, DDR3 and GUI integration unverified",
+    "Firmware is a minimal FPGA diagnostic profile, not the full feature profile"
+  ],
+  "next_instructions": [
+    "Use TX5MHz/RX8MHz or lower tested clocks for current Dock wiring",
+    "Keep GPIO17 exclusive/unwired and preserve fixed Dock pin assignment",
+    "Do not claim accepted divider settings as verified clocks",
+    "Before increasing clocks capture actual failed response/offset/CRC and compare finite RX phase/gating with reference continuous ring implementation",
+    "Do not mask FIFO errors or substitute CPU-generated pixels",
+    "Integrate through existing display service and validate memory/cleanup before full GUI work"
+  ],
+  "lcd_memory_check": {
+    "actual_fpga_readback_submitted": true,
+    "viewer_closed": true,
+    "internal_used_before_and_after": 94416,
+    "psram_used_before_and_after": 8588864,
+    "internal_peak": 98528,
+    "psram_peak": 8597664,
+    "allocation_failures": 0,
+    "display_errors": 0,
+    "display_timeouts": 0,
+    "visual_quality_review": false
+  }
+}

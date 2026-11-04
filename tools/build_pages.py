@@ -32,7 +32,7 @@ EN_STATUS = [
     ('Python GPIO', PROGRESS_BY_ID['micropython-peripherals']['detail']['en'], 'Verify physical output/bus behavior; add IRQ separately.'),
     ('Shell GPIO / external IO', PROGRESS_BY_ID['external-io']['detail']['en'], 'Device reserved-pin/GPIO/ADC/internal-UART checks passed; validate external wiring, sensors, waveforms and loopback.'),
     ('ADC / PWM / DAC', 'Uncalibrated raw12-bit ADC; PWM uses one dedicated timer/channel; no general-purpose DAC on ESP32-P4', 'Measure reference voltages and PWM waveforms; audio codec is not a general voltage-output DAC.'),
-    ('FPGA / DDR3', 'Not implemented in this fork', 'Transport, buffers, drawing primitives and GUI integration.'),
+    ('FPGA / DDR3', PROGRESS_BY_ID['fpga-link-mock']['detail']['en'], 'Validate sustained load and higher rates; implement DDR3 ownership and GUI integration.'),
 ]
 
 def inline(s):
@@ -193,7 +193,7 @@ def progress_html(lang):
               'en': {'verified':'Complete: core hardware checks passed','regression':'Implemented: regression checks pending','host-tested':'Partly implemented: host tests passed','active':'Implementation / device validation','planned':'Not started'}}[lang]
     title = '開発順序と進捗' if lang == 'ja' else 'Development order and progress'
     note = '完了は記載した基本機能の実機確認を指します。長時間試験や追加機能は残件として区別します。実装後に転送方式を変更したUSBは、回帰確認待ちとして表示します。' if lang == 'ja' else 'Complete means the documented core hardware checks passed. Stress tests and additional features remain separate follow-ups. USB features affected by the transfer-engine change are marked as awaiting regression checks.'
-    rows = ''.join('<li class="stage '+x['status']+'"><div><strong>'+escape(x['title'][lang])+'</strong><span class="status">'+labels[x['status']]+'</span></div><p>'+escape(x['detail'][lang])+'</p></li>' for x in progress['items'])
+    rows = ''.join('<li class="stage '+x['status']+'"><div><strong>'+escape(x['title'][lang])+'</strong><span class="status">'+labels[x['status']]+'</span></div><p>'+inline(x['detail'][lang]).replace('href="docs/', 'href="https://github.com/airpocket-soundman/tab5-meos-fpga/blob/main/docs/')+'</p></li>' for x in progress['items'])
     checked = sum(x['status'] == 'verified' for x in progress['items'])
     regression = sum(x['status'] == 'regression' for x in progress['items'])
     host = sum(x['status'] == 'host-tested' for x in progress['items'])
@@ -225,7 +225,7 @@ for ja in (False, True):
     lang='ja' if ja else 'en'
     title='Tab5 MeOS FPGA 開発計画' if ja else 'Tab5 MeOS FPGA Development Plan'
     subtitle='M5Stack Tab5上のMeOSに、Tang Primer 20Kによる描画処理と外部DDR3バッファを追加する計画です。実装状況、構成、検証項目を記載します。' if ja else 'Plan to add Tang Primer 20K rendering operations and external DDR3 buffers to MeOS on M5Stack Tab5. This document describes implementation status, architecture and validation requirements.'
-    notice='基準ファーム、浮動小数点コンテキスト、microSD、USB Ethernet、Wi-Fi、SSH同時動作、タッチスクロール、内蔵カメラの基本機能を実機確認済みです。USBストレージの新転送方式での回帰試験は残件です。USBカメラとBluetooth入力は一部動作を確認し検証を継続中、FPGA・GUI拡張は今後の計画です。' if ja else 'Core hardware checks passed for baseline firmware, FP context, microSD, USB Ethernet, Wi-Fi, concurrent SSH, touch scrolling and the built-in camera. USB storage regression on the new transfer engine remains pending. USB cameras and Bluetooth passed limited checks; full input/video validation remains pending. FPGA and GUI extensions are planned.'
+    notice='基準ファーム、浮動小数点コンテキスト、microSD、USB Ethernet、Wi-Fi、SSH同時動作、タッチスクロール、内蔵カメラの基本機能を実機確認済みです。USBストレージの新転送方式での回帰試験は残件です。USBカメラとBluetooth入力は一部動作を確認し検証を継続中、FPGAの有限長DMAはTX5MHz／RX8MHzまでのLINK／GPU試験を確認済みです。RX10MHzではデータ検証に失敗しました。DDR3・GUI統合は今後の計画です。' if ja else 'Core hardware checks passed for baseline firmware, FP context, microSD, USB Ethernet, Wi-Fi, concurrent SSH, touch scrolling and the built-in camera. USB storage regression on the new transfer engine remains pending. USB cameras and Bluetooth passed limited checks; full input/video validation remains pending. Native FPGA DMA passed bounded LINK/GPU tests through TX5MHz/RX8MHz. RX10MHz failed data validation. DDR3 and GUI integration remain planned.'
     prefix='../' if ja else './'
     body=markdown(plan) if ja else '<h2>Feature status & planned work</h2>'+table(EN_STATUS,['Area','Current source status','Planned work'])+markdown(en_details)
     # Source Markdown links resolve from GitHub, not from the deployed site.

@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-04",
+  "firmware_sha256": "fcb8890706b093c5f36b5c1e09ddb0809202a2863a3ba223a5cc20364c74a253",
+  "checks": [
+    {
+      "command": "fpga --parlio dock-jumper-v0 1000000 id",
+      "results": [
+        {
+          "backend": "native-parlio",
+          "rx": "finite-dma",
+          "hz": 1000000,
+          "result": "io",
+          "sync_capable": true,
+          "tile_capable": false,
+          "batch_capable": false,
+          "test_transactions": 0,
+          "compared_pixels": 0,
+          "scenes_passed": 0,
+          "data": [
+            0,
+            0
+          ],
+          "tx_dma_completed": 2,
+          "rx_dma_completed": 0,
+          "tx_channel": 2,
+          "rx_channel": 2,
+          "phase_verified": true,
+          "parlio_raw": 0,
+          "dma_raw": 3,
+          "stage": "rx_eof_gate_unproven",
+          "reset_required": true,
+          "last_rx_bytes": 24,
+          "rx_phase_verified": true,
+          "quarantined": false,
+          "gate_gpio": 17,
+          "etm_channel": 49,
+          "gpio_task_channel": 7,
+          "rx_gate_verified": true,
+          "rx_gate_closed": false,
+          "gate_event_seen": false,
+          "gate_task_seen": false,
+          "gate_ready_mask": 2047,
+          "gate_gpio_enable": 4439808,
+          "gate_gpio_mux": 1280,
+          "gate_gpio_task": 3840,
+          "gate_etm_event": 199,
+          "gate_etm_task": 16
+        }
+      ]
+    }
+  ]
+}

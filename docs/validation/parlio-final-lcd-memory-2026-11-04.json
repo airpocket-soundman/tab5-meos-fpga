@@ -1,0 +1,133 @@
+{
+  "date": "2026-11-04",
+  "firmware_sha256": "290d245feb56233a27da3e1e422edd416fcd7bdef59d5d5dbc6da4d36562ba73",
+  "firmware_bytes": 1178128,
+  "checks": [
+    {
+      "command": "mem --json",
+      "results": [
+        {
+          "schema": 1,
+          "units": "bytes",
+          "internal": {
+            "total": 196608,
+            "used": 94416,
+            "free": 102192,
+            "largest": 98064,
+            "peak": 98528,
+            "alloc_count": 12,
+            "fail_count": 0
+          },
+          "psram": {
+            "total": 29360128,
+            "used": 8588864,
+            "free": 20771264,
+            "largest": 20771248,
+            "peak": 8588864,
+            "alloc_count": 7,
+            "fail_count": 0
+          }
+        }
+      ],
+      "viewer_closed": false
+    },
+    {
+      "command": "fpga --parlio dock-jumper-v0 5000000 tile-demo --rx-hz 8000000",
+      "results": [
+        {
+          "backend": "native-parlio",
+          "rx": "finite-dma",
+          "hz": 5000000,
+          "rx_hz": 8000000,
+          "lcd_submitted": true,
+          "result": "ok",
+          "sync_capable": true,
+          "tile_capable": true,
+          "batch_capable": false,
+          "test_transactions": 0,
+          "compared_pixels": 0,
+          "scenes_passed": 0,
+          "data": [
+            0,
+            0
+          ],
+          "tx_dma_completed": 61,
+          "rx_dma_completed": 60,
+          "tx_channel": 2,
+          "rx_channel": 2,
+          "phase_verified": true,
+          "parlio_raw": 0,
+          "dma_raw": 3,
+          "stage": "rx_complete",
+          "reset_required": false,
+          "last_rx_bytes": 2074,
+          "rx_phase_verified": true,
+          "quarantined": false,
+          "gate_gpio": 17,
+          "etm_channel": 49,
+          "gpio_task_channel": 7,
+          "rx_gate_verified": true,
+          "rx_gate_closed": true,
+          "gate_event_seen": true,
+          "gate_task_seen": true,
+          "gate_ready_mask": 2047,
+          "gate_gpio_enable": 4439808,
+          "gate_gpio_mux": 1280,
+          "gate_gpio_task": 3840,
+          "gate_etm_event": 199,
+          "gate_etm_task": 16
+        },
+        {
+          "gpu_tile_test": true,
+          "result": "ok",
+          "scenes": 6,
+          "pixels": 12288,
+          "scene": 5,
+          "plane": 1,
+          "pixel": 1023,
+          "expected": 0,
+          "received": 0,
+          "image_valid": true,
+          "mandelbrot_cycles": 15919,
+          "julia_cycles": 50155,
+          "elapsed_us": 108829
+        }
+      ],
+      "viewer_closed": true
+    },
+    {
+      "command": "mem --json",
+      "results": [
+        {
+          "schema": 1,
+          "units": "bytes",
+          "internal": {
+            "total": 196608,
+            "used": 94416,
+            "free": 102192,
+            "largest": 98064,
+            "peak": 98528,
+            "alloc_count": 13,
+            "fail_count": 0
+          },
+          "psram": {
+            "total": 29360128,
+            "used": 8588864,
+            "free": 20771264,
+            "largest": 20771248,
+            "peak": 8597664,
+            "alloc_count": 9,
+            "fail_count": 0
+          }
+        }
+      ],
+      "viewer_closed": false
+    },
+    {
+      "command": "displaystatus",
+      "output": [
+        "display: buffers=2 refreshes=1751 batches=3 submitted=3 retired=3 errors=0 timeouts=0 max_us=295874 back=1 active=0"
+      ]
+    }
+  ]
+}

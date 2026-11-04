@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-03",
+  "updated": "2026-11-04",
   "items": [
     {
       "id": "baseline",
@@ -221,12 +221,12 @@
       "id": "fpga-link-mock",
       "status": "verified",
       "title": {
-        "ja": "FPGA低速LINK：実通信",
-        "en": "FPGA low-speed LINK: physical communication"
+        "en": "FPGA LINK / native DMA / GPU checks",
+        "ja": "FPGA LINK・ネイティブDMA・GPU試験"
       },
       "detail": {
-        "ja": "公式Dockとの実通信でID・8bit walking-bit・全0/全1・ID＋全256値echo/反転（513通信）がCRC一致で成功。ケーブル差し間違い修正後に確認。ビットバング最大5kHzの限定試験。DDR3・DMA・高速/長時間負荷は未確認。",
-        "en": "Official Dock physical ID, eight walking bits, all-zero/all-one and 513 exchanges (ID + 256 echo/invert pairs) passed CRC after cable correction. Limited bitbang trial, max 5kHz; DDR3, DMA, high-speed and sustained-load checks pending."
+        "en": "Low-speed GPIO LINK passed after cable correction. Native PARLIO/AXI DMA passed at1MHz and5MHz: identity,513 LINK transactions, six tile scenes/12288 words and three64-record batches/6144 words per rate. Finite RX uses an ETM-controlled internal VALID gate on GPIO17. Hybrid TX-DMA/GPIO-RX also passed six scenes and LCD readback presentation. The E368 image supports TILE/batch; legacy gpu-test/gpu-verify commands require a different GFX image. A subsequent split-rate build passed the same suites with TX5MHz/RX5MHz and TX5MHz/RX8MHz. At RX10MHz identity passed but the first echo failed data validation; testing stopped without trying16/20MHz. Sustained load, DDR3 and GUI integration remain unverified. See [implementation and evidence](docs/FPGA_PARLIO.md).",
+        "ja": "低速GPIO LINKに加え、PARLIO／AXI DMAの送受信を1MHz・5MHzで実機確認。各速度でID、513通信、タイル6シーン／12288語、64レコードのバッチ3回／6144語が成功。有限長RXはGPIO17の内部VALIDをETMで自動停止します。TX DMA／GPIO RXの併用経路も6シーンとLCD読み戻し表示を確認。E368はTILE／batch対応で、旧gpu-test／gpu-verifyには別のGFXイメージが必要。後続の速度分離ビルドでTX5MHz／RX5MHzとTX5MHz／RX8MHzも同じ試験に成功。RX10MHzはID成功後の最初のechoでデータ検証に失敗し、16／20MHzは試さず停止。長時間負荷、DDR3、GUI統合は未確認。[実装・証拠](docs/FPGA_PARLIO.md)を参照。"
       }
     },
     {

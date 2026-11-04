@@ -1,0 +1,68 @@
+{
+  "date": "2026-11-04",
+  "fpga_usercode": "E368",
+  "fpga_fs_sha256": "85bac22420a81bbaaef26a2edff81a3deb0e2bb114a97f106c1deede8062d717",
+  "dip1": "user-authorized ARM retained",
+  "checks": [
+    {
+      "command": "fpga status",
+      "records": []
+    },
+    {
+      "command": "displaystatus",
+      "records": [],
+      "display": "display: buffers=2 refreshes=1688 batches=3 submitted=3 retired=3 errors=0 timeouts=0 max_us=291346 back=1 active=0"
+    },
+    {
+      "command": "fpga --dock dock-jumper-v0 id",
+      "records": [
+        {
+          "backend": "dock-gpio",
+          "profile": "dock-jumper-v0",
+          "result": "ok",
+          "transactions": 1,
+          "data": [
+            84,
+            80
+          ],
+          "reset_required": false,
+          "sent": 8,
+          "received": 8,
+          "request_hex": "a501000200000868",
+          "response_hex": "5a0000025450680e",
+          "elapsed_us": 5324
+        }
+      ]
+    },
+    {
+      "command": "fpga --parlio dock-jumper-v0 500000 id --gpio-rx",
+      "records": [
+        {
+          "backend": "native-parlio",
+          "rx": "gpio",
+          "hz": 500000,
+          "result": "ok",
+          "sync_capable": true,
+          "tile_capable": false,
+          "batch_capable": false,
+          "test_transactions": 1,
+          "compared_pixels": 0,
+          "scenes_passed": 0,
+          "data": [
+            84,
+            80
+          ],
+          "tx_dma_completed": 2,
+          "rx_dma_completed": 0,
+          "tx_channel": 2,
+          "rx_channel": 2,
+          "phase_verified": true,
+          "parlio_raw": 4,
+          "dma_raw": 11,
+          "stage": "tx_complete",
+          "reset_required": false
+        }
+      ]
+    }
+  ]
+}

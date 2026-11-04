@@ -1,0 +1,66 @@
+{
+  "date": "2026-11-04",
+  "hz": 1000000,
+  "checks": [
+    {
+      "command": "fpga --parlio dock-jumper-v0 1000000 caps",
+      "results": [
+        {
+          "backend": "native-parlio",
+          "rx": "finite-dma",
+          "hz": 1000000,
+          "result": "ok",
+          "sync_capable": true,
+          "tile_capable": true,
+          "batch_capable": true,
+          "test_transactions": 0,
+          "compared_pixels": 0,
+          "scenes_passed": 0,
+          "data": [
+            0,
+            0
+          ],
+          "tx_dma_completed": 3,
+          "rx_dma_completed": 0,
+          "tx_channel": 2,
+          "rx_channel": 2,
+          "phase_verified": true,
+          "parlio_raw": 4,
+          "dma_raw": 11,
+          "stage": "tx_complete",
+          "reset_required": false
+        }
+      ]
+    },
+    {
+      "command": "fpga --parlio dock-jumper-v0 1000000 test",
+      "results": [
+        {
+          "backend": "native-parlio",
+          "rx": "finite-dma",
+          "hz": 1000000,
+          "result": "io",
+          "sync_capable": true,
+          "tile_capable": false,
+          "batch_capable": false,
+          "test_transactions": 123,
+          "compared_pixels": 0,
+          "scenes_passed": 0,
+          "data": [
+            195,
+            60
+          ],
+          "tx_dma_completed": 125,
+          "rx_dma_completed": 123,
+          "tx_channel": 2,
+          "rx_channel": 2,
+          "phase_verified": true,
+          "parlio_raw": 0,
+          "dma_raw": 3,
+          "stage": "rx_eof",
+          "reset_required": true
+        }
+      ]
+    }
+  ]
+}

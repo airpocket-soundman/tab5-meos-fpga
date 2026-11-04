@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-04",
+  "command": "fpga --parlio dock-jumper-v0 1000000 test",
+  "firmware_sha256": "3de370b8222ebe17a937629366a8870b98cc716887f5df1db220dd2dad0a6bb8",
+  "results": [
+    {
+      "backend": "native-parlio",
+      "rx": "finite-dma",
+      "hz": 1000000,
+      "result": "io",
+      "sync_capable": true,
+      "tile_capable": false,
+      "batch_capable": false,
+      "test_transactions": 147,
+      "compared_pixels": 0,
+      "scenes_passed": 0,
+      "data": [
+        183,
+        72
+      ],
+      "tx_dma_completed": 149,
+      "rx_dma_completed": 147,
+      "tx_channel": 2,
+      "rx_channel": 2,
+      "phase_verified": true,
+      "parlio_raw": 2,
+      "dma_raw": 3,
+      "stage": "rx_fifo_overflow",
+      "reset_required": true,
+      "last_rx_bytes": 24,
+      "rx_phase_verified": true,
+      "quarantined": false
+    }
+  ],
+  "automatic_retry": false
+}
