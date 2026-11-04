@@ -3136,9 +3136,9 @@ void tailscale_app_main(void)
                         }
 
                         if (p->wg_established) {
-                            ksnprintf(st_s, sizeof(st_s), "WG TUNNEL (TX:%u RX:%u)", p->tx_packets, p->rx_packets);
+                            ksnprintf(st_s, sizeof(st_s), "WG TUNNEL (TX:%u RX:%u)", (unsigned)p->tx_packets, (unsigned)p->rx_packets);
                         } else if (p->last_rtt_ms > 0) {
-                            ksnprintf(st_s, sizeof(st_s), "DIRECT (%u ms)", p->last_rtt_ms);
+                            ksnprintf(st_s, sizeof(st_s), "DIRECT (%u ms)", (unsigned)p->last_rtt_ms);
                         } else if (p->online) {
                             str_copy(st_s, sizeof(st_s), "ONLINE");
                         } else {
