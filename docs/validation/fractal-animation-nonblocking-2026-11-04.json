@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-04",
+  "firmware": {
+    "sha256": "6c41bd04b8d4196d4b054190d5a0be8fc31458cc0428ec34a6d3b46ea9d99425",
+    "bytes": 1189568,
+    "native_m5ex": true,
+    "pmp_idram_split": false
+  },
+  "checks": [
+    {
+      "command": "mem --json",
+      "results": [
+        {
+          "schema": 1,
+          "units": "bytes",
+          "internal": {
+            "total": 196608,
+            "used": 94416,
+            "free": 102192,
+            "largest": 98064,
+            "peak": 147120,
+            "alloc_count": 41,
+            "fail_count": 0
+          },
+          "psram": {
+            "total": 29360128,
+            "used": 8588864,
+            "free": 20771264,
+            "largest": 20771248,
+            "peak": 8594672,
+            "alloc_count": 19,
+            "fail_count": 0
+          }
+        }
+      ],
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":94416,\"free\":102192,\"largest\":98064,\"peak\":147120,\"alloc_count\":41,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8594672,\"alloc_count\":19,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "put --ack /sd/fractal.m5ex",
+      "results": [],
+      "output": "put --ack /sd/fractal.m5ex\r\nput: ready\r\nput: ack 57\r\nput: ack 114\r\nput: ack 171\r\nput: ack 228\r\nput: ack 285\r\nput: ack 342\r\nput: ack 399\r\nput: ack 456\r\nput: ack 513\r\nput: ack 570\r\nput: ack 627\r\nput: ack 684\r\nput: ack 741\r\nput: ack 798\r\nput: ack 855\r\nput: ack 912\r\nput: ack 969\r\nput: ack 1026\r\nput: ack 1083\r\nput: ack 1140\r\nput: ack 1197\r\nput: ack 1254\r\nput: ack 1311\r\nput: ack 1368\r\nput: ack 1425\r\nput: ack 1482\r\nput: ack 1539\r\nput: ack 1596\r\nput: ack 1653\r\nput: ack 1710\r\nput: ack 1767\r\nput: ack 1824\r\nput: ack 1881\r\nput: ack 1938\r\nput: ack 1995\r\nput: ack 2052\r\nput: ack 2109\r\nput: ack 2166\r\nput: ack 2223\r\nput: ack 2280\r\nput: ack 2337\r\nput: ack 2394\r\nput: ack 2451\r\nput: ack 2508\r\nput: ack 2565\r\nput: ack 2622\r\nput: ack 2679\r\nput: ack 2736\r\nput: ack 2793\r\nput: ack 2850\r\nput: ack 2907\r\nput: ack 2964\r\nput: ack 3021\r\nput: ack 3078\r\nput: ack 3135\r\nput: ack 3192\r\nput: ack 3249\r\nput: ack 3306\r\nput: ack 3363\r\nput: ack 3420\r\nput: ack 3477\r\nput: ack 3534\r\nput: ack 3591\r\nput: ack 3648\r\nput: ack 3705\r\nput: ack 3762\r\nput: ack 3792\r\nput: wrote 3792 bytes, crc32 4a2141c7\r\n> "
+    },
+    {
+      "command": "automatic CPU Julia",
+      "results": [],
+      "output": "run /sd/fractal.m5ex\r\nstarted /sd/fractal.m5ex as app 3  (permissions CD-----)\r\n> "
+    }
+  ],
+  "app_sha256": "61437b788f552471669c99ff0f6803e0316f94fbdaeaa66ea8e99e233ed686c7",
+  "result": "failed",
+  "error": ""
+}

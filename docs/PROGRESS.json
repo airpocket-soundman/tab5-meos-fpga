@@ -237,8 +237,8 @@
         "en": "Standalone application: CPU/FPGA fractal"
       },
       "detail": {
-        "ja": "3264バイトのRISC-V M5EXをSDから起動し、C/G切替・Mandelbrot/Julia・両画像の1024画素比較・終了後回収を実機確認。32×32画素の拡大表示で、512×512画素計算やGUI全体の完成ではない。CPU計算2～7ms、FPGA呼出しは通信込み約111msで現状は高速化を示さない。LCDエラー0、終了後の内部RAM/PSRAM使用量は開始前と一致。[仕様・実機ログ](docs/FRACTAL_APP.md)。",
-        "en": "A 3264-byte RISC-V M5EX loaded from SD passed CPU/FPGA switching, Mandelbrot/Julia, both 1024-pixel comparisons and exit cleanup on hardware. It upscales a 32x32 tile, not 512x512 computation or a complete GUI. CPU calculation took 2–7ms; FPGA calls including transport took about 111ms, so no speedup is claimed. LCD errors were zero and post-exit internal/PSRAM use matched baseline. [Scope and hardware record](docs/FRACTAL_APP.md)."
+        "ja": "3264バイトのRISC-V M5EXをSDから起動し、C/G切替・Mandelbrot/Julia・両画像の1024画素比較・終了後回収を実機確認。32×32画素の拡大表示で、512×512画素計算やGUI全体の完成ではない。CPU計算2～7ms、FPGA呼出しは通信込み約111msで現状は高速化を示さない。LCDエラー0、終了後の内部RAM/PSRAM使用量は開始前と一致。[仕様・実機ログ](docs/FRACTAL_APP.md)。 自動更新・一時停止・FPSと実解像度32/64/128/256（標準128）を追加。全解像度で全画素一致を確認しましたが、GPU単独128モードの確認で期待する状態を取得できず、連続再生は未確認。ユーザー指示で開発停止。",
+        "en": "A 3264-byte RISC-V M5EX loaded from SD passed CPU/FPGA switching, Mandelbrot/Julia, both 1024-pixel comparisons and exit cleanup on hardware. It upscales a 32x32 tile, not 512x512 computation or a complete GUI. CPU calculation took 2–7ms; FPGA calls including transport took about 111ms, so no speedup is claimed. LCD errors were zero and post-exit internal/PSRAM use matched baseline. [Scope and hardware record](docs/FRACTAL_APP.md). Animated revision adds pause/FPS and true32/64/128/256 resolution(default128). All four full-frame CPU/FPGA comparisons passed; the GPU-only128 mode test did not yield the expected state, so continuous high-res GPU playback remains unqualified. Work stopped at user request."
       }
     },
     {

@@ -1,4 +1,48 @@
-# Standalone CPU/FPGA fractal application
+# Standalone animated CPU/FPGA fractal application
+
+## Current revision and stop status — 2026-11-04
+
+The SD application now starts CPU Julia animation at a true128x128 resolution.
+R cycles32/64/128/256; Space or A pauses/resumes. C/G selects CPU/FPGA,
+M/J selects the scene, V compares the complete frame, Q exits. Julia constants
+and the Mandelbrot viewport change with elapsed active time. FPS is measured,
+not a refresh-rate guarantee. A frame's time/parameters are frozen for all tiles
+and both engines. Cancelled partial frames are not presented.
+
+Higher resolutions combine actual32x32 tiles, not merely enlargement. Display
+remains up to512x512. The maximum caller workspace is280616 bytes (about274KiB),
+which goes to PSRAM because it exceeds the192KiB internal allocator pool. The
+kernel communication workspaces remain separate. High-resolution GPU calls
+are slower: the observed256x256 comparison used64 device calls and about7045ms
+of GPU-call time, versus118ms CPU calculation; LCD submission was154ms.
+
+Latest file:4612 bytes, image4548/code3604, stack4096, SHA256
+`833c64b5c6dfbf547aa2d1a174c399ad3bbfbc11b6c2ab82dc2a1f3ab337bfd2`.
+It is installed at `/sd/fractal.m5ex`; the OS firmware was not rewritten for
+these application changes.16 host scenarios passed, including independent
+global-pixel/tile mapping, pause/time behavior and cancellation before display.
+
+The [32x32 animation run](validation/fractal-animation-hardware-2026-11-04.json)
+passed CPU/GPU motion, pause/resume and comparisons, with RAM restored after
+exit. The [high-resolution run](validation/fractal-highres-hardware-2026-11-04.json)
+confirmed default128 animation, pause, resolution changes, and complete matching
+frames at32/64/128/256 (1024/4096/16384/65536 pixels). That run then **failed to
+obtain the expected GPU-only128 mode**: the next report remained CPU mode.
+The cause is unresolved; GPU-only high-resolution continuous playback and final
+high-resolution exit/memory checks are not qualified by that run. Development
+stopped at the user's request, without further changes or experiments.
+
+Input polling uses a10ms UART timeout. Infinite blocking prevented animation;
+a shared zero timeout starved the lower-priority app. Both failed attempts are
+retained as historical evidence. The focus lease restores the previous timeout.
+
+日本語：自動アニメーション、標準128x128画素、Rで32/64/128/256切り替え、
+Space/Aで一時停止・再開に対応しました。全解像度でCPU/FPGAの全画素一致を
+確認しましたが、高解像度GPU単独モードの切り替え確認は未解決です。
+ユーザーの停止指示で開発を止め、現在の状態を保存しています。
+
+## Historical static revision (the following scope is superseded above)
+
 
 `apps/m5ex/fractal.c` builds into a separately loaded RISC-V M5EX application for Tab5. It is not an embedded firmware image or a shell built-in. The application uses the existing M5EX API table and the `/dev/display`, `/dev/uart` and `/dev/fpga` device interfaces.
 
