@@ -45,9 +45,10 @@ jobs:
         env:
           M5OS_BOARD: ${{ matrix.board }}
         run: |
-          set -euo pipefail
+          set -eo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           . "$IDF_PATH/export.sh"
+          set -u
           idf.py -B build -DSDKCONFIG=sdkconfig.${{ matrix.board }} -DIDF_TARGET=${{ matrix.target }} -DM5OS_PROFILE=${{ matrix.profile }} -DM5OS_FPGA_DOCK_VERIFIED=OFF build
           cp sdkconfig.${{ matrix.board }} build/sdkconfig.used
           sha256sum build/m5os.bin build/bootloader/bootloader.bin build/partition_table/partition-table.bin > build/SHA256SUMS
