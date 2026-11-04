@@ -39,6 +39,8 @@ Resource comparisons from matched SDK/toolchain rebuilds, artifact hashes and ru
 
 See the [detailed development record (Japanese)](docs/DEVELOPMENT_GOALS.md), [public roadmap](https://airpocket-soundman.github.io/tab5-meos-fpga/) and [preserved upstream documentation](docs/UPSTREAM_README.md).
 
+The [upstream merge and PR plan (Japanese)](docs/UPSTREAM_INTEGRATION_PLAN.md) defines integration checks, feature boundaries, dependencies and configuration-file-controlled Tailscale startup.
+
 The upstream Tab5 build entry is `sh tools/build.sh tab5 build` with ESP-IDF v5.4.4. This fork has reproduced native-DMA Tab5 builds and hardware flashing with ESP-IDF v5.4.4.
 
 ## Related projects

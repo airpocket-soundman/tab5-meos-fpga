@@ -39,6 +39,8 @@ USB Ethernet（RTL8153 CDC-ECM）のリンク・DHCP・ping・SSH通信と、SSH
 
 [詳細な開発記録](docs/DEVELOPMENT_GOALS.md)、[公開ロードマップ](https://airpocket-soundman.github.io/tab5-meos-fpga/ja/)、[保存した上流README（英語）](docs/UPSTREAM_README.md)を参照してください。
 
+[上流マージとPR提出計画](docs/UPSTREAM_INTEGRATION_PLAN.md)に、統合の検証条件、機能ごとのPR分割・依存関係、設定ファイルによるTailscale自動接続の方針を記載しています。
+
 上流のTab5ビルド入口はESP-IDF v5.4.4環境での `sh tools/build.sh tab5 build` です。本フォークでは未再現です。書き込み前には実機状態と復元手順の確認が必要です。
 
 ## 関連プロジェクト
