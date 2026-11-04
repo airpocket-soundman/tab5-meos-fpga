@@ -73,6 +73,9 @@ else()
     list(FILTER M5OS_SRCS EXCLUDE REGEX "/hal/esp32p4/|${M5OS_NO_WASM_RE}|/drivers/(usbkbd|tab5kbd|ime)/|/drivers/lcd/display_tab5\\.c$|/drivers/camera/camera_tab5\\.c$|/drivers/wifi/wifi_tab5\\.c$|/m5ex/images_none\\.c$")
     set(M5OS_BOARD_DEF M5OS_BOARD_CORES3=1)
     set(M5OS_ARCH_REQUIRES xtensa)
+    if(IDF_VERSION_MAJOR GREATER_EQUAL 5)
+        list(APPEND M5OS_ARCH_REQUIRES esp_psram esp_mm)
+    endif()
 endif()
 
 # Without the camera module the built-in camera driver is replaced by the stub that reports "no camera".
