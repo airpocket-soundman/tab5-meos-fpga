@@ -30,6 +30,12 @@ typedef struct {
 int io_owner_create(const char *name, io_owner_t *out);
 bool io_owner_valid(io_owner_t owner);
 int io_owner_close(io_owner_t owner);
+/* Pin lease for a peripheral whose hardware can outlive its creating task.
+ * Protected owners cannot be closed/reaped or release claimed pins. The
+ * peripheral may still configure its owned pins. Clear only after proving
+ * DMA/ETM/clock quiescence. If its task dies, retain this owner/pins until an
+ * explicit safe teardown or reboot; do not hand them to another owner. */
+int io_owner_protect(io_owner_t owner,bool enabled);
 /* Task-context deferred cleanup; never call from task-kill interrupt sections.
  */
 void io_reap_dead_owners(void);

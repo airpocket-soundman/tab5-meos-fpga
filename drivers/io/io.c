@@ -12,6 +12,7 @@ static mutex_t lock = MUTEX_INIT;
 static struct {
   io_owner_t id;
   bool closing;
+  bool protected;
   uint32_t creator_pid, closer_pid;
   char name[IO_OWNER_NAME_MAX];
 } owners[OWNERS];
@@ -106,7 +107,7 @@ void io_reap_dead_owners(void) {
   unsigned n = 0;
   mutex_lock(&lock);
   for (unsigned i = 0; i < OWNERS; i++)
-    if (owners[i].id &&
+    if (owners[i].id && !owners[i].protected &&
         (!task_alive(owners[i].creator_pid) ||
          (owners[i].closing && !task_alive(owners[i].closer_pid))))
       dead[n++] = owners[i].id;
@@ -151,6 +152,14 @@ bool io_owner_valid(io_owner_t owner) {
   bool ok = i >= 0 && !owners[i].closing;
   mutex_unlock(&lock);
   return ok;
+}
+int io_owner_protect(io_owner_t owner,bool enabled) {
+  mutex_lock(&lock);
+  int i=owner_index(owner);
+  int rc=i<0||owners[i].closing?ERR_BADF:0;
+  if(!rc)owners[i].protected=enabled;
+  mutex_unlock(&lock);
+  return rc;
 }
 int io_pin_info(int p, io_pin_info_t *out) {
   if (p < 0 || p >= IO_PIN_COUNT || !out)
@@ -212,6 +221,8 @@ int io_pins_claim(io_owner_t owner, const int *ps, size_t count, io_use_t use) {
 int io_pins_release(io_owner_t owner, const int *ps, size_t count) {
   mutex_lock(&lock);
   int rc = validate(owner, ps, count, true);
+  int oi=owner_index(owner);
+  if(!rc && oi>=0 && owners[oi].protected)rc=ERR_BUSY;
   if (!rc)
     for (size_t i = 0; i < count; i++) {
 #if M5OS_BOARD_TAB5
@@ -330,6 +341,10 @@ int io_owner_close(io_owner_t o) {
   if (i < 0) {
     mutex_unlock(&lock);
     return ERR_BADF;
+  }
+  if (owners[i].protected) {
+    mutex_unlock(&lock);
+    return ERR_BUSY;
   }
   if (owners[i].closing && task_alive(owners[i].closer_pid)) {
     mutex_unlock(&lock);

@@ -60,9 +60,24 @@ int main(void){
  if(!setjmp(killed)){kill_close=true;io_owner_close(a);assert(0);}
  assert(!io_owner_valid(a));alive43=false;current.id=42;io_reap_dead_owners();assert(!io_owner_valid(a));io_pin_info(pin,&info);assert(!info.owner);alive43=true;
  assert(!io_owner_create("dead-vm",&a));pin=4;assert(!io_pins_claim(a,&pin,1,IO_USE_DIGITAL));alive42=false;current.id=43;io_reap_dead_owners();io_pin_info(pin,&info);assert(!info.owner);alive42=true;current.id=42;
+ /* Hardware pin leases survive creator death and explicit reaping/close.
+  * Nothing may reassign the ETM gate pin until peripheral teardown proves it
+  * safe and explicitly drops the lease. Ordinary owners still reap above. */
+ assert(!io_owner_create("dma-gate",&a));pin=17;
+ assert(!io_pins_claim(a,&pin,1,IO_USE_DIGITAL));assert(!io_gpio_config(a,pin,true,1,IO_PULL_NONE));
+ assert(!io_owner_protect(a,true));before=writes;int clean_before=cleanup;
+ assert(io_owner_close(a)==ERR_BUSY&&io_owner_valid(a));
+ assert(io_pins_release(a,&pin,1)==ERR_BUSY&&writes==before&&cleanup==clean_before);
+ alive42=false;current.id=43;io_reap_dead_owners();
+ io_pin_info(pin,&info);assert(info.owner==a&&modes[pin]==1&&writes==before&&cleanup==clean_before);
+ assert(!io_owner_create("replacement",&b));assert(io_pins_claim(b,&pin,1,IO_USE_DIGITAL)==ERR_BUSY);
+ assert(!io_owner_protect(a,false));assert(!io_owner_close(a));
+ assert(!io_pins_claim(b,&pin,1,IO_USE_DIGITAL));assert(!io_gpio_config(b,pin,true,1,IO_PULL_NONE));
+ assert(!io_owner_close(b));assert(io_owner_protect(a,true)==ERR_BADF);
+ alive42=true;current.id=42;
  assert(RUN("gpio","mode","31","out","1")==1);assert(RUN("gpio","mode","2","out","1")==0);assert(RUN("gpio","read","2")==0&&strstr(output,"1\n"));
  assert(RUN("gpio","write","2","2")==1);assert(RUN("gpio","release","2")==0);assert(RUN("adc","read","16")==0&&strstr(output,"raw=1234"));
  before=transfers;assert(RUN("i2c","xfer","42","0x20","0","1")==1&&transfers==(unsigned)before);assert(RUN("i2c","open","31","32","100000")==1);
  assert(RUN("uart","open","4294967296","7","115200")==1);assert(RUN("io","help")==0);assert(RUN("io","reset")==0);assert(RUN("uart","selftest")==0);assert(io_app_command(0,NULL,NULL)==1);
- puts("IO ownership/atomic claims/recovery/CLI tests PASS");return 0;
+ puts("IO ownership/atomic claims/recovery/CLI and protected dead-task pin leases PASS");return 0;
 }
