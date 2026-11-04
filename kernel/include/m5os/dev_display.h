@@ -15,6 +15,9 @@
 #define DISPLAY_IOC_BLIT         0x0106   /* arg: display_blit_t*   */
 #define DISPLAY_IOC_SET_TERM     0x0107   /* arg: display_term_t*   */
 #define DISPLAY_IOC_BACKLIGHT    0x0108   /* arg: uint8_t* 0..255   */
+#define DISPLAY_IOC_BEGIN_FRAME  0x0109   /* arg: NULL; same-task batch, ERR_BUSY if unavailable */
+#define DISPLAY_IOC_END_FRAME    0x010a   /* arg: NULL; publish same-task batch */
+#define DISPLAY_IOC_CONSOLE_PAUSE 0x010b  /* arg: bool*; per-task lease, restores prior state on release/close */
 
 typedef struct { uint16_t width, height; } display_info_t;
 typedef struct { int16_t x, y, w, h; uint16_t color; } display_rect_t;

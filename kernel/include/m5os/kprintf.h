@@ -32,4 +32,6 @@ size_t   kconsole_log_read(uint32_t *pos, char *buf, size_t max);
 void     kconsole_inject(const char *s);
 size_t   kconsole_inject_n(const char *s, size_t n);   /* returns how many bytes fitted; the rest was not queued */
 void     kconsole_set_focus(uint32_t task_id);   /* 0 = nobody: only this task reads the console (see wasm display_open) */
+uint32_t kconsole_get_focus(void); /* Reaps dead/reused task owners. */
+bool     kconsole_focus_exchange(uint32_t expected,uint32_t desired); /* atomic non-stealing lease operation */
 int      kconsole_getc(void);                 /* injected characters first, then the serial port; -1 if none */

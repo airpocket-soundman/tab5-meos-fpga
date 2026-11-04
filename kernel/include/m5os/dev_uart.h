@@ -7,3 +7,4 @@
  *            0 = non-blocking, >0 = wait up to that many ms for at least one byte,
  *            -1 = wait forever.  A waiting reader does not block writers. */
 #define UART_IOC_SET_RX_TIMEOUT   0x0301     /* arg: int32_t* */
+#define UART_IOC_FOCUS            0x0302     /* arg: bool*: same-task input lease, no stealing from a live owner */

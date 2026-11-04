@@ -158,16 +158,50 @@ void kconsole_inject(const char *s)
 
 /* Input focus: a full-screen app that owns the display gets the keys; everyone else reads nothing meanwhile. */
 static volatile uint32_t s_focus_task;
-void kconsole_set_focus(uint32_t task_id) { s_focus_task = task_id; }
+static task_t *s_focus_owner;
+static void focus_reap_locked(void)
+{
+    if(!s_focus_task)return;
+    if(s_focus_owner) {
+        if(s_focus_owner->id==s_focus_task&&s_focus_owner->state!=TASK_UNUSED&&s_focus_owner->state!=TASK_TERMINATED)return;
+    } else {
+        task_info_t tasks[TASK_MAX];int count=task_snapshot(tasks,TASK_MAX);
+        for(int i=0;i<count;i++)if(tasks[i].id==s_focus_task&&tasks[i].state!=TASK_UNUSED&&tasks[i].state!=TASK_TERMINATED)return;
+    }
+    s_focus_task=0;s_focus_owner=NULL;
+}
+static void focus_set_locked(uint32_t id)
+{
+    task_t *self=task_current();s_focus_task=id;
+    s_focus_owner=self&&self->id==id?self:NULL;
+}
+void kconsole_set_focus(uint32_t task_id)
+{
+    uint32_t irq=arch_irq_disable();focus_set_locked(task_id);arch_irq_restore(irq);
+}
+uint32_t kconsole_get_focus(void)
+{
+    uint32_t irq=arch_irq_disable();focus_reap_locked();uint32_t id=s_focus_task;arch_irq_restore(irq);return id;
+}
+bool kconsole_focus_exchange(uint32_t expected,uint32_t desired)
+{
+    uint32_t irq=arch_irq_disable();focus_reap_locked();bool ok=s_focus_task==expected;
+    if(ok)focus_set_locked(desired);
+    arch_irq_restore(irq);return ok;
+}
 
 int kconsole_getc(void)
 {
-    if (s_focus_task && task_current() && task_current()->id != s_focus_task) return -1;
-    int c = -1;
     uint32_t irq = arch_irq_disable();
+    focus_reap_locked();
+    if (s_focus_task && (!task_current() || task_current()->id != s_focus_task)) {
+        arch_irq_restore(irq);return -1;
+    }
+    int c = -1;
     if (s_in_tail != s_in_head) { c = (uint8_t)s_in[s_in_tail]; s_in_tail = (s_in_tail + 1) % CONSOLE_IN_SIZE; }
+    if(c<0)c=hal_console_getc(); /* nonblocking HAL read under the same focus guard */
     arch_irq_restore(irq);
-    return c >= 0 ? c : hal_console_getc();
+    return c;
 }
 
 void kputs(const char *s)
