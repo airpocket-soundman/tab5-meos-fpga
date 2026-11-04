@@ -48,6 +48,7 @@ m5os_module(mp_camera   BOARDS tab5 DESCRIPTION "MicroPython 'camera' module (ca
 m5os_module(bluetooth   BOARDS tab5 OPTION M5OS_BLUETOOTH DEFAULT OFF DESCRIPTION "BLE HID host over ESP-Hosted (experimental)")
 m5os_module(sl          OPTION M5OS_SL DESCRIPTION "SL animation")
 m5os_module(fpga        BOARDS tab5 DEFAULT OFF DESCRIPTION "Dock jumper LINK v0: GPIO ID, echo, inversion and diagnostics")
+m5os_module(fpga_parlio BOARDS tab5 DEFAULT OFF DEPENDS fpga DESCRIPTION "Native PARLIO/GDMA parallel transport and variable wire protocol")
 m5os_module(fpga_gfx    BOARDS tab5 DEFAULT OFF DEPENDS fpga DESCRIPTION "Experimental Dock GFX: RGB565 drawing, readback verification and LCD demo")
 m5os_module(gfxbench    BOARDS tab5 DEFAULT OFF DESCRIPTION "GPU LAB CPU graphics benchmark: polygon/Z, wireframe and six procedural scenes")
 m5os_module(fpga_npu    BOARDS tab5 DEFAULT OFF DEPENDS fpga DESCRIPTION "NPU CPU conformance: checked INT8 MAC/dot, requantization, GEMM and convolution; physical contract pending")

@@ -3,6 +3,9 @@
 #include "../../drivers/fpga/fpga_selftest.h"
 #include <m5os/kprintf.h>
 #include <string.h>
+#if M5OS_MODULE_FPGA_PARLIO
+#include "fpga_parallel_app.h"
+#endif
 #if M5OS_MODULE_FPGA_DIAG
 #include "fpga_diag_app.h"
 #endif
@@ -50,6 +53,9 @@ static int usage(void)
 }
 int fpga_cmd_main(int argc,char **argv)
 {
+#if M5OS_MODULE_FPGA_PARLIO
+    if(argc>1&&!strcmp(argv[1],"--parlio"))return fpga_parallel_cmd_main(argc,argv);
+#endif
 #if M5OS_MODULE_FPGA_DIAG
     if(argc==2&&!strcmp(argv[1],"features"))return fpga_diag_features();
     if((argc==3&&!strcmp(argv[1],"--mock")&&!strcmp(argv[2],"suite"))
