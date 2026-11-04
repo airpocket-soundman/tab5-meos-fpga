@@ -121,6 +121,11 @@ bool imgview_load(const char *path, uint16_t **pixels, int *ow, int *oh)
 
 void imgview_draw_fit(int x, int y, int dw, int dh, const uint16_t *src, int sw, int sh)
 {
+#if M5OS_BOARD_TAB5
+    /* Resize directly into the owned framebuffer; do not retain a second
+     * screen-sized PSRAM cache just for this viewer. */
+    display_draw_bitmap_resized(x,y,sw,sh,src,dw,dh);
+#else
     static uint16_t *buf;                                    /* scaled copy, at most one screenful, allocated once */
     static int xmap[DISPLAY_WIDTH];
     if (!src || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
@@ -136,6 +141,7 @@ void imgview_draw_fit(int x, int y, int dw, int dh, const uint16_t *src, int sw,
         for (int i = 0; i < dw; i++) out[i] = row[xmap[i]];
     }
     display_draw_bitmap(x, y, dw, dh, buf);
+#endif
 }
 
 /* ---- the viewer ------------------------------------------------------------------ */
