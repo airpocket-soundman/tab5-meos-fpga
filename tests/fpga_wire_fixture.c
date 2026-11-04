@@ -31,7 +31,7 @@ static void body_make(const uint8_t *q,uint8_t *r,size_t n)
     }
 }
 typedef struct {
-    uint64_t now;unsigned calls,offset;int fault;bool cancel,reenter;
+    uint64_t now;unsigned calls,offset;int fault;bool cancel,reenter,normalized;
     fpga_wire_t *wire;size_t last_tx,last_rx;
 } fake_t;
 static uint64_t now(void *p){return ((fake_t*)p)->now;}
@@ -46,9 +46,9 @@ static int exchange(void *p,const uint8_t *q,size_t tx,uint8_t *rx,size_t cap,si
         c=crc_step(c,q+8,tx-10);assert(q[tx-2]==(uint8_t)c&&q[tx-1]==(uint8_t)(c>>8));
         for(unsigned i=0;i<q[4]*10u;i++){uint16_t word=(uint16_t)(i*997u+0x8000u);assert(q[8+i*2]==(uint8_t)word&&q[9+i*2]==(uint8_t)(word>>8));}
     }else assert(tx==8);
-    assert(cap==n+((q[1]&128)?f->wire->capture_margin:0));
+    assert(cap==n+((q[1]&128)&&!f->normalized?f->wire->capture_margin:0));
     if(f->reenter){uint8_t id[2]={1,2};assert(fpga_wire_id(f->wire,id,1000)==FPGA_LINK_BUSY);assert(id[0]==1&&id[1]==2);assert(fpga_wire_caps(f->wire,1000)==FPGA_LINK_BUSY);assert(fpga_wire_transport(f->wire,f->wire->ops,p)==FPGA_LINK_BUSY);}
-    memset(rx,0xc3,cap);unsigned at=q[1]&128?f->offset:0;assert(at+n<=cap);body_make(q,rx+at,n);*received=cap;
+    memset(rx,0xc3,cap);unsigned at=(q[1]&128)&&!f->normalized?f->offset:0;assert(at+n<=cap);body_make(q,rx+at,n);*received=cap;
     f->now+=17;
     switch(f->fault){
     case 1:rx[at+n-1]^=1;break;
@@ -66,7 +66,7 @@ static int exchange(void *p,const uint8_t *q,size_t tx,uint8_t *rx,size_t cap,si
     }
     return 0;
 }
-static const fpga_wire_ops_t ops={exchange,now,cancelled};
+static const fpga_wire_ops_t ops={exchange,now,cancelled,false};
 static void engine(void)
 {
     fpga_wire_workspace_t space;fpga_wire_t w;fake_t f={.now=100,.wire=&w};uint8_t out[2058],id[2]={0};
@@ -141,6 +141,21 @@ static void engine(void)
     failure=fpga_wire_first_failure(&w);
     assert(failure&&failure->truncated&&failure->received_length==2074&&failure->saved_length==96);
     assert(!memcmp(failure->raw,space.capture,96));
+    /* Explicit normalized transport bypasses only framing, never CRC/binding. */
+    fpga_wire_ops_t normalized=ops;normalized.normalized_body=true;f.normalized=true;f.fault=0;
+    assert(!fpga_wire_init(&w,&normalized,&f,&space));w.sync_capable=true;w.tile_capable=true;
+    assert(!fpga_wire_command(&w,LINK_ECHO,0,255,true,out,8,1000)&&f.last_rx==8);
+    assert(!fpga_wire_tile(&w,0,true,out,1000)&&f.last_rx==2058);
+    uint8_t request[8];link_make_request(request,TRI_TILE_READ|128,37,0,0);body_make(request,out,2058);
+    assert(!fpga_wire_validate_body(request,out,2058,2058));
+    assert(fpga_wire_validate_body(request,out,2057,2058)==FPGA_LINK_INVALID);
+    out[100]^=1;assert(fpga_wire_validate_body(request,out,2058,2058)==FPGA_LINK_CRC);
+    for(f.fault=1;f.fault<=11;f.fault++){
+        if(f.fault==9)continue;f.cancel=false;memset(out,0xa6,sizeof out);
+        assert(fpga_wire_command(&w,LINK_ECHO,0,255,true,out,8,1000)<0);
+        for(unsigned i=0;i<sizeof out;i++)assert(out[i]==0xa6);
+    }
+    puts("PASS normalized transport: exactactualbody, tagged8/2058, fullCRC and fault atomicity");
     puts("PASS first-failure diagnostics: original24 bytes, unchanged caller, immutable firstfailure, reset oninit, bounded2074-byte truncation");
     puts("PASS wire engine: exact finite lengths, CAPS, transport switch, all prefix offsets, ROW/TILE planes, batch1..64, limits, failure atomicity, cancellation/deadline/reentry/sequence");
 }

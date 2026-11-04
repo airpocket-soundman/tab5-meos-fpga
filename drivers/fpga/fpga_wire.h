@@ -17,6 +17,11 @@ typedef struct {
                     uint8_t *rx,size_t rx_capacity,size_t *rx_count,uint64_t deadline);
     uint64_t (*now_us)(void *context);
     bool (*cancelled)(void *context);
+    /* Explicit trusted framing boundary: exchange returns only actual body
+     * bytes after its own UNIQUE closed-horizon stream validation. Wire still
+     * validates exact size, request binding, semantics and full protocolCRC.
+     * false retains the original finite tagged body+8/+16 capture contract. */
+    bool normalized_body;
 } fpga_wire_ops_t;
 
 #define FPGA_WIRE_FAILURE_BYTES 96u
@@ -75,3 +80,7 @@ int fpga_wire_validate(const uint8_t request[8],const uint8_t *raw,size_t raw_le
 
 /* Returns NULL until an attempted transaction fails. Storage belongs to workspace. */
 const fpga_wire_failure_t *fpga_wire_first_failure(const fpga_wire_t *wire);
+
+/* Exact actualbody only; no sync search, insertion, repair or prefix synthesis. */
+int fpga_wire_validate_body(const uint8_t request[8],const uint8_t *body,
+                            size_t received_length,size_t expected_length);

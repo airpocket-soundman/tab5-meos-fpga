@@ -67,7 +67,7 @@ static int exchange(void *p,const uint8_t *q,size_t tn,uint8_t *raw,size_t cap,s
     }
     *received=cap;d->now+=20;return 0;
 }
-static const fpga_wire_ops_t ops={exchange,now,cancelled};
+static const fpga_wire_ops_t ops={exchange,now,cancelled,false};
 static void geometry(fpga_surface_t *s)
 {
     for(unsigned i=0;i<64;i++){

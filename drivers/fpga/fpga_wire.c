@@ -31,6 +31,17 @@ static int header_error(const uint8_t q[8],const uint8_t r[8])
     default:return FPGA_LINK_REMOTE;
     }
 }
+int fpga_wire_validate_body(const uint8_t q[8],const uint8_t *body,
+                            size_t received,size_t expected)
+{
+    if(!request_valid(q)||!body||expected!=expected_body(q[1])||received!=expected)
+        return FPGA_LINK_INVALID;
+    int error=header_error(q,body);if(error)return error;
+    bool valid=expected==FPGA_WIRE_TILE_BYTES?link_validate_tile_response(body,q):
+               expected==FPGA_WIRE_ROW_BYTES?link_validate_row_response(body,q):
+               link_validate_response(body,q);
+    return valid?0:expected==8?FPGA_LINK_DATA:FPGA_LINK_CRC;
+}
 int fpga_wire_validate(const uint8_t q[8],const uint8_t *raw,size_t raw_length,
                        uint8_t *body,size_t body_length,unsigned *offset)
 {
@@ -111,7 +122,7 @@ static int transact(fpga_wire_t *w,uint8_t op,uint8_t a,uint8_t b,
     if(op==TRI_BATCH)tx_length=triangle_batch_encode(tx,FPGA_WIRE_REQUEST_MAX,w->sequence++,tagged,records,count);
     else link_make_request(tx,(uint8_t)(op|(tagged?LINK_SYNC_TAG:0)),w->sequence++,a,b);
     int error=checkpoint(w,deadline);
-    size_t received=0,capacity=length+(tagged?w->capture_margin:0);
+    size_t received=0,capacity=length+(tagged&&!w->ops->normalized_body?w->capture_margin:0);
     if(!error) {
         error=w->ops->exchange(w->context,tx,tx_length,rx,capacity,&received,deadline);
         if(error>0)error=FPGA_LINK_IO;
@@ -131,7 +142,8 @@ static int transact(fpga_wire_t *w,uint8_t op,uint8_t a,uint8_t b,
     if(!error&&received>capacity)error=FPGA_LINK_IO;
     /* Validate into the private capture workspace; only commit after the final
      * cancellation/deadline checkpoint. Callback cannot touch caller output. */
-    if(!error)error=fpga_wire_validate(tx,rx,received,rx,length,NULL);
+    if(!error)error=w->ops->normalized_body?fpga_wire_validate_body(tx,rx,received,length):
+                    fpga_wire_validate(tx,rx,received,rx,length,NULL);
     if(!error)error=checkpoint(w,deadline);
     if(!error){memmove(out,rx,length);w->completed++;}else {
         w->failed++;

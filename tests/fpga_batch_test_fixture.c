@@ -56,7 +56,7 @@ static int exchange(void *p,const uint8_t *q,size_t tx,uint8_t *raw,size_t cap,s
     }
     m->now+=20;*received=cap;return 0;
 }
-static const fpga_wire_ops_t ops={exchange,now,cancelled};
+static const fpga_wire_ops_t ops={exchange,now,cancelled,false};
 static fpga_wire_workspace_t ws;
 static fpga_tile_test_workspace_t gpu;
 int main(int argc,char **argv)
