@@ -17,4 +17,8 @@ with tempfile.TemporaryDirectory() as tmp:
   r,j=run('tile-demo',fault=fault);assert bool(r.returncode)==bool(fault)
   assert j[0]['result']==('io' if fault else 'ok') and j[1]['result']==j[0]['result']
   assert j[0]['lcd_submitted']==(not fault) and j[0]['reset_required']==(fault==3)
+ r,j=run(fault=4);assert r.returncode and len(j)==2
+ assert j[1]['wire_first_failure'] and j[1]['result']=='data' and j[1]['received_length']==24
+ assert len(j[1]['raw'])==24 and j[1]['raw'][:3]==[195,195,90] and j[1]['request_header']==[165,130,1,2,0,0,0,0]
+ assert not j[1]['truncated']
  print('Parallel app: RX rate parsing, display failure authority, close failure and cleanup passed')

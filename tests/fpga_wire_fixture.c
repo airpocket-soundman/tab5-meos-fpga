@@ -102,6 +102,21 @@ static void engine(void)
     assert(fpga_wire_command(&w,LINK_ID,0,0,false,space.request,8,1000)==FPGA_LINK_INVALID);
     assert(fpga_wire_command(&w,LINK_ID,0,0,false,(uint8_t*)&w,8,1000)==FPGA_LINK_INVALID);
     assert(f.calls==calls&&w.attempted==attempted);
+    assert(!fpga_wire_first_failure(&w));
+    /* Original24 bytes, not canonical8 or reconstructed response. */
+    f.fault=1;f.offset=8;memset(out,0xa6,sizeof out);
+    assert(fpga_wire_command(&w,LINK_ECHO,0,255,true,out,8,1000)==FPGA_LINK_DATA);
+    const fpga_wire_failure_t *failure=fpga_wire_first_failure(&w);
+    assert(failure&&failure->valid&&!failure->truncated&&failure->saved_length==24);
+    assert(failure->request_length==8&&failure->received_length==24&&failure->error==FPGA_LINK_DATA);
+    uint8_t expected[24];memset(expected,0xc3,sizeof expected);
+    body_make(failure->request_header,expected+8,8);expected[15]^=1;
+    assert(!memcmp(expected,failure->raw,24));
+    for(unsigned i=0;i<sizeof out;i++)assert(out[i]==0xa6);
+    fpga_wire_failure_t first=*failure;
+    f.fault=0;assert(!fpga_wire_command(&w,LINK_ECHO,1,254,true,out,8,1000));
+    assert(!memcmp(&first,fpga_wire_first_failure(&w),sizeof first));
+    f.offset=0;
     for(unsigned tag=0;tag<2;tag++)for(f.fault=1;f.fault<=11;f.fault++){
         if(f.fault==8&&tag)continue;
         if(f.fault==9&&!tag)continue;
@@ -118,6 +133,15 @@ static void engine(void)
     f.cancel=false;f.now=UINT64_MAX-2;
     assert(fpga_wire_id(&w,id,4)==FPGA_LINK_INVALID&&f.calls==calls);
     assert(w.attempted==w.completed+w.failed);
+    assert(!memcmp(&first,fpga_wire_first_failure(&w),sizeof first));
+    f.now=100;f.fault=1;f.cancel=false;
+    assert(!fpga_wire_init(&w,&ops,&f,&space)&&!fpga_wire_first_failure(&w));
+    w.sync_capable=true;w.tile_capable=true;
+    assert(fpga_wire_tile(&w,0,true,out,1000)==FPGA_LINK_DATA);
+    failure=fpga_wire_first_failure(&w);
+    assert(failure&&failure->truncated&&failure->received_length==2074&&failure->saved_length==96);
+    assert(!memcmp(failure->raw,space.capture,96));
+    puts("PASS first-failure diagnostics: original24 bytes, unchanged caller, immutable firstfailure, reset oninit, bounded2074-byte truncation");
     puts("PASS wire engine: exact finite lengths, CAPS, transport switch, all prefix offsets, ROW/TILE planes, batch1..64, limits, failure atomicity, cancellation/deadline/reentry/sequence");
 }
 static unsigned decode(const char *s,uint8_t *out,size_t cap)

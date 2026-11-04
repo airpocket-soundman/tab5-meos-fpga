@@ -195,6 +195,20 @@ int fpga_parallel_cmd_main(int argc, char **argv) {
             tr.pixel, tr.expected, tr.received,
             tr.image_valid ? "true" : "false", tr.cycles[0], tr.cycles[1],
             (unsigned)tr.elapsed_us);
+  if (e) {
+    const fpga_wire_failure_t *failure=fpga_wire_first_failure(&wire);
+    if (failure) {
+      kprintf("{\"wire_first_failure\":true,\"result\":\"%s\",\"request_length\":%u,"
+              "\"received_length\":%u,\"saved_length\":%u,\"truncated\":%s,\"request_header\":[",
+              fpga_link_error(failure->error),(unsigned)failure->request_length,
+              (unsigned)failure->received_length,(unsigned)failure->saved_length,
+              failure->truncated?"true":"false");
+      for (unsigned i=0;i<8;i++)kprintf("%s%u",i?",":"",failure->request_header[i]);
+      kprintf("],\"raw\":[");
+      for (unsigned i=0;i<failure->saved_length;i++)kprintf("%s%u",i?",":"",failure->raw[i]);
+      kprintf("]}\n");
+    }
+  }
   if (shown) {
     kprintf("fpga: verified FPGA Julia tile displayed; Q/Esc/Enter closes\n");
     for (;;) {

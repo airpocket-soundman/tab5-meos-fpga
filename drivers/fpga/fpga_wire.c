@@ -61,6 +61,7 @@ int fpga_wire_init(fpga_wire_t *w,const fpga_wire_ops_t *ops,void *context,
                    fpga_wire_workspace_t *workspace)
 {
     if(!w||!ops||!ops->exchange||!ops->now_us||!workspace)return FPGA_LINK_INVALID;
+    memset(&workspace->failure,0,sizeof workspace->failure);
     memset(w,0,sizeof *w);w->ops=ops;w->context=context;w->workspace=workspace;w->capture_margin=16;
     return 0;
 }
@@ -115,13 +116,27 @@ static int transact(fpga_wire_t *w,uint8_t op,uint8_t a,uint8_t b,
         error=w->ops->exchange(w->context,tx,tx_length,rx,capacity,&received,deadline);
         if(error>0)error=FPGA_LINK_IO;
     }
+    /* Stage the bounded original capture before in-place canonical unwrap.
+     * Do not read past the actual reported bytes or allocated capture capacity. */
+    fpga_wire_failure_t *failure=&w->workspace->failure;
+    if(!failure->valid) {
+        failure->request_length=tx_length;failure->received_length=received;
+        failure->saved_length=received<capacity?received:capacity;
+        if(failure->saved_length>FPGA_WIRE_FAILURE_BYTES)failure->saved_length=FPGA_WIRE_FAILURE_BYTES;
+        failure->truncated=failure->saved_length<received;
+        memcpy(failure->request_header,tx,8);
+        memcpy(failure->raw,rx,failure->saved_length);
+    }
     if(!error)error=checkpoint(w,deadline);
     if(!error&&received>capacity)error=FPGA_LINK_IO;
     /* Validate into the private capture workspace; only commit after the final
      * cancellation/deadline checkpoint. Callback cannot touch caller output. */
     if(!error)error=fpga_wire_validate(tx,rx,received,rx,length,NULL);
     if(!error)error=checkpoint(w,deadline);
-    if(!error){memmove(out,rx,length);w->completed++;}else w->failed++;
+    if(!error){memmove(out,rx,length);w->completed++;}else {
+        w->failed++;
+        if(!failure->valid){failure->error=error;failure->valid=true;}
+    }
     w->busy=false;return error;
 }
 int fpga_wire_command(fpga_wire_t *w,uint8_t op,uint8_t a,uint8_t b,bool tagged,
@@ -163,4 +178,9 @@ int fpga_wire_tile(fpga_wire_t *w,unsigned plane,bool tag,uint8_t body[2058],uin
 int fpga_wire_batch(fpga_wire_t *w,const uint16_t *records,unsigned count,bool tag,uint8_t body[8],uint32_t t)
 {
     return transact(w,TRI_BATCH,(uint8_t)count,1,records,count,tag,body,8,t);
+}
+
+const fpga_wire_failure_t *fpga_wire_first_failure(const fpga_wire_t *w)
+{
+    return w&&w->workspace&&w->workspace->failure.valid?&w->workspace->failure:NULL;
 }

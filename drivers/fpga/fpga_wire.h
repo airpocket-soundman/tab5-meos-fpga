@@ -19,7 +19,19 @@ typedef struct {
     bool (*cancelled)(void *context);
 } fpga_wire_ops_t;
 
+#define FPGA_WIRE_FAILURE_BYTES 96u
 typedef struct {
+    bool valid, truncated;
+    int error;
+    size_t request_length, received_length, saved_length;
+    uint8_t request_header[8], raw[FPGA_WIRE_FAILURE_BYTES];
+} fpga_wire_failure_t;
+
+typedef struct {
+    /* First attempted transaction failure, original bytes before unwrap.
+     * Large captures retain only the first96 bytes; LINK24 is retained whole.
+     * Never used to accept/correct/retry a response. Reset only by init. */
+    fpga_wire_failure_t failure;
     uint8_t request[FPGA_WIRE_REQUEST_MAX];
     uint8_t capture[FPGA_WIRE_CAPTURE_MAX];
 } fpga_wire_workspace_t;
@@ -60,3 +72,6 @@ int fpga_wire_batch(fpga_wire_t *wire,const uint16_t *records,unsigned count,
  * Output and offset remain untouched on failure; raw/body may overlap. */
 int fpga_wire_validate(const uint8_t request[8],const uint8_t *raw,size_t raw_length,
                        uint8_t *body,size_t body_length,unsigned *offset);
+
+/* Returns NULL until an attempted transaction fails. Storage belongs to workspace. */
+const fpga_wire_failure_t *fpga_wire_first_failure(const fpga_wire_t *wire);
