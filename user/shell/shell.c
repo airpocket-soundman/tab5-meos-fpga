@@ -227,7 +227,9 @@ static int cmd_ls(int argc, char **argv)
     int rc = vfs_readdir(path, ls_cb, &ctx);
     if (rc < 0) {
         vfs_info_t st;                                         /* a plain file: show it like `ls FILE` */
-        if (rc == ERR_NOTDIR && vfs_stat(path, &st) == ERR_OK) { ls_cb(&st, &ctx); return 0; }
+        /* Some filesystems report NOENT rather than NOTDIR for readdir(FILE).
+         * Stat the path independently; only a regular file may mask that error. */
+        if (vfs_stat(path, &st) == ERR_OK && st.type == FS_TYPE_FILE) { ls_cb(&st, &ctx); return 0; }
         return fail("ls", path, rc);
     }
     return 0;
