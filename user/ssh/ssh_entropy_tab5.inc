@@ -145,6 +145,9 @@ static bool ssh_entropy_seed(uint8_t seed[32])
         I2C_SAR_ADC_DTEST_VDD_GRP1, I2C_SAR_ADC_DTEST_VDD_GRP1_MSB, I2C_SAR_ADC_DTEST_VDD_GRP1_LSB);
     bool ok = ssh_entropy_enable();
     if (ok) esp_fill_random(seed,32);
+    /* esp_random() queries the APB clock through SDK REGI2C helpers. Their
+     * own reference count can gate this manually owned clock on return. */
+    SET_PERI_REG_MASK(LPPERI_CLK_EN_REG, LPPERI_CK_EN_LP_I2CMST);
     ssh_entropy_disable();
     SSHD_REGI2C_WRITE(I2C_SAR_ADC, ADC_SAR1_INITIAL_CODE_LOW_ADDR, initial_lo);
     SSHD_REGI2C_WRITE(I2C_SAR_ADC, ADC_SAR1_INITIAL_CODE_HIGH_ADDR, initial_hi);

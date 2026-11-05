@@ -65,7 +65,7 @@ static void analog_access(unsigned block,unsigned host,unsigned reg,unsigned msb
 }
 static uint8_t esp_rom_regi2c_read_mask(unsigned b,unsigned h,unsigned r,unsigned msb,unsigned lsb){analog_access(b,h,r,msb,lsb);reads++;return analog[r];}
 static void esp_rom_regi2c_write_mask(unsigned b,unsigned h,unsigned r,unsigned msb,unsigned lsb,uint8_t v){analog_access(b,h,r,msb,lsb);writes++;analog[r]=v;}
-static void esp_fill_random(void*p,size_t n){assert(irq&&ready&&n==32);assert(analog[2]==1&&analog[3]==0);fills++;memset(p,0x5a,n);}
+static void esp_fill_random(void*p,size_t n){assert(irq&&ready&&n==32);assert(analog[2]==1&&analog[3]==0);fills++;memset(p,0x5a,n);regs[LPPERI_CLK_EN_REG]&=~LPPERI_CK_EN_LP_I2CMST; /* SDK APB-frequency query releases its own clock reference. */}
 #define MEOS_ENTROPY_HOST_TEST 1
 #include "../../user/ssh/ssh_entropy_tab5.inc"
 int main(void){
