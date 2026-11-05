@@ -53,10 +53,17 @@ int main(void){
   do_enter();assert(!hardware&&!s_core.suspended&&!s_core.enter_requested);
   assert(s_core.last_activity_us==clock_us); /* Recheck prevents repeated auto-entry attempts. */
  }else{
-  assert(suspend_try_request());do_enter();assert(s_core.suspended&&clock_mhz==90&&hardware);
+  assert(suspend_try_request());display_busy=true;do_enter();
+  assert(s_core.enter_requested&&!s_core.suspended&&!hardware);
+  clock_us+=200000;display_busy=false;do_enter();assert(s_core.suspended&&clock_mhz==90&&hardware);
   assert(!suspend_inhibit_acquire(SUSPEND_INHIBIT_OTHER));
   assert(suspend_filter_input());do_wake();assert(!s_core.suspended&&!s_entering&&clock_mhz==360);
   assert(suspend_inhibit_acquire(SUSPEND_INHIBIT_OTHER));assert(suspend_inhibit_release(SUSPEND_INHIBIT_OTHER));
+  unsigned prior=hardware;
+  assert(suspend_try_request());display_busy=true;clock_us+=REQUEST_RENDER_WAIT_US;do_enter();
+  assert(!s_core.enter_requested&&!s_core.suspended&&hardware==prior);display_busy=false;
+  assert(suspend_try_request());io_busy=true;do_enter();
+  assert(!s_core.enter_requested&&!s_core.suspended&&hardware==prior);io_busy=false;
  }
  assert(!irq_depth);puts("Suspend safety: static unsupported-resource masks, IO/display/input leases, refcounts, manual/auto BUSY and wake guard passed");return 0;
 }

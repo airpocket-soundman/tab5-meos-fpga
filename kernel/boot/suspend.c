@@ -36,6 +36,7 @@
 #define IDLE_MAX_SECONDS    86400u
 #define FULL_BRIGHTNESS     255u
 #define TASK_STACK          6144
+#define REQUEST_RENDER_WAIT_US 1000000u
 
 static suspend_core_t s_core;
 static uint8_t  s_saved_backlight;
@@ -44,6 +45,7 @@ static unsigned s_saved_mhz;
 static uint32_t s_last_resume_ms;
 static bool     s_started;
 static bool     s_entering;
+static uint64_t s_request_deadline;
 static uint16_t s_inhibits[7];
 /* UART focus is an application-owned input lease, independent of key drivers. */
 extern bool kconsole_suspend_busy(void);
@@ -108,6 +110,7 @@ bool suspend_try_request(void)
     uint32_t reasons=suspend_inhibit_reasons();
     if(reasons){report_busy(reasons);return false;}
     uint32_t irq=arch_irq_disable();
+    s_request_deadline=hal_time_now_us()+REQUEST_RENDER_WAIT_US;
     suspend_core_request_enter(&s_core);
     arch_irq_restore(irq);return true;
 }
@@ -152,10 +155,15 @@ static void do_enter(void)
     uint32_t reasons=suspend_inhibit_reasons();
     uint32_t guard=arch_irq_disable();
     for(unsigned i=0;i<7;i++)if(s_inhibits[i])reasons|=1u<<i;
-    if(reasons){s_core.enter_requested=false;s_core.last_activity_us=now_us();}
-    else s_entering=true;
+    bool manual=s_core.enter_requested;
+    /* The command prompt itself schedules a console frame. Keep an accepted
+     * manual request briefly pending while that frame drains; never bypass
+     * the resource checks or defer other kinds of ownership changes. */
+    bool retry=manual && reasons==SUSPEND_INHIBIT_DISPLAY && now_us()<s_request_deadline;
+    if(reasons&&!retry){s_core.enter_requested=false;s_core.last_activity_us=now_us();s_request_deadline=0;}
+    else if(!reasons){s_entering=true;s_request_deadline=0;}
     arch_irq_restore(guard);
-    if(reasons)return; /* Auto-entry is inhibited too; do not spam the console. */
+    if(reasons){if(manual&&!retry)report_busy(reasons);return;} /* Auto-entry is inhibited too; do not spam the console. */
     kprintf("suspend: entering; any key, touch or movement wakes\n");
     s_saved_backlight = board_backlight_get();
     board_backlight(0);
