@@ -1,0 +1,148 @@
+{
+  "date": "2026-11-05",
+  "branch": "codex/merge-upstream-20261105",
+  "tested_revision": "089ddb370dc57a38478fd43a7d9eae7a7c81eb75",
+  "upstream_revision": "956a0f382b41b393fc4c54feba52ed0f88c0e1bd",
+  "carrier_revision": "995b3ca4849ea8d529031384311b1b8a9680d2cd",
+  "ci_run": 41949762507,
+  "ci_jobs": [
+    {
+      "name": "host",
+      "result": "success"
+    },
+    {
+      "name": "firmware (tab5, esp32p4, small, v5.5.2)",
+      "result": "success"
+    },
+    {
+      "name": "firmware (tab5, esp32p4, large_fpga, v5.5.2)",
+      "result": "success"
+    },
+    {
+      "name": "firmware (tab5, esp32p4, large, v5.5.2)",
+      "result": "success"
+    },
+    {
+      "name": "firmware (cores3, esp32s3, small, v4.4.3)",
+      "result": "success"
+    },
+    {
+      "name": "firmware (cores3, esp32s3, small, v5.5.2)",
+      "result": "success"
+    }
+  ],
+  "firmware": {
+    "profile": "large",
+    "sdk": "5.5.2",
+    "bytes": 1475312,
+    "sha256": "88f3266f9233f3364abc06fb279f1ca6808d7676398d9dbb0e8d936c23a56fbd"
+  },
+  "device": {
+    "port": "COM22",
+    "usb_serial": "E8:F6:0A:E3:21:CF",
+    "other_session_hardware_used": false
+  },
+  "user_confirmed": {
+    "console_swipe_both_directions": "pass on f840963",
+    "usb_hardware_test": "unavailable this session"
+  },
+  "host_ssh": {
+    "connection_cases": 14,
+    "packet_bounds": "pass",
+    "result": "pass",
+    "paramiko": "5.1.0"
+  },
+  "hardware_network_tests": [
+    {
+      "check": "wrong_password_rejected",
+      "passed": true
+    },
+    {
+      "check": "ssh_shared_shell_echo",
+      "passed": true
+    },
+    {
+      "check": "sftp_rw_exclusive_and_roundtrip",
+      "bytes": 8192,
+      "sha256": "dc404a613fedaeb54034514bc6505f56b933caa5250299ba7d094377a51caa46",
+      "passed": true
+    },
+    {
+      "check": "sftp_ro_read_and_write_rejection",
+      "passed": true
+    },
+    {
+      "check": "incoming_server_and_outgoing_client_coexistence",
+      "passed": true,
+      "host": {
+        "authenticated": true,
+        "command": "merge-client-probe"
+      }
+    }
+  ],
+  "post_network_smoke": {
+    "checks": 35,
+    "image_open_close_cycles": 9,
+    "memory_snapshots": 5,
+    "stable_used_bytes": {
+      "internal": 92592,
+      "psram": 8719968
+    },
+    "final_memory": {
+      "schema": 1,
+      "units": "bytes",
+      "internal": {
+        "total": 196608,
+        "used": 92592,
+        "free": 104016,
+        "largest": 99856,
+        "peak": 125408,
+        "alloc_count": 28,
+        "fail_count": 0
+      },
+      "psram": {
+        "total": 29360128,
+        "used": 8719968,
+        "free": 20640160,
+        "largest": 20623152,
+        "peak": 9246128,
+        "alloc_count": 50,
+        "fail_count": 0
+      }
+    },
+    "final_display": {
+      "buffers": 2,
+      "refreshes": 25567,
+      "batches": 129,
+      "submitted": 129,
+      "retired": 129,
+      "errors": 0,
+      "timeouts": 0,
+      "max_us": 389101,
+      "back": 1,
+      "active": 0
+    },
+    "sd_write_read_delete_bytes": 9
+  },
+  "retained_tcp_buffers": {
+    "per_socket_data_bytes": 65536,
+    "measured_per_socket_allocator_bytes": 65552,
+    "sockets_warmed": 2,
+    "total_allocator_bytes": 131104,
+    "bounded_reuse_observed": true
+  },
+  "final_services": {
+    "sshd": "stopped",
+    "sftp_storage_policy": "read-only",
+    "host_test_listener": "closed"
+  },
+  "remaining": [
+    "USB hub/HID/storage/Ethernet/UVC hardware regression",
+    "built-in camera hardware regression",
+    "OSK/IME/physical keyboard operations",
+    "FPGA LINK/pixels/transfer/cancel/resume hardware regression",
+    "actual suspend with quiesced drivers",
+    "upstream 8/32-bit BMP integration"
+  ],
+  "main_integrated": false
+}
