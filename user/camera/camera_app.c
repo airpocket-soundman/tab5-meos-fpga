@@ -234,13 +234,16 @@ static void camera_app_run_locked(const char *save_dir, char *last_saved_name) {
             /* The rotated picture is drawn into an off-screen buffer and only a plain copy of the rectangle
              * touches the buffer being scanned out, so the tear window is short.  Switching whole frames
              * instead blanks the panel for a frame on every flip at video rates. */
+#if M5OS_BOARD_TAB5
             if (s_offscreen) {
                 display_set_target(s_offscreen);
                 display_draw_rect(vx - 2, vy - 2, vw + 4, vh + 4, COLOR_WHITE);
                 display_draw_bitmap(vx, vy, vw, vh, s_preview_buf);
                 display_present(vx - 2, vy - 2, vw + 4, vh + 4);
                 display_set_target(NULL);
-            } else {
+            } else
+#endif
+            {
                 display_draw_rect(vx - 2, vy - 2, vw + 4, vh + 4, COLOR_WHITE);
                 display_draw_bitmap(vx, vy, vw, vh, s_preview_buf);
             }
