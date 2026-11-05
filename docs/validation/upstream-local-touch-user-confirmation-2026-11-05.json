@@ -1,0 +1,17 @@
+{
+  "evidence": "user response to requested physical tests",
+  "response": "すべて正常",
+  "target": "session Tab5",
+  "confirmed": [
+    "OSK echo oskok and Enter",
+    "Jp/En: nihongo displays にほんご",
+    "Hide then console scroll in both directions"
+  ],
+  "not_covered": [
+    "fullscreen edge overlay and restoration",
+    "kanji conversion",
+    "touch suspend wake",
+    "USB regression"
+  ],
+  "firmware_context": "ca4ca29 standard large restored before response"
+}
