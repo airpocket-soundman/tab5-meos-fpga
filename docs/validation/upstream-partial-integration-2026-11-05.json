@@ -1,0 +1,111 @@
+{
+  "date": "2026-11-05",
+  "baseline": "fab6f83670e48cd5aca82a621623f4f9027236d3",
+  "tested_source": "5031ac29fccbe9f4a3851a2537bdea7715aa8530",
+  "selected_from": "codex/merge-upstream-20261105",
+  "upstream_revision": "956a0f382b41b393fc4c54feba52ed0f88c0e1bd",
+  "carrier_revision": "995b3ca4849ea8d529031384311b1b8a9680d2cd",
+  "ci_run": 41952821205,
+  "ci_jobs": [
+    {
+      "name": "firmware (tab5, esp32p4, small, v5.5.2)",
+      "result": "success"
+    },
+    {
+      "name": "host",
+      "result": "success"
+    },
+    {
+      "name": "firmware (tab5, esp32p4, large_fpga, v5.5.2)",
+      "result": "success"
+    },
+    {
+      "name": "firmware (cores3, esp32s3, small, v4.4.3)",
+      "result": "success"
+    },
+    {
+      "name": "firmware (tab5, esp32p4, large, v5.5.2)",
+      "result": "success"
+    }
+  ],
+  "features": [
+    "task stack guards/watermarks",
+    "P4 PSRAM external-BSS protection",
+    "I2C recovery and bounded board reset",
+    "bounded multitouch snapshots preserving legacy API",
+    "read-only power/devices/storage diagnostics",
+    "SSH entropy/native ADC analog-I2C clocks"
+  ],
+  "retained_unchanged_paths": [
+    "drivers/lcd",
+    "drivers/usb_dma",
+    "hal/esp32p4/parlio_native.c",
+    "drivers/fpga",
+    "user/fpga",
+    "drivers/tab5kbd/osk.c",
+    "drivers/ime",
+    "kernel/boot/kmain.c",
+    "user/ssh/ssh_app.c",
+    "user/tui",
+    "user/filer"
+  ],
+  "firmware": {
+    "profile": "large",
+    "sdk": "5.5.2",
+    "bytes": 1465536,
+    "sha256": "a3bd90ce46b9d21fb7f8af5dc408f3e131e58403438556711c61275ea67bd538"
+  },
+  "device": {
+    "port": "COM22",
+    "usb_serial": "E8:F6:0A:E3:21:CF",
+    "other_session_devices_used": false
+  },
+  "basic_runtime": {
+    "checks": 24,
+    "image_cycles": 3,
+    "memory_snapshots": 5,
+    "internal_used": 86400,
+    "internal_delta_from_baseline": 192,
+    "psram_used_before_network": 8588864,
+    "psram_delta_before_network": 0
+  },
+  "network_tests": [
+    {
+      "check": "wrong_password_rejected",
+      "passed": true
+    },
+    {
+      "check": "ssh_shared_shell_echo",
+      "passed": true
+    },
+    {
+      "check": "sftp_rw_exclusive_and_roundtrip",
+      "bytes": 8192,
+      "sha256": "dc404a613fedaeb54034514bc6505f56b933caa5250299ba7d094377a51caa46",
+      "passed": true
+    },
+    {
+      "check": "sftp_ro_read_and_write_rejection",
+      "passed": true
+    },
+    {
+      "check": "incoming_server_and_outgoing_client_coexistence",
+      "passed": true,
+      "host": {
+        "authenticated": true,
+        "command": "merge-client-probe"
+      }
+    }
+  ],
+  "touch_scroll": "both directions confirmed by user on the selected subset",
+  "camera_model": "BMP/I2C/lifecycle including DMA-short-frame passed; fixture updated, production camera driver unchanged",
+  "host_ssh": "14 connection cases and packet-bound tests passed",
+  "scope": "Selected features only; complete upstream merge remains deferred",
+  "deferred": [
+    "display/OSK/suspend integration",
+    "new image viewer",
+    "Cardputer support removal",
+    "CoreS3 SDK5.5 port and associated format fixes",
+    "remaining physical USB/camera/FPGA regression for the full integration branch"
+  ]
+}
