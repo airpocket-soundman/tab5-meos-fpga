@@ -1,3 +1,4 @@
+#include "hardware.h"
 #if M5OS_USB_NATIVE_DMA
 #include <m5os/ethernet.h>
 #include "../uvc/uvc_app.h"
@@ -143,6 +144,12 @@ static bool resolve(const char *arg, char *out)       /* relative to cwd -> norm
     if (n >= VFS_PATH_MAX) return false;
     return vfs_normalize(tmp, out) == ERR_OK;
 }
+
+#if M5OS_BOARD_TAB5
+static int cmd_devices(int argc,char **argv){(void)argc;(void)argv;hardware_print_devices();return 0;}
+static int cmd_power(int argc,char **argv){(void)argc;(void)argv;hardware_print_power();return 0;}
+static int cmd_storage(int argc,char **argv){(void)argc;(void)argv;hardware_print_storage();return 0;}
+#endif
 
 /* --------------------------------------------------------------- commands */
 
@@ -1102,6 +1109,11 @@ static const command_t s_commands[] = {
     { "python", micropython_cmd_main, "python [PATH | -c SOURCE]  MicroPython REPL/script" },
 #endif
     { "help",    cmd_help,    "list commands" },
+#if M5OS_BOARD_TAB5
+    { "devices", cmd_devices, "read-only board device diagnostics" },
+    { "power", cmd_power, "read-only battery and charger diagnostics" },
+    { "storage", cmd_storage, "root persistence and cached storage mounts" },
+#endif
 #if M5OS_USB_NATIVE_DMA
     { "eth", cmd_eth, "show USB Ethernet link, IP and packet counters" },
     { "usbreset", cmd_usbreset, "restart USB enumeration" },
