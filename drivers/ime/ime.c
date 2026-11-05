@@ -13,6 +13,7 @@
  * is drawn as a bar over the bottom two text rows, and those pixels are put back when it is done.
  */
 #include <m5os/ime.h>
+#include <m5os/suspend.h>
 #include <m5os/kprintf.h>
 #include <m5os/task.h>
 #include <m5os/mutex.h>
@@ -654,6 +655,7 @@ static const char *ime_status_unlocked(void)
 
 static void ime_feed_unlocked(const char *key)
 {
+    if (suspend_filter_input()) return; /* Wake input is consumed before scroll/IME mutation. */
     if (key && key[0] && !fbcon_is_paused()) fbcon_scroll_live();
     if (!g.inited) ime_init_unlocked();
     if (!B || g.bypass) { out_str(key); return; }                   /* no memory, or an app wants the raw keys */

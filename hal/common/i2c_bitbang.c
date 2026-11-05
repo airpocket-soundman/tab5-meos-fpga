@@ -3,10 +3,7 @@
 #include <m5os/mutex.h>
 
 #include <m5os/board_config.h>
-#if defined(M5OS_BOARD_CARDPUTER)
-#  define PIN_I2C_SCL      9
-#  define PIN_I2C_SDA      8
-#elif defined(M5OS_BOARD_TAB5)
+#if defined(M5OS_BOARD_TAB5)
 #  define PIN_I2C_SCL      32      /* Tab5 system bus: IO expanders, touch, RTC, sensors (M5Tab5-UserDemo BSP) */
 #  define PIN_I2C_SDA      31
 #else

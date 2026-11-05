@@ -147,7 +147,7 @@ static void draw_status(void)
     const win_t *w = front();
     uint32_t s = now_ms() / 1000u;
     display_fill_rect(0, 0, GUI_SCREEN_W, GUI_STATUS_H, COL_STATUS_BG);
-    ksnprintf(buf, sizeof buf, "MeOS  %-15s up %02u:%02u", w ? w->title : "(no window)", (s / 60u) % 100u, s % 60u);
+    ksnprintf(buf, sizeof buf, "MeOS  %-15s up %02u:%02u", w ? w->title : "(no window)", (unsigned)((s / 60u) % 100u), (unsigned)(s % 60u));
     display_draw_text(4, 4, buf, COL_STATUS_FG, COL_STATUS_BG, 1);
 }
 
@@ -376,7 +376,7 @@ void gui_print_windows(void)
     kprintf("ID   TITLE            OWNER(pid)  APP   FLAGS\n");
     for (int i = s_nord - 1; i >= 0; i--) {                      /* front first */
         const win_t *w = &s_win[s_order[i]];
-        kprintf("%-4u %-16s %-10u  %-4u  %s%s\n", w->id, w->title, w->owner_pid, w->owner_app,
+        kprintf("%-4u %-16s %-10u  %-4u  %s%s\n", (unsigned)(w->id), w->title, (unsigned)(w->owner_pid), (unsigned)(w->owner_app),
                 w->flags & GUI_WIN_HOME ? "home " : "", i == s_nord - 1 ? "(front)" : "");
     }
     if (!s_nord) kprintf("(no windows)\n");

@@ -1,0 +1,19 @@
+{
+  "candidate_commit": "ca4ca2970bbe0adb4f04396e9b4f92b8ab5b0e52",
+  "ci_run": 41960435774,
+  "result": "success",
+  "configurations": [
+    "host sanitizer/regression",
+    "tab5 small SDK5.5.2 native_dma",
+    "tab5 large SDK5.5.2 native_dma",
+    "tab5 large_fpga SDK5.5.2 native_dma (Dock disabled)",
+    "tab5 small SDK5.5.2 tinyusb (limited suspend)",
+    "cores3 small SDK4.4.3",
+    "cores3 small SDK5.5.2"
+  ],
+  "negative_controls": {
+    "dropped_render_wait": "rejected by fixture",
+    "unsafe_clock_change": "rejected by fixture"
+  },
+  "physical_target": "session Tab5 E8:F6:0A:E3:21:CF only"
+}

@@ -13,8 +13,8 @@ int image_file_info(const char *path)
         kprintf("image: cannot decode BMP (16/24-bit, up to1920x1080); JPEG/PNG not implemented\n");return 1;
     }
     kprintf("{\"format\":\"bmp\",\"width\":%u,\"height\":%u,\"decoded_bytes\":%u,"
-            "\"fnv1a\":%u,\"nonuniform\":%s}\n",stats.width,stats.height,stats.pixel_count*2,
-            stats.fnv1a,stats.nonuniform?"true":"false");
+            "\"fnv1a\":%u,\"nonuniform\":%s}\n",(unsigned)(stats.width),(unsigned)(stats.height),(unsigned)(stats.pixel_count*2),
+            (unsigned)(stats.fnv1a),stats.nonuniform?"true":"false");
     return 0;
 }
 int image_view_file(const char *path)

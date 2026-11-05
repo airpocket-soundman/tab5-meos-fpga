@@ -49,3 +49,23 @@ typedef struct {
 } display_status_t;
 /* Tab5: non-blocking snapshot; safe while another task owns a render batch. */
 void display_get_status(display_status_t *out);
+void display_clip_bottom(int y);          /* Tab5: discard drawing at y >= `y` (DISPLAY_HEIGHT = no clip); used by the on-screen keyboard */
+
+/* Tab5 only: nearest-neighbour resize with screen clipping. Source buffers must
+ * contain source_w * source_h pixels/indices. Calls use the shared render lock. */
+void display_draw_bitmap_resized(int x,int y,int source_w,int source_h,
+    const uint16_t *rgb565,int dest_w,int dest_h);
+void display_draw_indexed_bitmap_resized(int x,int y,int source_w,int source_h,
+    const uint8_t *indices,const uint16_t palette[256],int dest_w,int dest_h);
+bool display_is_suspended(void);            /* Tab5: true while the screen is off, see display_set_suspended */
+void display_set_suspended(bool on);        /* Tab5: screen off - all drawing is discarded, the framebuffer keeps the picture */
+void display_panel_power(bool on);          /* Tab5: panel display off / on (the backlight is board_backlight) */
+
+/* OSK overlay drawing: successful begin holds the render lock and temporarily
+ * lifts the bottom clip until end in the same task. No sleep, I2C or unrelated
+ * lock acquisition inside this scope. Failed begin means skip/retry paint. */
+bool display_overlay_begin(void);
+void display_overlay_end(void);
+void display_overlay_end_clip(int y); /* commit a new persistent clip atomically with overlay unlock */
+/* Conservative read-only suspend gate for fullscreen/render/overlay owners. */
+bool display_suspend_busy(void);

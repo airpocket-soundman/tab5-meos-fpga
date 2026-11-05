@@ -1,4 +1,3 @@
-#include "hardware.h"
 #if M5OS_USB_NATIVE_DMA
 #include <m5os/ethernet.h>
 #include "../uvc/uvc_app.h"
@@ -15,6 +14,7 @@
 #include "../filer/filer.h"
 #include "../tui/dqwin.h"
 #include "../edit/edit.h"
+#include "../viewer/imgview.h"
 #include "../camera/camera_app.h"
 #include "../wifi/wifi_app.h"
 #include "../bluetooth/bt_app.h"
@@ -43,7 +43,11 @@
 #include "../../drivers/lcd/fbcon.h"
 
 #define FILER_PAUSE_SETTLE_MS 100u
+
+static bool sh_streq(const char *a, const char *b);      /* used by cmd_osk, defined further down */
 #include "shell.h"
+#include "hardware.h"
+#include <m5os/suspend.h>
 #include <m5os/vfs.h>
 #include <m5os/task.h>
 #include <m5os/kprintf.h>
@@ -90,6 +94,8 @@
 
 static int  s_out = -1, s_in = -1;
 static char s_cwd[VFS_PATH_MAX] = "/";
+static bool sh_streq(const char *a, const char *b);
+
 static bool sh_streq(const char *a, const char *b);
 
 /* ---------------------------------------------------------------- output */
@@ -146,9 +152,6 @@ static bool resolve(const char *arg, char *out)       /* relative to cwd -> norm
 }
 
 #if M5OS_BOARD_TAB5
-static int cmd_devices(int argc,char **argv){(void)argc;(void)argv;hardware_print_devices();return 0;}
-static int cmd_power(int argc,char **argv){(void)argc;(void)argv;hardware_print_power();return 0;}
-static int cmd_storage(int argc,char **argv){(void)argc;(void)argv;hardware_print_storage();return 0;}
 #endif
 
 /* --------------------------------------------------------------- commands */
@@ -199,9 +202,9 @@ static int cmd_kill(int argc, char **argv)
     if (argc != 2 || !parse_uint(argv[1], &pid)) { sh_puts("usage: kill PID\n"); return 1; }
     int rc = task_kill(pid);
     if (rc == ERR_INVAL) { sh_puts("kill: refusing to kill idle (pid 1) or the shell itself\n"); return 1; }
-    if (rc == ERR_NOENT) { SH_PRINTF("kill: no such process: %u\n", pid); return 1; }
+    if (rc == ERR_NOENT) { SH_PRINTF("kill: no such process: %u\n", (unsigned)(pid)); return 1; }
     if (rc != ERR_OK) return fail("kill", argv[1], rc);
-    SH_PRINTF("killed %u\n", pid);
+    SH_PRINTF("killed %u\n", (unsigned)(pid));
     return 0;
 }
 
@@ -212,7 +215,7 @@ static int ls_cb(const vfs_info_t *i, void *c)
     ((struct ls_ctx *)c)->n++;
     if (i->type == FS_TYPE_DIR)      SH_PRINTF("%s/\n", i->name);
     else if (i->type == FS_TYPE_DEV) SH_PRINTF("%-16s [device]\n", i->name);
-    else                             SH_PRINTF("%-16s %u\n", i->name, i->size);
+    else                             SH_PRINTF("%-16s %u\n", i->name, (unsigned)(i->size));
     return 0;
 }
 
@@ -224,7 +227,9 @@ static int cmd_ls(int argc, char **argv)
     int rc = vfs_readdir(path, ls_cb, &ctx);
     if (rc < 0) {
         vfs_info_t st;                                         /* a plain file: show it like `ls FILE` */
-        if (rc == ERR_NOTDIR && vfs_stat(path, &st) == ERR_OK) { ls_cb(&st, &ctx); return 0; }
+        /* Some filesystems report NOENT rather than NOTDIR for readdir(FILE).
+         * Stat the path independently; only a regular file may mask that error. */
+        if (vfs_stat(path, &st) == ERR_OK && st.type == FS_TYPE_FILE) { ls_cb(&st, &ctx); return 0; }
         return fail("ls", path, rc);
     }
     return 0;
@@ -279,8 +284,8 @@ static void print_heap(const char *name, const kmem_stats_t *st)
 {
     if (!st->total) { SH_PRINTF("%-9s (not present)\n", name); return; }
     SH_PRINTF("%-9s total %u KB   used %u KB   free %u KB   largest %u KB   peak used %u KB   fails %u\n", name,
-              (uint32_t)(st->total / 1024u), (uint32_t)(st->used / 1024u), (uint32_t)(st->free / 1024u),
-              (uint32_t)(st->largest_free / 1024u), (uint32_t)(st->peak_used / 1024u), st->fail_count);
+              (unsigned)((uint32_t)(st->total / 1024u)), (unsigned)((uint32_t)(st->used / 1024u)), (unsigned)((uint32_t)(st->free / 1024u)),
+              (unsigned)((uint32_t)(st->largest_free / 1024u)), (unsigned)((uint32_t)(st->peak_used / 1024u)), (unsigned)(st->fail_count));
 }
 
 static int cmd_mem(int argc, char **argv)
@@ -296,8 +301,8 @@ static int cmd_mem(int argc, char **argv)
         int n=ksnprintf(output,sizeof output,
             "{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":%u,\"used\":%u,\"free\":%u,\"largest\":%u,\"peak\":%u,\"alloc_count\":%u,\"fail_count\":%u},"
             "\"psram\":{\"total\":%u,\"used\":%u,\"free\":%u,\"largest\":%u,\"peak\":%u,\"alloc_count\":%u,\"fail_count\":%u}}\n",
-            (uint32_t)mi.total,(uint32_t)mi.used,(uint32_t)mi.free,(uint32_t)mi.largest_free,(uint32_t)mi.peak_used,mi.alloc_count,mi.fail_count,
-            (uint32_t)mp.total,(uint32_t)mp.used,(uint32_t)mp.free,(uint32_t)mp.largest_free,(uint32_t)mp.peak_used,mp.alloc_count,mp.fail_count);
+            (unsigned)((uint32_t)mi.total),(unsigned)((uint32_t)mi.used),(unsigned)((uint32_t)mi.free),(unsigned)((uint32_t)mi.largest_free),(unsigned)((uint32_t)mi.peak_used),(unsigned)(mi.alloc_count),(unsigned)(mi.fail_count),
+            (unsigned)((uint32_t)mp.total),(unsigned)((uint32_t)mp.used),(unsigned)((uint32_t)mp.free),(unsigned)((uint32_t)mp.largest_free),(unsigned)((uint32_t)mp.peak_used),(unsigned)(mp.alloc_count),(unsigned)(mp.fail_count));
         sh_write(output,(size_t)n);return 0;
     }
     print_heap("internal", &mi);
@@ -309,8 +314,8 @@ static int cmd_uptime(int argc, char **argv)
 {
     (void)argc; (void)argv;
     uint32_t ms = (uint32_t)(hal_time_now_us() / 1000u);
-    SH_PRINTF("up %u:%02u:%02u.%03u   (%u scheduler ticks)\n", ms / 3600000u, (ms / 60000u) % 60u,
-              (ms / 1000u) % 60u, ms % 1000u, sched_ticks());
+    SH_PRINTF("up %u:%02u:%02u.%03u   (%u scheduler ticks)\n", (unsigned)(ms / 3600000u), (unsigned)((ms / 60000u) % 60u),
+              (unsigned)((ms / 1000u) % 60u), (unsigned)(ms % 1000u), (unsigned)(sched_ticks()));
     return 0;
 }
 
@@ -322,10 +327,10 @@ static void print_started(const char *what, uint32_t id)
         if (all[i].app_id != id) continue;
         char perms[8];
         app_perm_string(all[i].permissions, perms);
-        SH_PRINTF("started %s as app %u  (permissions %s)\n", what, id, perms);
+        SH_PRINTF("started %s as app %u  (permissions %s)\n", what, (unsigned)(id), perms);
         return;
     }
-    SH_PRINTF("started %s as app %u\n", what, id);
+    SH_PRINTF("started %s as app %u\n", what, (unsigned)(id));
 }
 
 static int list_m5ex_cb(const vfs_info_t *i, void *ctx)
@@ -337,7 +342,7 @@ static int list_m5ex_cb(const vfs_info_t *i, void *ctx)
         char base[FS_NAME_MAX + 1];                    /* name without ".m5ex" (kprintf has no %.*s) */
         for (size_t k = 0; k < n - 5; k++) base[k] = i->name[k];
         base[n - 5] = 0;
-        SH_PRINTF("  %-14s (%u bytes)\n", base, i->size);
+        SH_PRINTF("  %-14s (%u bytes)\n", base, (unsigned)(i->size));
         (*(int *)ctx)++;
     }
     return 0;
@@ -435,12 +440,12 @@ static int cmd_put(int argc, char **argv)
             crc = crc32_update(crc, out, (size_t)k);
             total += (uint32_t)k;
         }
-        if (ack) SH_PRINTF("put: ack %u\n", total);
+        if (ack) SH_PRINTF("put: ack %u\n", (unsigned)(total));
     }
     int close_rc = vfs_close(fd);
     if (rc == ERR_OK && close_rc < 0) rc = close_rc;
     if (rc != ERR_OK) { vfs_unlink(path); return fail("put", path, rc); }
-    SH_PRINTF("put: wrote %u bytes, crc32 %08x\n", total, crc);
+    SH_PRINTF("put: wrote %u bytes, crc32 %08x\n", (unsigned)(total), (unsigned)(crc));
     return 0;
 }
 
@@ -533,10 +538,10 @@ static int cmd_send(int argc, char **argv)
         for (const char *p = argv[a]; *p && n < MSG_DATA_SIZE - 1; p++) m.data[n++] = (uint8_t)*p;
     }
     int rc = msg_send_timeout(pid, &m, 200);
-    if (rc == ERR_NOENT) { SH_PRINTF("send: no such process: %u\n", pid); return 1; }
+    if (rc == ERR_NOENT) { SH_PRINTF("send: no such process: %u\n", (unsigned)(pid)); return 1; }
     if (rc == ERR_TIMEOUT) { sh_puts("send: its mailbox is full and nobody is reading it\n"); return 1; }
     if (rc != ERR_OK) return fail("send", argv[1], rc);
-    SH_PRINTF("sent to pid %u: \"%s\"   (this shell is pid %u: replies arrive in its mailbox, see: recv)\n", pid, (char *)m.data, task_current()->id);
+    SH_PRINTF("sent to pid %u: \"%s\"   (this shell is pid %u: replies arrive in its mailbox, see: recv)\n", (unsigned)(pid), (char *)m.data, (unsigned)(task_current()->id));
     return 0;
 }
 
@@ -551,7 +556,7 @@ static int cmd_recv(int argc, char **argv)
         if (rc == ERR_TIMEOUT || rc == ERR_NOMSG) break;
         if (rc != ERR_OK) return fail("recv", "mailbox", rc);
         m.data[MSG_DATA_SIZE - 1] = 0;
-        SH_PRINTF("from pid %u (type 0x%x): \"%s\"\n", m.sender, m.type, (char *)m.data);
+        SH_PRINTF("from pid %u (type 0x%x): \"%s\"\n", (unsigned)(m.sender), (unsigned)(m.type), (char *)m.data);
         got++;
     }
     if (!got) sh_puts("(no message)\n");
@@ -648,9 +653,9 @@ static int cmd_apps(int argc, char **argv)
         char perms[8];
         app_perm_string(a[i].permissions, perms);
         if (a[i].state == APP_RUNNING)
-            SH_PRINTF("%-4u %-8s %-8s %-4u %s  %-5u  %u B held\n", a[i].app_id, a[i].name, app_state_name(a[i].state), a[i].owner_task, perms, a[i].tasks, a[i].mem_bytes);
+            SH_PRINTF("%-4u %-8s %-8s %-4u %s  %-5u  %u B held\n", (unsigned)(a[i].app_id), a[i].name, app_state_name(a[i].state), (unsigned)(a[i].owner_task), perms, (unsigned)(a[i].tasks), (unsigned)(a[i].mem_bytes));
         else
-            SH_PRINTF("%-4u %-8s %-8s %-4u %s  %-5u  %u B reclaimed\n", a[i].app_id, a[i].name, app_state_name(a[i].state), a[i].owner_task, perms, a[i].tasks, a[i].reclaimed_bytes);
+            SH_PRINTF("%-4u %-8s %-8s %-4u %s  %-5u  %u B reclaimed\n", (unsigned)(a[i].app_id), a[i].name, app_state_name(a[i].state), (unsigned)(a[i].owner_task), perms, (unsigned)(a[i].tasks), (unsigned)(a[i].reclaimed_bytes));
     }
     return 0;
 }
@@ -660,9 +665,9 @@ static int cmd_stop(int argc, char **argv)
     uint32_t id;
     if (argc != 2 || !parse_uint(argv[1], &id)) { sh_puts("usage: stop APP_ID   (see: apps)\n"); return 1; }
     int rc = app_stop(id);
-    if (rc == ERR_NOENT) { SH_PRINTF("stop: app %u is not running\n", id); return 1; }
+    if (rc == ERR_NOENT) { SH_PRINTF("stop: app %u is not running\n", (unsigned)(id)); return 1; }
     if (rc != ERR_OK) return fail("stop", argv[1], rc);
-    SH_PRINTF("stopped app %u\n", id);
+    SH_PRINTF("stopped app %u\n", (unsigned)(id));
     return 0;
 }
 
@@ -677,6 +682,20 @@ static int cmd_files(int argc, char **argv)
     filer_run(path);
     fbcon_pause(false);
     return 0;
+}
+
+static int cmd_view(int argc, char **argv)
+{
+    char path[VFS_PATH_MAX];
+    if (argc < 2) { SH_PRINTF("usage: view IMAGE (BMP or PPM)\n"); return 1; }
+    if (!resolve(argv[1], path)) return fail("view", "bad path", ERR_INVAL);
+    fbcon_pause(true);
+    task_sleep(FILER_PAUSE_SETTLE_MS);
+    dq_clear();
+    bool ok = imgview_show(path, NULL);
+    fbcon_pause(false);
+    if (!ok) SH_PRINTF("view: %s: %s\n", path, imgview_last_error());
+    return ok ? 0 : 1;
 }
 
 static int cmd_edit(int argc, char **argv)
@@ -790,7 +809,7 @@ static void print_wifi_status(void)
     SH_PRINTF("Saved AP    : %s   (auto-connect: %s)\n",
               st.has_saved ? st.saved_ssid : "(none)",
               st.auto_connect ? "ON" : "OFF");
-    SH_PRINTF("Packets     : RX %u   TX %u\n", st.rx_packets, st.tx_packets);
+    SH_PRINTF("Packets     : RX %u   TX %u\n", (unsigned)(st.rx_packets), (unsigned)(st.tx_packets));
 }
 
 static int cmd_wifi(int argc, char **argv)
@@ -987,6 +1006,10 @@ static int cmd_install(int argc, char **argv)
     return 0;
 }
 
+#if M5OS_BOARD_TAB5
+static int cmd_sleep(int argc, char **argv) { return suspend_command(argc, argv); }
+#endif
+
 static int cmd_pwd(int argc, char **argv) { (void)argc; (void)argv; SH_PRINTF("%s\n", s_cwd); return 0; }
 
 
@@ -1044,9 +1067,24 @@ static int cmd_mount(int argc, char **argv)
     vfs_print_mounts();
     fs_stat_t st;
     if (fs_statfs(&st) == ERR_OK)
-        SH_PRINTF("M5FS: %u KB total, %u KB free\n", st.total_blocks * st.block_size / 1024u, st.free_blocks * st.block_size / 1024u);
+        SH_PRINTF("M5FS: %u KB total, %u KB free\n", (unsigned)(st.total_blocks * st.block_size / 1024u), (unsigned)(st.free_blocks * st.block_size / 1024u));
     return 0;
 }
+
+#if M5OS_BOARD_TAB5
+static int cmd_devices(int argc, char **argv)
+{
+    (void)argc; (void)argv; hardware_print_devices(); return 0;
+}
+static int cmd_power(int argc, char **argv)
+{
+    (void)argc; (void)argv; hardware_print_power(); return 0;
+}
+static int cmd_storage(int argc, char **argv)
+{
+    (void)argc; (void)argv; hardware_print_storage(); return 0;
+}
+#endif
 
 /* ----------------------------------------------------------- line editing */
 
@@ -1114,9 +1152,12 @@ static const command_t s_commands[] = {
 #endif
     { "help",    cmd_help,    "list commands" },
 #if M5OS_BOARD_TAB5
-    { "devices", cmd_devices, "read-only board device diagnostics" },
-    { "power", cmd_power, "read-only battery and charger diagnostics" },
-    { "storage", cmd_storage, "root persistence and cached storage mounts" },
+    { "devices", cmd_devices, "board devices: detected, untested, or unsupported (read-only)" },
+    { "power",   cmd_power,   "battery voltage/current, estimated level and charger state (read-only)" },
+    { "storage", cmd_storage, "root backing, persistence and microSD support (read-only)" },
+#endif
+#if M5OS_BOARD_TAB5
+    { "sleep", cmd_sleep, "sleep [status | idle SECONDS|off]   suspend now: screen and 5 V off, slow CPU, wakes on key/touch/movement" },
 #endif
 #if M5OS_USB_NATIVE_DMA
     { "eth", cmd_eth, "show USB Ethernet link, IP and packet counters" },
@@ -1141,6 +1182,7 @@ static const command_t s_commands[] = {
     { "gui",     cmd_gui,     "list windows (front first)" },
 #if M5OS_HAS_KEYBOARD
     { "files",   cmd_files,   "files [DIR]     full-screen file manager (filer)" },
+    { "view",    cmd_view,    "view IMAGE      show an image (BMP/PPM)" },
     { "edit",    cmd_edit,    "edit FILE       full-screen text editor (^S save, ^Q quit)" },
     { "camera",  cmd_camera,  "camera [DIR]    full-screen camera viewfinder (Space:capture, Q:quit)" },
     { "cam",     cmd_camera,  "cam [DIR]       alias for camera" },

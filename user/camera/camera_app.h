@@ -9,7 +9,7 @@
  * If `last_saved_name` is non-NULL (size >= 24), receives the basename of the last saved photo. */
 void camera_app_run(const char *save_dir, char *last_saved_name);
 
-/* Image helper functions used by the Filer's image viewer and shell `snap`. */
+/* Used by shell `snap`.  (Loading and viewing images is user/viewer/imgview.) */
 bool camera_capture_bmp_file(const char *path);
 /* Exclusive use of the built-in camera (camsrc.c): acquire before camera_start(), release after camera_stop()
  * (release also calls camera_deinit()). */

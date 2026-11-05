@@ -78,7 +78,7 @@ bool sftp_storage_selftest(const char *root){
     stage="exclusive create";
     uint32_t seed=(uint32_t)hal_time_now_us();
     for(unsigned i=0;i<8;i++){
-        ksnprintf(s->path,sizeof s->path,"/sd/sftp_%08x.bin",seed+i);
+        ksnprintf(s->path,sizeof s->path,"/sd/sftp_%08x.bin",(unsigned)(seed+i));
         if(st_open(s,2|8|16|32)){created=true;break;}
         if(!st_status(s,4))goto done;
     }

@@ -13,6 +13,21 @@
 static task_t *lease_owner;
 static uint32_t lease_id;
 static bool lease_paused,lease_previous_pause,lease_frame;
+#if M5OS_BOARD_TAB5
+bool display_render_busy(void);
+#endif
+bool display_suspend_busy(void)
+{
+    /* Do not reap/mutate a lease here: suspend only asks whether it is safe.
+     * A dead lease is cleaned by normal device-close/repaint paths. */
+    bool live=lease_owner&&lease_owner->id==lease_id&&
+        lease_owner->state!=TASK_TERMINATED&&lease_owner->state!=TASK_UNUSED;
+#if M5OS_BOARD_TAB5
+    return live||fbcon_is_paused()||display_render_busy();
+#else
+    return live;
+#endif
+}
 static bool device_frame_begin(void){
 #if M5OS_BOARD_TAB5
     return display_begin_frame();

@@ -244,5 +244,5 @@ void sd_print_info(void)
     const uint8_t *c = sd.cid;
     char name[6] = { (char)c[3], (char)c[4], (char)c[5], (char)c[6], (char)c[7], 0 };
     kprintf("sd: %s, %u MiB (%u sectors), product \"%s\", rev %u.%u\n",
-            sd.sdhc ? "SDHC/SDXC" : "SDSC", sd.sectors / 2048u, sd.sectors, name, c[8] >> 4, c[8] & 0x0F);
+            sd.sdhc ? "SDHC/SDXC" : "SDSC", (unsigned)(sd.sectors / 2048u), (unsigned)sd.sectors, name, c[8] >> 4, c[8] & 0x0F);
 }

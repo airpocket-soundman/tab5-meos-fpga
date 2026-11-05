@@ -30,6 +30,15 @@ static uint16_t *s_fb = buffers[0], *s_back = buffers[1], *s_draw = buffers[0],
 static void *s_dpi_panel = (void *)1;
 static volatile uint32_t s_frames;
 static uint8_t s_fb_count = 2;
+static int s_clip_y=DISPLAY_HEIGHT;
+static bool s_suspended;
+static unsigned resume_repaints;
+static void fbcon_request_redraw(void){resume_repaints++;}
+static void osk_request_redraw(void){resume_repaints++;}
+static void *s_io=(void*)1;
+#define LCD_CMD_DISPON 0x29
+#define LCD_CMD_DISPOFF 0x28
+static void tx(int cmd,const void *data,size_t len){assert((cmd==LCD_CMD_DISPON||cmd==LCD_CMD_DISPOFF)&&!data&&!len);}
 static uintptr_t display_scanout_address(void) { return (uintptr_t)scanout; }
 static uint64_t now_us;
 static bool stalled, queue_error, source_stalled;
@@ -50,6 +59,7 @@ static void mutex_unlock(mutex_t *m) {
     m->owner = NULL;
     unlocks++;
 }
+static bool mutex_trylock(mutex_t *m){if(m->owner)return false;mutex_lock(m);return true;}
 static uint64_t hal_time_now_us(void) { return now_us; }
 static void kprintf(const char *fmt, ...) { (void)fmt; }
 static void task_sleep(uint32_t ms) {
@@ -163,8 +173,23 @@ static void display_draw_bitmap_scaled_unlocked(int a, int b, int c, int d, cons
     (void)e;
     (void)f;
 }
+static void display_draw_bitmap_resized_unlocked(int a,int b,int c,int d,const uint16_t *p,int e,int f){(void)a;(void)b;(void)c;(void)d;(void)p;(void)e;(void)f;assert(locks>unlocks);}
+static void display_draw_indexed_bitmap_resized_unlocked(int a,int b,int c,int d,const uint8_t *p,const uint16_t *q,int e,int f){(void)a;(void)b;(void)c;(void)d;(void)p;(void)q;(void)e;(void)f;assert(locks>unlocks);}
 #include "../../drivers/lcd/display_frame.inc"
 int main(void) {
+    display_clip_bottom(77);assert(s_clip_y==77&&!display_render_busy());
+    assert(display_overlay_begin()&&s_clip_y==DISPLAY_HEIGHT&&display_render_busy());
+    assert(!display_overlay_begin());display_overlay_end();assert(s_clip_y==77&&!display_render_busy());
+    assert(display_overlay_begin());display_overlay_end_clip(99);assert(s_clip_y==99&&!display_render_busy());
+    display_clip_bottom(77);
+    assert(display_overlay_begin()); /* Simulate killed overlay lock owner. */
+    s_display_mutex.owner=NULL;unlocks++;current=&other_task;
+    display_draw_bitmap_resized(0,0,1,1,buffers[0],1,1);
+    assert(!s_overlay_active&&s_clip_y==77&&!display_render_busy());current=&main_task;
+    display_draw_indexed_bitmap_resized(0,0,1,1,(const uint8_t*)buffers[0],buffers[0],1,1);
+    display_set_suspended(true);assert(display_is_suspended()&&!display_begin_frame()&&!display_overlay_begin());
+    display_panel_power(false);display_panel_power(true);display_set_suspended(false);
+    assert(!display_is_suspended()&&locks==unlocks&&resume_repaints==2);
     for (unsigned i = 0; i < PANEL_W * PANEL_H; i++)
         s_fb[i] = (uint16_t)i;
     assert(display_begin_frame());

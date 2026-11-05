@@ -1,0 +1,16 @@
+{
+  "firmware": "ca4ca29 standard large/native_dma",
+  "test_image": "2x2 RGB/white quadrants, P6",
+  "evidence": "user physical operation, followed by clarification",
+  "confirmed": [
+    "right-edge OSK opens over fullscreen viewer",
+    "repeated Hide restores image without missing areas or keyboard remnants"
+  ],
+  "not_user_tested": [
+    "Q to exit viewer"
+  ],
+  "agent_action": "sent q over UART; subsequent displaystatus and mem commands confirmed console restored",
+  "retained_overlay_buffer_bytes": 737280,
+  "allocator_overhead_bytes": 16,
+  "interpretation": "allocated once on first fullscreen OSK use; retained for reuse, not freed on Hide"
+}

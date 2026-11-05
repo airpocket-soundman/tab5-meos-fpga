@@ -1,0 +1,105 @@
+{
+  "firmware": "260fce384d521e64e760781d66514cf4516f98b6",
+  "checks": [
+    {
+      "command": "sleep idle off",
+      "output": "sleep idle off\r\nsleep: auto-suspend off\r\n> "
+    },
+    {
+      "command": "osk off",
+      "output": "osk off\r\n> "
+    },
+    {
+      "command": "ls /lv26c3.txt",
+      "output": "ls /lv26c3.txt\r\nls: /lv26c3.txt: no such file or directory (-13)\r\n> "
+    },
+    {
+      "command": "ls /sd/lv26c3.txt",
+      "output": "ls /sd/lv26c3.txt\r\nls: /sd/lv26c3.txt: no such file or directory (-13)\r\n> "
+    },
+    {
+      "command": "python -c \"f=open('/sd/lv26c3.txt','xb');f.write(b'ls-regression\\n');f.close()\"",
+      "output": "python -c \"f=open('/s[network event omitted]\r\nd/lv26c3.txt','xb');f.write(b[network event omitted]\r\n'ls-regression\\n');f.close()\"\r\n> "
+    },
+    {
+      "upload": "/lv26c3.txt",
+      "bytes": 14,
+      "crc32": 1166077576,
+      "output": "put: wrote 14 bytes, crc32 4580ee88\r\n> "
+    },
+    {
+      "command": "ls /lv26c3.txt",
+      "output": "ls /lv26c3.txt\r\nlv26c3.txt       14\r\n> "
+    },
+    {
+      "command": "python -c \"f=open('/lv26c3.txt','rb');print(f.read());f.close()\"",
+      "output": "python -c \"f=open('/lv26c3.txt','rb');print(f.read());f.close()\"\r\nb'ls-regression\\n'\r\n> "
+    },
+    {
+      "command": "ls /sd/lv26c3.txt",
+      "output": "ls /sd/lv26c3.txt\r\nlv26c3.txt       14\r\n> "
+    },
+    {
+      "command": "python -c \"f=open('/sd/lv26c3.txt','rb');print(f.read());f.close()\"",
+      "output": "python -c \"f=open('/sd/lv26c3.txt','rb');print(f.read());f.close()\"\r\nb'ls-regression\\n'\r\n> "
+    },
+    {
+      "command": "ls /sd",
+      "directory_listing": "success; unrelated names omitted"
+    },
+    {
+      "command": "rm /lv26c3.txt",
+      "output": "rm /lv26c3.txt\r\n> "
+    },
+    {
+      "command": "ls /lv26c3.txt",
+      "output": "ls /lv26c3.txt\r\nls: /lv26c3.txt: no such file or directory (-13)\r\n> "
+    },
+    {
+      "command": "rm /sd/lv26c3.txt",
+      "output": "rm /sd/lv26c3.txt\r\n> "
+    },
+    {
+      "command": "ls /sd/lv26c3.txt",
+      "output": "ls /sd/lv26c3.txt\r\nls: /sd/lv26c3.txt: no such file or directory (-13)\r\n> "
+    },
+    {
+      "command": "ls /lv26c3.ppm",
+      "output": "ls /lv26c3.ppm\r\nls: /lv26c3.ppm: no such file or directory (-13)\r\n> "
+    },
+    {
+      "upload": "/lv26c3.ppm",
+      "bytes": 14,
+      "crc32": 1720186502,
+      "output": "put: wrote 14 bytes, crc32 6687f686\r\n> "
+    },
+    {
+      "command": "view /lv26c3.ppm",
+      "exit": "q",
+      "output": "view /lv26c3.ppm\r\n> "
+    },
+    {
+      "command": "rm /lv26c3.ppm",
+      "output": "rm /lv26c3.ppm\r\n> "
+    },
+    {
+      "camera_preview_after_ls_fix": "camera /sd\r\ncamera: sensor at 0x36 chip_id=0xeb52\r\n> "
+    },
+    {
+      "command": "camera status",
+      "output": "camera status\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=78 DMA_errors=0\r\ncamera: Native CSI/ISP RGB565 frame received\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":15155584,\"alloc_count\":21,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=2381 batches=34 submitted=34 retired=34 errors=0 timeouts=0 max_us=316270 back=1 active=0\r\n> "
+    },
+    {
+      "command": "ps",
+      "output": "ps\r\nPID  NAME             PRI  STATE       APP  STACK used~/size  GUARD\r\n1    idle             0    RUNNABLE    -  n/a (boot stack)\r\n2    appd             3    SLEEPING    -  248/4096  OK\r\n3    wifid            1    SLEEPING    -  2480/16384  OK\r\n4    fbcon            2    SLEEPING    -  800/4096  OK\r\n6    usbkbd           3    SLEEPING    -  512/8192  OK\r\n7    osk              3    SLEEPING    -  848/12288  OK\r\n8    powerd           3    SLEEPING    -  176/6144  OK\r\n9    shell            2    RUNNING     -  3056/32768  OK\r\n> "
+    }
+  ]
+}

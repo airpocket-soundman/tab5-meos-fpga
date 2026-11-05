@@ -32,6 +32,8 @@ static bool s_dirty[ROWS];
 static int  s_rows = ROWS;        /* rows in use: fbcon_set_rows() shrinks the console (on-screen keyboard below it) */
 static int  s_row, s_col;
 static volatile bool s_paused;
+static volatile bool s_redraw_request;
+void fbcon_request_redraw(void) { s_redraw_request=true; }
 static bool s_cursor_on;
 static int  s_cursor_row = -1, s_cursor_col;
 
@@ -347,7 +349,10 @@ static void fbcon_task(void *arg) {
         size_t n;
         bool moved = false;
         while ((n = kconsole_log_read(&pos, buf, sizeof buf)) > 0) { for (size_t i = 0; i < n; i++) feed(buf[i]); moved = true; }
-        if (s_paused) { task_sleep(POLL_MS); continue; }
+        if (s_paused || display_is_suspended()) { task_sleep(POLL_MS); continue; }
+        uint32_t redraw_irq=arch_irq_disable();
+        bool repaint=s_redraw_request;s_redraw_request=false;arch_irq_restore(redraw_irq);
+        if(repaint)dirty_all();
         apply_scroll_request();
         if (s_view_offset > 0 && moved) dirty_all();
         render_console(moved, &blink, &last_blink);

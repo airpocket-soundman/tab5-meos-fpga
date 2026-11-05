@@ -1,5 +1,24 @@
 # Tang Primer 20K carrier integration review
 
+## Upstream merge review: 2026-11-05
+
+Reviewed carrier remote `48f91f12a2c6429e2d4c4ed4c3711f26d3d11f08`
+against previous `53c023929b4f8cf42a6e02725160c0f0015dd162` before
+merging upstream display/input/power changes. Rechecked committed FPGA overview,
+Dock constraints, final `kicad/core_pin_assignment.csv` and committed KiCad DRC
+audit records. The queried Dock constraints and pin assignment have no changes.
+Carrier documentation now corrects the carrier D0..D7 SODIMM mapping to
+77/83/85/103/101/109/107/115; that carrier constraint is not the Dock bench
+constraint, and carrier banks 0/1/7 voltage validation remains unresolved.
+Do not interpret unchanged Dock wiring as full carrier fabrication approval.
+New MEMV1/DDR3 diagnostic and bandwidth work does not change the adopted MeOS
+wire protocol, pin ownership or qualified clock policy. No RTL or bitstream is
+changed here. Integration tests use a separate, unconnected Tab5; FPGA physical
+regression remains pending because the FPGA board belongs to another session.
+Power management must refuse suspend while unquiesced camera/USB/FPGA resources
+are configured rather than switch shared rails underneath active drivers.
+
+
 ## Animation pipeline review: 2026-11-04
 
 Fetched current carrier remote main `53c023929b4f8cf42a6e02725160c0f0015dd162`
@@ -463,6 +482,18 @@ No20MHz MeOS result is claimed. The standalone1MHz fractal app separately passed
 CPU/FPGA comparisons for both scenes; it does not establish DDR3 or high-rate
 qualification. No carrier/pin/RTL/voltage modification was made.
 
+
+### ADC ROM-clock compatibility review (2026-11-05)
+
+Fetched and reviewed carrier `origin/main` at
+`995b3ca4849ea8d529031384311b1b8a9680d2cd`. The Dock wiring specification,
+Dock/carrier constraints and `kicad/core_pin_assignment.csv` are unchanged from
+reviewed `48f91f12` for this change. This fix enables the ESP32-P4 internal LP
+I2C master clock before ROM analog-register access, then restores the complete
+previous LP clock state. No external GPIO allocation, carrier electrical
+requirement, wiring, FPGA code or transport setting changes. Physical ADC
+operation on the newly connected Tab5 has not been verified by this review.
+
 ## Verified partial integration: 2026-11-05
 
 Fetched and reviewed carrier remote `995b3ca4849ea8d529031384311b1b8a9680d2cd`
@@ -472,3 +503,9 @@ audit records. No pin/electrical change from the preceding reviewed revision.
 Unrelated dirty carrier work is preserved. This integration changes no FPGA
 RTL, wire protocol, pin allocation or power sequencing. Analog I2C clock access
 is IRQ-protected and restores the prior shared register state.
+
+## Local display/power validation: 2026-11-05
+
+Carrier remote reviewed at `995b3ca4849ea8d529031384311b1b8a9680d2cd`; committed pin assignments, generated hardware and audit records checked. No shared electrical, GPIO, transport or FPGA changes are proposed. Preserve unrelated carrier work. Tests use only the session Tab5, without the FPGA Dock.
+
+The local suspend experiment found LCD DMA underruns when changing P4 CPU/memory dividers. The candidate now preserves these clocks while scanout remains active. This does not qualify carrier power sequencing or FPGA coexistence; the FPGA build remains suspend-inhibited. No carrier requirement or external pin/power assignment was changed.

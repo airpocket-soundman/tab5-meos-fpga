@@ -65,18 +65,17 @@ else()
 endif()
 # Board-specific sources: *_cores3.c / *_cardputer.c, the chip directories hal/esp32s3 (Xtensa) and
 # hal/esp32p4 (RISC-V), and the drivers that only some boards have.
-if("$ENV{M5OS_BOARD}" STREQUAL "cardputer")
-    list(FILTER M5OS_SRCS EXCLUDE REGEX "_cores3\\.c$|/hal/esp32p4/|${M5OS_NO_WASM_RE}|/drivers/(touch|button|usbkbd|tab5kbd|ime)/|/drivers/lcd/(ili9342|display_tab5)\\.c$|/drivers/camera/camera_tab5\\.c$|/drivers/wifi/wifi_tab5\\.c$|/m5ex/images_none\\.c$")
-    set(M5OS_BOARD_DEF M5OS_BOARD_CARDPUTER=1)
-    set(M5OS_ARCH_REQUIRES xtensa)
-elseif("$ENV{M5OS_BOARD}" STREQUAL "tab5")
+if("$ENV{M5OS_BOARD}" STREQUAL "tab5")
     list(FILTER M5OS_SRCS EXCLUDE REGEX "_cores3\\.c$|_cardputer\\.c$|/hal/esp32s3/|/drivers/(touch|button|keyboard)/|/drivers/lcd/(ili9342|st7789|display)\\.c$|/drivers/camera/camera_stub\\.c$|/drivers/wifi/wifi_stub\\.c$|/m5ex/images\\.c$")
     set(M5OS_BOARD_DEF M5OS_BOARD_TAB5=1)
     set(M5OS_ARCH_REQUIRES riscv esp_psram esp_mm esp_lcd esp_driver_cam esp_driver_isp esp_driver_ledc usb)
 else()
-    list(FILTER M5OS_SRCS EXCLUDE REGEX "_cardputer\\.c$|/hal/esp32p4/|${M5OS_NO_WASM_RE}|/drivers/(keyboard|usbkbd|tab5kbd|ime)/|/drivers/lcd/(st7789|display_tab5)\\.c$|/drivers/camera/camera_tab5\\.c$|/drivers/wifi/wifi_tab5\\.c$|/m5ex/images_none\\.c$")
+    list(FILTER M5OS_SRCS EXCLUDE REGEX "/hal/esp32p4/|${M5OS_NO_WASM_RE}|/drivers/(usbkbd|tab5kbd|ime)/|/drivers/lcd/display_tab5\\.c$|/drivers/camera/camera_tab5\\.c$|/drivers/wifi/wifi_tab5\\.c$|/m5ex/images_none\\.c$")
     set(M5OS_BOARD_DEF M5OS_BOARD_CORES3=1)
     set(M5OS_ARCH_REQUIRES xtensa)
+    if(IDF_VERSION_MAJOR GREATER_EQUAL 5)
+        list(APPEND M5OS_ARCH_REQUIRES esp_psram esp_mm)
+    endif()
 endif()
 
 # Without the camera module the built-in camera driver is replaced by the stub that reports "no camera".

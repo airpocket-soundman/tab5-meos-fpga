@@ -9,7 +9,7 @@ void hello_main(void *arg)
     int out = vfs_open("/dev/uart", VFS_O_WRITE);
     if (out < 0) return;
     char line[64];
-    int n = ksnprintf(line, sizeof line, "Hello from the hello app (pid %u)!\n", task_current()->id);
+    int n = ksnprintf(line, sizeof line, "Hello from the hello app (pid %u)!\n", (unsigned)task_current()->id);
     vfs_write(out, line, (size_t)n);
     vfs_close(out);
 }

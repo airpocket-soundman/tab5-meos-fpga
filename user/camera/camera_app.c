@@ -254,7 +254,7 @@ static void camera_app_run_locked(const char *save_dir, char *last_saved_name) {
             ksnprintf(
                 hdr_info, sizeof hdr_info,
                 "SC202CS 1280x720  %2u fps  AE:%s  Exp:%4u  Gain:%2ux  Mir:%s Flip:%s  [%dx%d]",
-                fps_val, st.auto_exp ? "ON " : "MAN", st.exposure, gm, st.mirror ? "Y" : "N",
+                (unsigned)fps_val, st.auto_exp ? "ON " : "MAN", (unsigned)st.exposure, (unsigned)gm, st.mirror ? "Y" : "N",
                 st.vflip ? "Y" : "N", vw, vh);
             padded_line(14, 1, hdr_info);
         } else {
@@ -296,25 +296,25 @@ static void camera_app_run_locked(const char *save_dir, char *last_saved_name) {
             camera_set_auto_exposure(false);
             camera_set_exposure(st.exposure + 64u);
             camera_get_status(&st);
-            ksnprintf(status_msg, sizeof status_msg, "Manual Exposure: %u", st.exposure);
+            ksnprintf(status_msg, sizeof status_msg, "Manual Exposure: %u", (unsigned)st.exposure);
             padded_line(2, fy + 2, status_msg);
         } else if (k == DQK_DOWN || k == '-' || k == '_') {
             camera_set_auto_exposure(false);
             camera_set_exposure(st.exposure > 72u ? st.exposure - 64u : 8u);
             camera_get_status(&st);
-            ksnprintf(status_msg, sizeof status_msg, "Manual Exposure: %u", st.exposure);
+            ksnprintf(status_msg, sizeof status_msg, "Manual Exposure: %u", (unsigned)st.exposure);
             padded_line(2, fy + 2, status_msg);
         } else if (k == DQK_RIGHT || k == ']') {
             camera_set_auto_exposure(false);
             camera_set_gain_index(st.gain_idx + 1);
             camera_get_status(&st);
-            ksnprintf(status_msg, sizeof status_msg, "Manual Gain index: %u", st.gain_idx);
+            ksnprintf(status_msg, sizeof status_msg, "Manual Gain index: %u", (unsigned)st.gain_idx);
             padded_line(2, fy + 2, status_msg);
         } else if (k == DQK_LEFT || k == '[') {
             camera_set_auto_exposure(false);
             camera_set_gain_index(st.gain_idx > 0 ? st.gain_idx - 1 : 0);
             camera_get_status(&st);
-            ksnprintf(status_msg, sizeof status_msg, "Manual Gain index: %u", st.gain_idx);
+            ksnprintf(status_msg, sizeof status_msg, "Manual Gain index: %u", (unsigned)st.gain_idx);
             padded_line(2, fy + 2, status_msg);
         } else if (k == ' ' || k == DQK_ENTER || k == 's' || k == 'S' || k == 'c' || k == 'C') {
             const uint16_t *snap = camera_frame(NULL);

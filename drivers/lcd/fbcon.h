@@ -8,6 +8,7 @@ void fbcon_start(void);
  * resume repaints the whole console.  Console output keeps being collected while paused. */
 void fbcon_pause(bool pause);
 bool fbcon_is_paused(void);
+void fbcon_request_redraw(void); /* enqueue a full repaint after resume; no drawing in caller */
 
 /* Overlay: text drawn on top of the console without touching what the console holds, for the Japanese input
  * method (the text being composed and its candidate list).  The overlay is replaced as a whole:

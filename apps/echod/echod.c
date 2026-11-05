@@ -21,7 +21,7 @@ void echod_main(void *arg)
         const char *text = (const char *)m.data;
         if (out >= 0) {
             char line[64];
-            int n = ksnprintf(line, sizeof line, "echod: from pid %u: %s\n", m.sender, text);
+            int n = ksnprintf(line, sizeof line, "echod: from pid %u: %s\n", (unsigned)m.sender, text);
             vfs_write(out, line, (size_t)n);
         }
         if (is_quit(text)) break;

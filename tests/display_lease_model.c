@@ -3,6 +3,8 @@
 #include "../drivers/lcd/display_dev.c"
 static task_t a={.id=1,.state=TASK_RUNNING},b={.id=2,.state=TASK_RUNNING};
 static task_t *self=&a;static bool paused,available=true;static unsigned begins,ends,draws;
+static bool render_busy;
+bool display_render_busy(void){return render_busy;}
 task_t *task_current(void){return self;}
 bool fbcon_is_paused(void){return paused;}
 void fbcon_pause(bool p){paused=p;}
@@ -21,11 +23,13 @@ void display_draw_bitmap_scaled(int x,int y,int w,int h,const uint16_t*p,int sca
 }
 int main(void){
  display_dev_register();bool on=true,off=false;uint16_t color=0;
+ assert(!display_suspend_busy());render_busy=true;assert(display_suspend_busy());render_busy=false;
  display_scaled_blit_t scaled={.image={.x=3,.y=4,.w=32,.h=32,.pixels=&color},.scale=4};
  assert(!display_ioctl(NULL,DISPLAY_IOC_BLIT_SCALED,&scaled));assert(draws==1);draws=0;
  scaled.scale=0;assert(display_ioctl(NULL,DISPLAY_IOC_BLIT_SCALED,&scaled)==ERR_INVAL&&!draws);
  scaled.scale=17;assert(display_ioctl(NULL,DISPLAY_IOC_BLIT_SCALED,&scaled)==ERR_INVAL&&!draws);scaled.scale=4;
  assert(!display_ioctl(NULL,DISPLAY_IOC_CONSOLE_PAUSE,&on)&&paused);
+ assert(display_suspend_busy());
  assert(!display_ioctl(NULL,DISPLAY_IOC_BEGIN_FRAME,NULL)&&lease_frame);
  self=&b;assert(display_ioctl(NULL,DISPLAY_IOC_CLEAR,&color)==ERR_BUSY);assert(display_write(NULL,"x",1)==ERR_BUSY);assert(draws==0);
  assert(!display_close(NULL)&&paused&&ends==0); /* Foreign close cannot steal a live lease. */

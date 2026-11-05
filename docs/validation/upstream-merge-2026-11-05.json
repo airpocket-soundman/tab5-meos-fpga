@@ -1,0 +1,96 @@
+{
+  "date": "2026-11-05",
+  "branch": "codex/merge-upstream-20261105",
+  "baseline_revision": "fab6f83670e48cd5aca82a621623f4f9027236d3",
+  "upstream_revision": "956a0f382b41b393fc4c54feba52ed0f88c0e1bd",
+  "tested_revision": "f84096358cc9d52f192021e3eca7fbc79d898db0",
+  "ci_run": 41936719460,
+  "ci_jobs": [
+    {
+      "name": "host",
+      "conclusion": "success"
+    },
+    {
+      "name": "firmware (cores3, esp32s3, small, v4.4.3)",
+      "conclusion": "success"
+    },
+    {
+      "name": "firmware (cores3, esp32s3, small, v5.5.2)",
+      "conclusion": "success"
+    },
+    {
+      "name": "firmware (tab5, esp32p4, small, v5.5.2)",
+      "conclusion": "success"
+    },
+    {
+      "name": "firmware (tab5, esp32p4, large, v5.5.2)",
+      "conclusion": "success"
+    },
+    {
+      "name": "firmware (tab5, esp32p4, large_fpga, v5.5.2)",
+      "conclusion": "success"
+    }
+  ],
+  "device": {
+    "port": "COM22",
+    "usb_serial": "E8:F6:0A:E3:21:CF",
+    "other_session_devices_accessed": false
+  },
+  "firmware": {
+    "profile": "large",
+    "sdk": "5.5.2",
+    "bytes": 1475264,
+    "sha256": "c0f748048625cd93aaf7e9f92fe2c53ed4c297fc1f032695b9f78dd2ff50504c"
+  },
+  "runtime": {
+    "checks": 35,
+    "viewer_open_close_cycles": 9,
+    "memory_snapshots": 5,
+    "heap_stable_after_each_cycle": true,
+    "memory_final": {
+      "schema": 1,
+      "units": "bytes",
+      "internal": {
+        "total": 196608,
+        "used": 92592,
+        "free": 104016,
+        "largest": 99856,
+        "peak": 125408,
+        "alloc_count": 22,
+        "fail_count": 0
+      },
+      "psram": {
+        "total": 29360128,
+        "used": 8588864,
+        "free": 20771264,
+        "largest": 20771248,
+        "peak": 9115024,
+        "alloc_count": 31,
+        "fail_count": 0
+      }
+    },
+    "display_final": {
+      "buffers": 2,
+      "refreshes": 3251,
+      "batches": 50,
+      "submitted": 50,
+      "retired": 50,
+      "errors": 0,
+      "timeouts": 0,
+      "max_us": 399109,
+      "back": 1,
+      "active": 0
+    },
+    "sd_write_read_delete_bytes": 9,
+    "sd_existing_files_overwritten": false,
+    "suspend_result": "BUSY; awake at 360MHz; automatic suspend disabled for test"
+  },
+  "remaining_physical_tests": [
+    "touch/OSK/keyboard/IME",
+    "USB hub/HID/MSC/Ethernet/UVC",
+    "built-in camera",
+    "FPGA LINK/pixels/transfers/cancel/resume",
+    "suspend quiesce/wake"
+  ],
+  "main_integrated": false
+}

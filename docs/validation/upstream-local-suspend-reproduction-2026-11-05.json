@@ -1,0 +1,22 @@
+[
+  {
+    "command": "sleep idle 10",
+    "output": "sleep idle 10\r\nsleep: auto-suspend after 10 s without key or touch\r\n> suspend: entering; any key, touch or movement wakes\r\nE lcd.dsi: can't fetch data from external memory fast enough, underrun happens\r\nsuspend: screen off, ext 5 V off, CPU 90 MHz\r\n"
+  },
+  {
+    "command": "",
+    "output": "\r\n> E lcd.dsi: can't fetch data from external memory fast enough, underrun happens\r\nsuspend: resumed in 1 ms (CPU 360 MHz)\r\n"
+  },
+  {
+    "command": "sleep idle off",
+    "output": "sleep idle off\r\nsleep: auto-suspend off\r\n> "
+  },
+  {
+    "command": "sleep status",
+    "output": "sleep status\r\nsuspend: awake; auto-suspend after 0 s idle (0 s left); CPU 360 MHz; last resume 1 ms\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=6862 batches=17 submitted=17 retired=17 errors=0 timeouts=0 max_us=316350 back=1 active=0\r\n> "
+  }
+]

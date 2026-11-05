@@ -1,0 +1,160 @@
+[
+  {
+    "command": "sleep idle off",
+    "output": "I (100) esp_image: segment 3: paddr=000b0020 vaddr=40000020 sizesleep idle off\r\nsleep: auto-suspend off\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":96736,\"alloc_count\":12,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8588864,\"alloc_count\":7,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "camera probe",
+    "output": "camera probe\r\ncamera: probe addr=36 sensor=eb52 supported=yes backend=native-poll\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=0 DMA_errors=0\r\ncamera: \r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=455 batches=6 submitted=6 retired=6 errors=0 timeouts=0 max_us=316286 back=1 active=0\r\n> "
+  },
+  {
+    "command": "python -c \"f=open('/sd/local-camera-a2b33df-0.bmp','xb');f.close()\"",
+    "output": "python -c[network event omitted]\r\n \"f=open('/sd/local-camera[network event omitted]\r\n-a2b33df-0.bmp','xb');f.close()\"\r\n> "
+  },
+  {
+    "command": "snap /sd/local-camera-a2b33df-0.bmp",
+    "output": "snap /sd/local-camera-a2b33df-0.bmp\r\nsnap: capturing 640x360 BMP to /sd/local-camera-a2b33df-0.bmp ...\r\ncamera: sensor at 0x36 chip_id=0xeb52\r\nsnap: saved /sd/local-camera-a2b33df-0.bmp (460870 bytes)\r\n> "
+  },
+  {
+    "command": "camera verify /sd/local-camera-a2b33df-0.bmp",
+    "output": "camera verify /sd/local-camera-a2b33df-0.bmp\r\nBMP: 640x360 pixels=230400 nonzero=230400 min=396b max=bc12 FNV1a=b35cd8cb varied=1\r\n> "
+  },
+  {
+    "command": "camera status",
+    "output": "camera status\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=6 DMA_errors=0\r\ncamera: Native CSI/ISP RGB565 frame received\r\n> "
+  },
+  {
+    "command": "view /sd/local-camera-a2b33df-0.bmp",
+    "keys": "zzq",
+    "output": "view /sd/local-camera-a2b33df-0.bmp\r\n> "
+  },
+  {
+    "command": "image /sd/local-camera-a2b33df-0.bmp",
+    "keys": "zzq",
+    "output": "image /sd/local-camera-a2b33df-0.bmp\r\nimage: BMP 640x360 ready; Q/Esc/Enter closes, Z toggles enlargement\r\nimage: viewer closed\r\n> "
+  },
+  {
+    "command": "rm /sd/local-camera-a2b33df-0.bmp",
+    "output": "rm /sd/local-camera-a2b33df-0.bmp\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":17,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":13312992,\"alloc_count\":22,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=3513 batches=22 submitted=22 retired=22 errors=0 timeouts=0 max_us=394995 back=1 active=0\r\n> "
+  },
+  {
+    "command": "python -c \"f=open('/sd/local-camera-a2b33df-1.bmp','xb');f.close()\"",
+    "output": "python -c \"f=open('/sd/local-camera-a2b33df-1.bmp','xb');f.close()\"\r\n> "
+  },
+  {
+    "command": "snap /sd/local-camera-a2b33df-1.bmp",
+    "output": "snap /sd/local-camera-a2b33df-1.bmp\r\nsnap: capturing 640x360 BMP to /sd/local-camera-a2b33df-1.bmp ...\r\ncamera: sensor at 0x36 chip_id=0xeb52\r\nsnap: saved /sd/local-camera-a2b33df-1.bmp (460870 bytes)\r\n> "
+  },
+  {
+    "command": "camera verify /sd/local-camera-a2b33df-1.bmp",
+    "output": "camera verify /sd/local-camera-a2b33df-1.bmp\r\nBMP: 640x360 pixels=230400 nonzero=230400 min=2969 max=a490 FNV1a=f576c13b varied=1\r\n> "
+  },
+  {
+    "command": "camera status",
+    "output": "camera status\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=6 DMA_errors=0\r\ncamera: Native CSI/ISP RGB565 frame received\r\n> "
+  },
+  {
+    "command": "view /sd/local-camera-a2b33df-1.bmp",
+    "keys": "zzq",
+    "output": "view /sd/local-camera-a2b33df-1.bmp\r\n> "
+  },
+  {
+    "command": "image /sd/local-camera-a2b33df-1.bmp",
+    "keys": "zzq",
+    "output": "image /sd/local-camera-a2b33df-1.bmp\r\nimage: BMP 640x360 ready; Q/Esc/Enter closes, Z toggles enlargement\r\nimage: viewer closed\r\n> "
+  },
+  {
+    "command": "rm /sd/local-camera-a2b33df-1.bmp",
+    "output": "rm /sd/local-camera-a2b33df-1.bmp\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":22,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":13312992,\"alloc_count\":37,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=6618 batches=36 submitted=36 retired=36 errors=0 timeouts=0 max_us=394995 back=1 active=0\r\n> "
+  },
+  {
+    "command": "python -c \"f=open('/sd/local-camera-a2b33df-2.bmp','xb');f.close()\"",
+    "output": "python -c \"f=open('/sd/local-camera-a2b33df-2.bmp','xb');f.close()\"\r\n> "
+  },
+  {
+    "command": "snap /sd/local-camera-a2b33df-2.bmp",
+    "output": "snap /sd/local-camera-a2b33df-2.bmp\r\nsnap: capturing 640x360 BMP to /sd/local-camera-a2b33df-2.bmp ...\r\ncamera: sensor at 0x36 chip_id=0xeb52\r\nsnap: saved /sd/local-camera-a2b33df-2.bmp (460870 bytes)\r\n> "
+  },
+  {
+    "command": "camera verify /sd/local-camera-a2b33df-2.bmp",
+    "output": "camera verify /sd/local-camera-a2b33df-2.bmp\r\nBMP: 640x360 pixels=230400 nonzero=230400 min=39a9 max=ffff FNV1a=4468541f varied=1\r\n> "
+  },
+  {
+    "command": "camera status",
+    "output": "camera status\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=6 DMA_errors=0\r\ncamera: Native CSI/ISP RGB565 frame received\r\n> "
+  },
+  {
+    "command": "view /sd/local-camera-a2b33df-2.bmp",
+    "keys": "zzq",
+    "output": "view /sd/local-camera-a2b33df-2.bmp\r\n> "
+  },
+  {
+    "command": "image /sd/local-camera-a2b33df-2.bmp",
+    "keys": "zzq",
+    "output": "image /sd/local-camera-a2b33df-2.bmp\r\nimage: BMP 640x360 ready; Q/Esc/Enter closes, Z toggles enlargement\r\nimage: viewer closed\r\n> "
+  },
+  {
+    "command": "rm /sd/local-camera-a2b33df-2.bmp",
+    "output": "rm /sd/local-camera-a2b33df-2.bmp\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":27,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":13312992,\"alloc_count\":52,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=9647 batches=50 submitted=50 retired=50 errors=0 timeouts=0 max_us=400475 back=1 active=0\r\n> "
+  },
+  {
+    "command": "osk on",
+    "output": "osk on\r\n> "
+  },
+  {
+    "command": "osk off",
+    "output": "osk off\r\n> "
+  },
+  {
+    "command": "sleep",
+    "output": "sleep\r\nsuspend: BUSY camera quiesce unsupported native USB/storage quiesce unsupported; no power/clock changes\r\n> "
+  },
+  {
+    "command": "sleep status",
+    "output": "sleep status\r\nsuspend: awake; auto-suspend after 0 s idle (0 s left); CPU 360 MHz; last resume 0 ms\r\nsuspend: BUSY camera quiesce unsupported native USB/storage quiesce unsupported; no power/clock changes\r\n> "
+  },
+  {
+    "command": "ps",
+    "output": "ps\r\nPID  NAME             PRI  STATE       APP  STACK used~/size  GUARD\r\n1    idle             0    RUNNABLE    -  n/a (boot stack)\r\n2    appd             3    SLEEPING    -  176/4096  OK\r\n3    wifid            1    SLEEPING    -  2480/16384  OK\r\n4    fbcon            2    SLEEPING    -  800/4096  OK\r\n6    usbkbd           3    SLEEPING    -  512/8192  OK\r\n7    osk              3    SLEEPING    -  848/12288  OK\r\n8    powerd           3    SLEEPING    -  176/6144  OK\r\n9    shell            2    RUNNING     -  3760/32768  OK\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":27,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":13312992,\"alloc_count\":52,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=9862 batches=57 submitted=57 retired=57 errors=0 timeouts=0 max_us=400475 back=1 active=0\r\n> "
+  }
+]

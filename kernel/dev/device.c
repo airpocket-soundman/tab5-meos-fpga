@@ -132,7 +132,7 @@ void device_list(void)
     for (int i = 0; i < DEVICE_MAX; i++) {
         const device_t *d = s_devices[i];
         if (!d) continue;
-        kprintf("%-11s %-4u  %s%s%s%s\n", d->name, d->open_count,
+        kprintf("%-11s %-4u  %s%s%s%s\n", d->name, (unsigned)(d->open_count),
                 d->ops->read ? "r" : "-", d->ops->write ? "w" : "-",
                 d->ops->ioctl ? "i" : "-", "");
     }
