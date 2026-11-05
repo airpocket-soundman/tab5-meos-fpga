@@ -1,0 +1,68 @@
+{
+  "main": "48bcfa1abfe56f00a22a3f3c9da1e63d1fb4421d",
+  "deleted_local": [
+    {
+      "ref": "refs/heads/codex/dock-gpio-preintegration",
+      "sha": "e39c0e27c7a653c6e0e744e01c89de157cee94a9"
+    },
+    {
+      "ref": "refs/heads/codex/integrate-verified-upstream-20261105",
+      "sha": "750ef432829bac26d8674ddcb7e4ee1972502e00"
+    },
+    {
+      "ref": "refs/heads/codex/merge-upstream-20261105",
+      "sha": "facaab86633f4f5dad89600734da2caccc461cda"
+    },
+    {
+      "ref": "refs/heads/codex/offline-memory-preparation",
+      "sha": "7d14d858ea5045767799c9a8622ced16e35c2947"
+    },
+    {
+      "ref": "refs/heads/codex/tab5-local-validation-20261105",
+      "sha": "09257da53ac64d1c6e320af0cb1682edfda560d5"
+    },
+    {
+      "ref": "refs/heads/docs/fpga-device-ownership",
+      "sha": "760779313191a33f660c7b025d2a132d5b6d9382"
+    }
+  ],
+  "deleted_origin": [
+    {
+      "ref": "refs/heads/codex/integrate-verified-upstream-20261105",
+      "sha": "750ef432829bac26d8674ddcb7e4ee1972502e00"
+    },
+    {
+      "ref": "refs/heads/codex/merge-upstream-20261105",
+      "sha": "facaab86633f4f5dad89600734da2caccc461cda"
+    },
+    {
+      "ref": "refs/heads/codex/offline-memory-preparation",
+      "sha": "7d14d858ea5045767799c9a8622ced16e35c2947"
+    },
+    {
+      "ref": "refs/heads/codex/tab5-local-validation-20261105",
+      "sha": "09257da53ac64d1c6e320af0cb1682edfda560d5"
+    },
+    {
+      "ref": "refs/heads/docs/fpga-device-ownership",
+      "sha": "760779313191a33f660c7b025d2a132d5b6d9382"
+    }
+  ],
+  "removed_worktrees": [
+    "D:\\github\\airpocket-soundman\\tab5-meos-fpga-local-20261105",
+    "D:\\github\\airpocket-soundman\\tab5-meos-fpga-merge-20261105",
+    "D:\\github\\airpocket-soundman\\tab5-meos-fpga-offline",
+    "D:\\github\\airpocket-soundman\\tab5-meos-fpga-verified-20261105"
+  ],
+  "validation_runs": {
+    "upstream": 41991339876,
+    "offline_memory": 41991339868,
+    "fpga_profile": 41991339861,
+    "pages": 41991339936
+  },
+  "validation_result": "all success",
+  "published_pages": [
+    "https://airpocket-soundman.github.io/tab5-meos-fpga/",
+    "https://airpocket-soundman.github.io/tab5-meos-fpga/ja/"
+  ]
+}
