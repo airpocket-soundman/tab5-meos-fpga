@@ -1,0 +1,21 @@
+name: offline-fpga-memory
+on:
+  push:
+    paths: ['experiments/fpga-memory/**', '.github/workflows/offline-fpga-memory.yml']
+  pull_request:
+    paths: ['experiments/fpga-memory/**', '.github/workflows/offline-fpga-memory.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: C boundary and fault tests with sanitizers (no hardware)
+        run: python3 experiments/fpga-memory/run_tests.py --cc ${{ matrix.cc }} --sanitize
+      - name: File-backed 64MiB tiled restore (no hardware)
+        run: python3 experiments/fpga-memory/run_demo.py --cc ${{ matrix.cc }} --mock --size 67108864 --transfer-limit 65536
