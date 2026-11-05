@@ -1,0 +1,26 @@
+[
+  {
+    "command": "python -c \"f=open('/sd/local-cam-a2b33df.bmp','xb');f.close()\"",
+    "output": "python -c \"f=open('/sd/local-cam-a2b33df.bmp','xb');f.close()\"\r\n> "
+  },
+  {
+    "command": "snap /sd/local-cam-a2b33df.bmp",
+    "output": "snap /sd/local-cam-a2b33df.bmp\r\nsnap: capturing 640x360 BMP to /sd/local-cam-a2b33df.bmp ...\r\ncamera: sensor at 0x36 chip_id=0xeb52\r\nsnap: saved /sd/local-cam-a2b33df.bmp (460870 bytes)\r\n> "
+  },
+  {
+    "command": "camera verify /sd/local-cam-a2b33df.bmp",
+    "output": "camera verify /sd/local-cam-a2b33df.bmp\r\nBMP: 640x360 pixels=230400 nonzero=230400 min=01a9 max=9cd9 FNV1a=beb6b721 varied=1\r\n> "
+  },
+  {
+    "command": "camera status",
+    "output": "camera status\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=6 DMA_errors=0\r\ncamera: Native CSI/ISP RGB565 frame received\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":86400,\"free\":110208,\"largest\":106048,\"peak\":119216,\"alloc_count\":25,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8719968,\"free\":20640160,\"largest\":20623152,\"peak\":13444096,\"alloc_count\":47,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "rm /sd/local-cam-a2b33df.bmp",
+    "output": "rm /sd/local-cam-a2b33df.bmp\r\n> "
+  }
+]

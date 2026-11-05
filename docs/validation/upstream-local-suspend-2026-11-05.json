@@ -1,0 +1,82 @@
+[
+  {
+    "command": "sleep idle off",
+    "output": "sleep idle off\r\nsleep: auto-suspend off\r\n> [network event omitted]\r\n[network event omitted]\r\n[network event omitted]\r\n"
+  },
+  {
+    "command": "sleep status",
+    "output": "sleep status\r\nsuspend: awake; auto-suspend after 0 s idle (0 s left); CPU 360 MHz; last resume 0 ms\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --jso[network event omitted]\r\nn\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":96736,\"alloc_count\":12,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8588864,\"alloc_count\":7,\"fail_count\":0}}\r\n> [network event omitted]\r\n"
+  },
+  {
+    "command": "sleep",
+    "output": "sleep\r\n> suspend: entering; any key, touch or movement wakes\r\nsuspend: screen off, ext 5 V off, CPU 360 MHz (unchanged: LCD DMA active)\r\n"
+  },
+  {
+    "wake": "UART CR",
+    "output": "\r\n> suspend: resumed in 1 ms (CPU 360 MHz)\r\n"
+  },
+  {
+    "command": "sleep status",
+    "output": "sleep status\r\nsuspend: awake; auto-suspend after 0 s idle (0 s left); CPU 360 MHz; last resume 1 ms\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=1502 batches=10 submitted=10 retired=10 errors=0 timeouts=0 max_us=316343 back=1 active=0\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":96736,\"alloc_count\":12,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8588864,\"alloc_count\":7,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "sleep",
+    "output": "sleep\r\n> suspend: entering; any key, touch or movement wakes\r\nsuspend: screen off, ext 5 V off, CPU 360 MHz (unchanged: LCD DMA active)\r\n"
+  },
+  {
+    "wake": "UART CR",
+    "output": "\r\n> suspend: resumed in 1 ms (CPU 360 MHz)\r\n"
+  },
+  {
+    "command": "sleep status",
+    "output": "sleep status\r\nsuspend: awake; auto-suspend after 0 s idle (0 s left); CPU 360 MHz; last resume 1 ms\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=2684 batches=15 submitted=15 retired=15 errors=0 timeouts=0 max_us=316343 back=1 active=0\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":96736,\"alloc_count\":12,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8588864,\"alloc_count\":7,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "sleep",
+    "output": "sleep\r\n> suspend: entering; any key, touch or movement wakes\r\nsuspend: screen off, ext 5 V off, CPU 360 MHz (unchanged: LCD DMA active)\r\n"
+  },
+  {
+    "wake": "UART CR",
+    "output": "\r\n> suspend: resumed in 1 ms (CPU 360 MHz)\r\n"
+  },
+  {
+    "command": "sleep status",
+    "output": "sleep status\r\nsuspend: awake; auto-suspend after 0 s idle (0 s left); CPU 360 MHz; last resume 1 ms\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=3872 batches=20 submitted=20 retired=20 errors=0 timeouts=0 max_us=316343 back=1 active=0\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":96736,\"alloc_count\":12,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":8588864,\"alloc_count\":7,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "ps",
+    "output": "ps\r\nPID  NAME             PRI  STATE       APP  STACK used~/size  GUARD\r\n1    idle             0    RUNNABLE    -  n/a (boot stack)\r\n2    appd             3    SLEEPING    -  176/4096  OK\r\n3    wifid            1    SLEEPING    -  2480/16384  OK\r\n4    fbcon            2    SLEEPING    -  800/4096  OK\r\n6    usbhost          3    SLEEPING    -  528/8192  OK\r\n7    osk              3    SLEEPING    -  848/12288  OK\r\n8    powerd           3    SLEEPING    -  280/6144  OK\r\n9    shell            2    RUNNING     -  2880/32768  OK\r\n> "
+  },
+  {
+    "command": "echo SUSPEND_WAKE_OK",
+    "output": "echo SUSPEND_WAKE_OK\r\nSUSPEND_WAKE_OK\r\n> jk"
+  }
+]

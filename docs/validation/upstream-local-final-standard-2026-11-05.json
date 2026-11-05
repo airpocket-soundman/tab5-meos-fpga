@@ -1,0 +1,38 @@
+[
+  {
+    "command": "sleep idle off",
+    "output": "I (100) esp_image: segment 3: paddr=000b0020 vaddr=40000020 sizesleep idle off\r\nsleep: auto-suspend off\r\n> "
+  },
+  {
+    "command": "python -c \"print(6*7)\"",
+    "output": "python -c \"print(6*7)\"\r\n42\r\n> "
+  },
+  {
+    "command": "camera probe",
+    "output": "camera probe\r\ncamera: probe addr=36 sensor=eb52 supported=yes backend=native-poll\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=0 DMA_errors=0\r\ncamera: \r\n> "
+  },
+  {
+    "command": "sleep",
+    "output": "sleep\r\nsuspend: BUSY camera quiesce unsupported native USB/storage quiesce unsupported; no power/clock changes\r\n> "
+  },
+  {
+    "command": "sleep status",
+    "output": "sleep status\r\nsuspend: awake; auto-suspend after 0 s idle (0 s left); CPU 360 MHz; last resume 0 ms\r\nsuspend: BUSY camera quiesce unsupported native USB/storage quiesce unsupported; no power/clock changes\r\n> "
+  },
+  {
+    "command": "mem --json",
+    "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":13,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":8588864,\"free\":20771264,\"largest\":20771248,\"peak\":9114400,\"alloc_count\":9,\"fail_count\":0}}\r\n> "
+  },
+  {
+    "command": "displaystatus",
+    "output": "displaystatus\r\ndisplay: buffers=2 refreshes=1219 batches=10 submitted=10 retired=10 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+  },
+  {
+    "command": "ps",
+    "output": "ps\r\nPID  NAME             PRI  STATE       APP  STACK used~/size  GUARD\r\n1    idle             0    RUNNABLE    -  n/a (boot stack)\r\n2    appd             3    SLEEPING    -  248/4096  OK\r\n3    wifid            1    SLEEPING    -  2480/16384  OK\r\n4    fbcon            2    SLEEPING    -  800/4096  OK\r\n6    usbkbd           3    SLEEPING    -  496/8192  OK\r\n7    osk              3    SLEEPING    -  832/12288  OK\r\n8    powerd           3    SLEEPING    -  176/6144  OK\r\n9    shell            2    RUNNING     -  2880/32768  OK\r\n> "
+  },
+  {
+    "command": "osk on",
+    "output": "osk on\r\n> "
+  }
+]

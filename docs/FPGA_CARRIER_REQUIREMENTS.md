@@ -507,3 +507,5 @@ is IRQ-protected and restores the prior shared register state.
 ## Local display/power validation: 2026-11-05
 
 Carrier remote reviewed at `995b3ca4849ea8d529031384311b1b8a9680d2cd`; committed pin assignments, generated hardware and audit records checked. No shared electrical, GPIO, transport or FPGA changes are proposed. Preserve unrelated carrier work. Tests use only the session Tab5, without the FPGA Dock.
+
+The local suspend experiment found LCD DMA underruns when changing P4 CPU/memory dividers. The candidate now preserves these clocks while scanout remains active. This does not qualify carrier power sequencing or FPGA coexistence; the FPGA build remains suspend-inhibited. No carrier requirement or external pin/power assignment was changed.
