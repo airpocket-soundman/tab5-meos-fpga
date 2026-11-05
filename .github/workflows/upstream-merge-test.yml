@@ -21,7 +21,7 @@ jobs:
           set -euo pipefail
           printf '#!/bin/sh\n[ "$1" = cc ] && shift\nexec clang "$@"\n' > "$RUNNER_TEMP/host-cc"
           chmod +x "$RUNNER_TEMP/host-cc"
-          for test in tests/test_image.py tests/test_image_merge.py tests/test_uart_focus.py tests/test_usb_console.py tests/test_display_lease.py tests/test_suspend_safety.py tests/test_fractal_app.py tests/test_fpga_wire.py tests/test_parlio_stream.py tests/console/run_touch_test.py tests/console/run_display_frame_test.py; do
+          for test in tests/test_entropy_clock.py tests/io/analog_run_test.py tests/test_image.py tests/test_image_merge.py tests/test_uart_focus.py tests/test_usb_console.py tests/test_display_lease.py tests/test_suspend_safety.py tests/test_fractal_app.py tests/test_fpga_wire.py tests/test_parlio_stream.py tests/console/run_touch_test.py tests/console/run_display_frame_test.py; do
             python3 "$test" --cc "$RUNNER_TEMP/host-cc"
           done
           python3 tests/test_fpga_profile.py

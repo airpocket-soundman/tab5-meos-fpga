@@ -481,3 +481,15 @@ Full actual windows are in parlio-continuous-ready-parity-2026-11-04.json.
 No20MHz MeOS result is claimed. The standalone1MHz fractal app separately passed
 CPU/FPGA comparisons for both scenes; it does not establish DDR3 or high-rate
 qualification. No carrier/pin/RTL/voltage modification was made.
+
+
+### ADC ROM-clock compatibility review (2026-11-05)
+
+Fetched and reviewed carrier `origin/main` at
+`995b3ca4849ea8d529031384311b1b8a9680d2cd`. The Dock wiring specification,
+Dock/carrier constraints and `kicad/core_pin_assignment.csv` are unchanged from
+reviewed `48f91f12` for this change. This fix enables the ESP32-P4 internal LP
+I2C master clock before ROM analog-register access, then restores the complete
+previous LP clock state. No external GPIO allocation, carrier electrical
+requirement, wiring, FPGA code or transport setting changes. Physical ADC
+operation on the newly connected Tab5 has not been verified by this review.

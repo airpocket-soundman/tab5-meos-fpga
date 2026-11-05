@@ -5,6 +5,7 @@
  * Adapted from ESP-IDF v5.4.4 bootloader_random_esp32p4.c for MeOS.
  * Uses ROM regi2c access under MeOS IRQ protection instead of FreeRTOS locks.
  */
+#ifndef MEOS_ENTROPY_HOST_TEST
 #include "esp_random.h"
 #include <m5os/arch.h>
 #include <m5os/hal_time.h>
@@ -17,6 +18,7 @@
 
 #include "esp_rom_regi2c.h"
 #include "soc/lpperi_reg.h"
+#endif
 
 // TODO IDF-6497: once ADC API is supported, use the API instead of defining functions and constants here
 
@@ -114,7 +116,8 @@ static void ssh_entropy_disable(void)
 
 /* MeOS adaptation: no FreeRTOS regi2c lock; the caller holds the RNG mutex.
  * ADC registers are restored after acquiring the startup seed. No ADC user may
- * run concurrently with this one-time operation (currently none on Tab5).
+ * run concurrently with this one-time operation; native ADC reads use the
+ * same IRQ exclusion.
  */
 static bool ssh_entropy_seed(uint8_t seed[32])
 {
@@ -126,6 +129,12 @@ static bool ssh_entropy_seed(uint8_t seed[32])
     uint32_t saved[sizeof(regs)/sizeof(regs[0])];
     uint32_t irq = arch_irq_disable();
     for (size_t i=0;i<sizeof(regs)/sizeof(regs[0]);i++) saved[i]=REG_READ(regs[i]);
+    /* SDK5.5 ROM patches require the analog I2C master clock already on.
+     * Power/clock must precede even the snapshot reads, not just ADC setup.
+     * Both registers are in saved[] and remain enabled through the final
+     * analog restore; reverse restore returns the original shared state. */
+    SET_PERI_REG_MASK(LPPERI_CLK_EN_REG, LPPERI_CK_EN_LP_I2CMST);
+    SET_PERI_REG_MASK(PMU_RF_PWC_REG, PMU_XPD_PERIF_I2C);
     uint8_t initial_lo = esp_rom_regi2c_read_mask(I2C_SAR_ADC, I2C_SAR_ADC_HOSTID,
         ADC_SAR1_INITIAL_CODE_LOW_ADDR, ADC_SAR1_INITIAL_CODE_LOW_ADDR_MSB, ADC_SAR1_INITIAL_CODE_LOW_ADDR_LSB);
     uint8_t initial_hi = esp_rom_regi2c_read_mask(I2C_SAR_ADC, I2C_SAR_ADC_HOSTID,
