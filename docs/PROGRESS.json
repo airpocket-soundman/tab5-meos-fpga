@@ -21,8 +21,8 @@
         "en": "Selected upstream foundations"
       },
       "detail": {
-        "ja": "スタック診断、P4 PSRAM保護、I2C復旧、互換タッチ読取り、読取り専用機器診断、SSH/ADCクロック修正をmainへ先行統合。選択した組合せのビルドと実機確認が成功。表示・OSK・サスペンドなど全体版の統合は継続。",
-        "en": "Selected stack diagnostics, P4 PSRAM protection, I2C recovery, compatible touch snapshots, read-only hardware diagnostics and SSH/ADC clock fixes integrated into main. Selected-combination builds and hardware checks passed. Full display/OSK/suspend integration remains pending."
+        "ja": "上流基盤に続き、表示・OSK・IME連携・画像ビューア・安全ゲート付きサスペンドの実装と試験記録をmainへ統合。OSK表示復元、画像境界条件、カメラ反復を確認。USB回帰、IME変換の実操作、タッチ／IMU復帰、FPGA共存は未確認。標準構成のサスペンド安全拒否とCPUクロック維持を継続。",
+        "en": "Display, OSK/IME integration, image viewer and guarded suspend implementation and validation records merged into main after the selected foundations. OSK restoration, image boundaries and camera repetition checked. USB regression, physical IME conversion, touch/IMU wake and FPGA coexistence remain unverified. Standard-profile suspend guards and unchanged CPU clocks are retained."
       }
     },
     {

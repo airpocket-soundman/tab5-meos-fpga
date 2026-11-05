@@ -509,3 +509,7 @@ is IRQ-protected and restores the prior shared register state.
 Carrier remote reviewed at `995b3ca4849ea8d529031384311b1b8a9680d2cd`; committed pin assignments, generated hardware and audit records checked. No shared electrical, GPIO, transport or FPGA changes are proposed. Preserve unrelated carrier work. Tests use only the session Tab5, without the FPGA Dock.
 
 The local suspend experiment found LCD DMA underruns when changing P4 CPU/memory dividers. The candidate now preserves these clocks while scanout remains active. This does not qualify carrier power sequencing or FPGA coexistence; the FPGA build remains suspend-inhibited. No carrier requirement or external pin/power assignment was changed.
+
+## Main consolidation review: 2026-11-05
+
+Fetched carrier origin/main at `995b3ca4849ea8d529031384311b1b8a9680d2cd` again; inspected committed FPGA overview, final core pin assignments, generated KiCad board/schematic and audit record. Reference revision unchanged. Preserved all unrelated dirty carrier files. Main now contains the tested host/display integration and the explicitly host-only external-memory experiment. No carrier GPIO, electrical, RTL or protocol changes. Unverified peripheral coexistence and suspend quiesce requirements remain open.
