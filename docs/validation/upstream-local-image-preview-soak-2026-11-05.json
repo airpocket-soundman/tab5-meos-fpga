@@ -1,0 +1,425 @@
+{
+  "firmware": "ca4ca29",
+  "checks": [
+    {
+      "command": "osk off",
+      "output": "osk off\r\n> "
+    },
+    {
+      "command": "sleep idle off",
+      "output": "sleep idle off\r\nsleep: auto-suspend off\r\n> "
+    },
+    {
+      "command": "ls /sd/lv-b73f-wide.pgm",
+      "output": "ls /sd/lv-b73f-wide.pgm\r\nls: /sd/lv-b73f-wide.pgm: no such file or directory (-13)\r\n> "
+    },
+    {
+      "command": "ls /sd/lv-b73f-tall.pgm",
+      "output": "ls /sd/lv-b73f-tall.pgm\r\nls: /sd/lv-b73f-tall.pgm: no such file or directory (-13)\r\n> "
+    },
+    {
+      "command": "ls /sd/lv-b73f-large.pgm",
+      "output": "ls /sd/lv-b73f-large.pgm\r\nls: /sd/lv-b73f-large.pgm: no such file or directory (-13)\r\n> "
+    },
+    {
+      "command": "ls /lvbo73.ppm",
+      "output": "ls /lvbo73.ppm\r\nls: /lvbo73.ppm: no such file or directory (-13)\r\n> "
+    },
+    {
+      "upload": "/lvbo73.ppm",
+      "bytes": 23,
+      "crc32": 3294995220,
+      "output": "put: wrote 23 bytes, crc32 c465a314\r\n> "
+    },
+    {
+      "command": "ls /lvbt73.ppm",
+      "output": "ls /lvbt73.ppm\r\nls: /lvbt73.ppm: no such file or directory (-13)\r\n> "
+    },
+    {
+      "upload": "/lvbt73.ppm",
+      "bytes": 14,
+      "crc32": 2987720831,
+      "output": "put: wrote 14 bytes, crc32 b215007f\r\n> "
+    },
+    {
+      "command": "ls /lvbs73.ppm",
+      "output": "ls /lvbs73.ppm\r\nls: /lvbs73.ppm: no such file or directory (-13)\r\n> "
+    },
+    {
+      "upload": "/lvbs73.ppm",
+      "bytes": 14,
+      "crc32": 1937677714,
+      "output": "put: wrote 14 bytes, crc32 737e9d92\r\n> "
+    },
+    {
+      "command": "ls /lvbe73.bmp",
+      "output": "ls /lvbe73.bmp\r\nls: /lvbe73.bmp: no such file or directory (-13)\r\n> "
+    },
+    {
+      "upload": "/lvbe73.bmp",
+      "bytes": 4,
+      "crc32": 3508755401,
+      "output": "put: wrote 4 bytes, crc32 d1235bc9\r\n> "
+    },
+    {
+      "command": "ls /lvbh73.bmp",
+      "output": "ls /lvbh73.bmp\r\nls: /lvbh73.bmp: no such file or directory (-13)\r\n> "
+    },
+    {
+      "upload": "/lvbh73.bmp",
+      "bytes": 54,
+      "crc32": 3658754924,
+      "output": "put: wrote 54 bytes, crc32 da142b6c\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":9868368,\"alloc_count\":30,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=612134 batches=88 submitted=88 retired=88 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/sd/lv-b73f-wide.pgm",
+      "bad": false,
+      "output": "view /sd/lv-b73f-wide.pgm\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":9868368,\"alloc_count\":34,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=612510 batches=91 submitted=91 retired=91 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/sd/lv-b73f-tall.pgm",
+      "bad": false,
+      "output": "view /sd/lv-b73f-tall.pgm\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":9868368,\"alloc_count\":38,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=612887 batches=94 submitted=94 retired=94 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/sd/lv-b73f-large.pgm",
+      "bad": false,
+      "output": "view /sd/lv-b73f-large.pgm\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":42,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=614958 batches=97 submitted=97 retired=97 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lvbo73.ppm",
+      "bad": true,
+      "output": "view /lvbo73.ppm\r\nview: /lvbo73.ppm: not a supported BMP/PPM\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":43,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=615221 batches=100 submitted=100 retired=100 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lvbt73.ppm",
+      "bad": true,
+      "output": "view /lvbt73.ppm\r\nview: /lvbt73.ppm: not a supported BMP/PPM\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":44,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=615483 batches=103 submitted=103 retired=103 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lvbs73.ppm",
+      "bad": true,
+      "output": "view /lvbs73.ppm\r\nview: /lvbs73.ppm: not a supported BMP/PPM\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":45,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=615746 batches=106 submitted=106 retired=106 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lvbe73.bmp",
+      "bad": true,
+      "output": "view /lvbe73.bmp\r\nview: /lvbe73.bmp: unsupported or malformed BMP (shared decoder: 16/24-bit)\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":45,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=616010 batches=109 submitted=109 retired=109 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lvbh73.bmp",
+      "bad": true,
+      "output": "view /lvbh73.bmp\r\nview: /lvbh73.bmp: unsupported or malformed BMP (shared decoder: 16/24-bit)\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":45,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=616274 batches=112 submitted=112 retired=112 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":55,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=617806 batches=119 submitted=119 retired=119 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":65,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=619338 batches=126 submitted=126 retired=126 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":75,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=620868 batches=133 submitted=133 retired=133 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "view": "/lv-ui-b73f.ppm",
+      "bad": false,
+      "output": "view /lv-ui-b73f.ppm\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15633728,\"alloc_count\":85,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=622399 batches=140 submitted=140 retired=140 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "camera_preview_cycle": 0,
+      "output": "camera /sd\r\ncamera: sensor at 0x36 chip_id=0xeb52\r\n> "
+    },
+    {
+      "command": "camera status",
+      "output": "camera status\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=66 DMA_errors=0\r\ncamera: Native CSI/ISP RGB565 frame received\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15908928,\"alloc_count\":89,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=623076 batches=144 submitted=144 retired=144 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "camera_preview_cycle": 1,
+      "output": "camera /sd\r\ncamera: sensor at 0x36 chip_id=0xeb52\r\n> "
+    },
+    {
+      "command": "camera status",
+      "output": "camera status\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=68 DMA_errors=0\r\ncamera: Native CSI/ISP RGB565 frame received\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15908928,\"alloc_count\":93,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=623752 batches=148 submitted=148 retired=148 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "camera_preview_cycle": 2,
+      "output": "camera /sd\r\ncamera: sensor at 0x36 chip_id=0xeb52\r\n> "
+    },
+    {
+      "command": "camera status",
+      "output": "camera status\r\ncamera: supported=1 initialized=0 streaming=0 sensor=eb52 frames=66 DMA_errors=0\r\ncamera: Native CSI/ISP RGB565 frame received\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15908928,\"alloc_count\":97,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=624420 batches=152 submitted=152 retired=152 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "command": "rm /lvbo73.ppm",
+      "output": "rm /lvbo73.ppm\r\n> "
+    },
+    {
+      "command": "rm /lvbt73.ppm",
+      "output": "rm /lvbt73.ppm\r\n> "
+    },
+    {
+      "command": "rm /lvbs73.ppm",
+      "output": "rm /lvbs73.ppm\r\n> "
+    },
+    {
+      "command": "rm /lvbe73.bmp",
+      "output": "rm /lvbe73.bmp\r\n> "
+    },
+    {
+      "command": "rm /lvbh73.bmp",
+      "output": "rm /lvbh73.bmp\r\n> "
+    },
+    {
+      "command": "rm /lv-gen-b73f.py",
+      "output": "rm /lv-gen-b73f.py\r\n> "
+    },
+    {
+      "command": "rm /sd/lv-b73f-wide.pgm",
+      "output": "rm /sd/lv-b73f-wide.pgm\r\n> "
+    },
+    {
+      "command": "rm /sd/lv-b73f-tall.pgm",
+      "output": "rm /sd/lv-b73f-tall.pgm\r\n> "
+    },
+    {
+      "command": "rm /sd/lv-b73f-large.pgm",
+      "output": "rm /sd/lv-b73f-large.pgm\r\n> "
+    },
+    {
+      "command": "ps",
+      "output": "ps\r\nPID  NAME             PRI  STATE       APP  STACK used~/size  GUARD\r\n1    idle             0    RUNNABLE    -  n/a (boot stack)\r\n2    appd             3    SLEEPING    -  248/4096  OK\r\n3    wifid            1    SLEEPING    -  2480/16384  OK\r\n4    fbcon            2    RUNNABLE    -  864/4096  OK\r\n6    usbkbd           3    SLEEPING    -  496/8192  OK\r\n7    osk              3    SLEEPING    -  1152/12288  OK\r\n8    powerd           3    SLEEPING    -  248/6144  OK\r\n9    shell            2    RUNNING     -  3760/32768  OK\r\n> "
+    },
+    {
+      "command": "mem --json",
+      "output": "mem --json\r\n{\"schema\":1,\"units\":\"bytes\",\"internal\":{\"total\":196608,\"used\":92592,\"free\":104016,\"largest\":99856,\"peak\":125408,\"alloc_count\":15,\"fail_count\":0},\"psram\":{\"total\":29360128,\"used\":9342208,\"free\":20017920,\"largest\":20017824,\"peak\":15908928,\"alloc_count\":97,\"fail_count\":0}}\r\n> "
+    },
+    {
+      "command": "displaystatus",
+      "output": "displaystatus\r\ndisplay: buffers=2 refreshes=624967 batches=164 submitted=164 retired=164 errors=0 timeouts=0 max_us=316221 back=1 active=0\r\n> "
+    },
+    {
+      "command": "osk on",
+      "output": "osk on\r\n> "
+    }
+  ],
+  "scope": "bounded functional repetition, not a long-duration endurance qualification"
+}

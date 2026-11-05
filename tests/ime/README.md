@@ -1,6 +1,9 @@
 # Shared IME ownership
 
-Run on Windows with `python tests/ime/run_test.py --cc PATH/TO/zig.exe`.
+Run with `python tests/ime/run_test.py --cc PATH/TO/zig` (use `zig.exe` on Windows).
+The fixture uses Win32 threads on Windows and POSIX threads on Linux, with a
+10-second deadlock timeout. The compiler argument must accept `cc` as its first
+argument; CI supplies a small adapter for the system Clang compiler.
 The test compiles the actual IME, converter, romaji parser and dictionary.
 It runs the existing Japanese conversion regression and four native threads
 performing400 input operations plus initialization, state queries and anchor

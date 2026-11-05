@@ -1,0 +1,49 @@
+{
+  "firmware_commit": "260fce384d521e64e760781d66514cf4516f98b6",
+  "firmware_bytes": 1475360,
+  "firmware_sha256": "a319f007aa2c1e1b2db1c393cdd269098296ad7ecca01cf01bfbe3e87c77808e",
+  "ci_run": 41977308345,
+  "ci_result": "all 7 jobs passed",
+  "confirmed": {
+    "fullscreen_osk_restore": "user confirmed; viewer quit sent by agent UART",
+    "image_dimensions": [
+      [
+        2048,
+        64
+      ],
+      [
+        64,
+        1536
+      ],
+      [
+        2048,
+        1024
+      ]
+    ],
+    "malformed_images_rejected": 5,
+    "additional_repeated_image_cycles": 20,
+    "camera_preview_frames": [
+      66,
+      68,
+      66
+    ],
+    "post_fix_camera_preview_frames": 78,
+    "repeat_internal_used_bytes": 92592,
+    "repeat_psram_used_bytes": 9342208,
+    "repeat_psram_peak_bytes": 15908928,
+    "final_boot_and_post_test_psram_used_bytes": 8588864,
+    "draw_errors": 0,
+    "draw_timeouts": 0,
+    "stack_guards": "all OK",
+    "ls_regular_files": "root and SD size/readback/removal verified",
+    "ls_directory": "SD listing verified; unrelated names omitted"
+  },
+  "pending": [
+    "IME physical conversion/edit test: user currently unavailable",
+    "touch/IMU suspend wake",
+    "long-duration endurance qualification",
+    "camera orientation/color visual check",
+    "USB peripheral regression",
+    "FPGA coexistence"
+  ]
+}
