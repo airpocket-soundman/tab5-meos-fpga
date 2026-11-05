@@ -151,6 +151,9 @@ static bool resolve(const char *arg, char *out)       /* relative to cwd -> norm
     return vfs_normalize(tmp, out) == ERR_OK;
 }
 
+#if M5OS_BOARD_TAB5
+#endif
+
 /* --------------------------------------------------------------- commands */
 
 static int read_line_ex(char *line, bool echo);
@@ -1192,12 +1195,26 @@ static const command_t s_commands[] = {
 #endif
 #if M5OS_BOARD_TAB5
     { "io", cmd_io, "io: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "gpio", cmd_io, "gpio: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "adc", cmd_io, "adc: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "pwm", cmd_io, "pwm: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "i2c", cmd_io, "i2c: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "spi", cmd_io, "spi: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "uart", cmd_io, "uart: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "bt", cmd_bt, "BLE HID host: bt on | scan | devices | connect | status" },
 #endif
     { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-04",
+  "updated": "2026-11-05",
   "items": [
     {
       "id": "baseline",
@@ -11,6 +11,18 @@
       "detail": {
         "ja": "サイズ最適化版を書き込み、起動・mem・ps・lsを確認。全機能回帰は未実施。",
         "en": "Size-optimized firmware flashed; boot, mem, ps and ls verified. Full regression pending."
+      }
+    },
+    {
+      "id": "upstream-foundations",
+      "status": "verified",
+      "title": {
+        "ja": "上流基盤の先行統合",
+        "en": "Selected upstream foundations"
+      },
+      "detail": {
+        "ja": "スタック診断、P4 PSRAM保護、I2C復旧、互換タッチ読取り、読取り専用機器診断、SSH/ADCクロック修正をmainへ先行統合。選択した組合せのビルドと実機確認が成功。表示・OSK・サスペンドなど全体版の統合は継続。",
+        "en": "Selected stack diagnostics, P4 PSRAM protection, I2C recovery, compatible touch snapshots, read-only hardware diagnostics and SSH/ADC clock fixes integrated into main. Selected-combination builds and hardware checks passed. Full display/OSK/suspend integration remains pending."
       }
     },
     {

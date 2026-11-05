@@ -493,3 +493,17 @@ I2C master clock before ROM analog-register access, then restores the complete
 previous LP clock state. No external GPIO allocation, carrier electrical
 requirement, wiring, FPGA code or transport setting changes. Physical ADC
 operation on the newly connected Tab5 has not been verified by this review.
+
+## Verified partial integration: 2026-11-05
+
+Fetched and reviewed carrier remote `995b3ca4849ea8d529031384311b1b8a9680d2cd`
+before adopting the tested I2C/touch/ADC changes. Rechecked committed Dock
+wiring/constraints, `kicad/core_pin_assignment.csv`, generated hardware and DRC
+audit records. No pin/electrical change from the preceding reviewed revision.
+Unrelated dirty carrier work is preserved. This integration changes no FPGA
+RTL, wire protocol, pin allocation or power sequencing. Analog I2C clock access
+is IRQ-protected and restores the prior shared register state.
+
+## Local display/power validation: 2026-11-05
+
+Carrier remote reviewed at `995b3ca4849ea8d529031384311b1b8a9680d2cd`; committed pin assignments, generated hardware and audit records checked. No shared electrical, GPIO, transport or FPGA changes are proposed. Preserve unrelated carrier work. Tests use only the session Tab5, without the FPGA Dock.

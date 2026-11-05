@@ -15,7 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Resolve profiles and check source inclusion
-        run: python tests/test_fpga_profile.py
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          python tests/test_fpga_profile.py
       - name: Build matching large and large_fpga configurations
         shell: bash
         run: |

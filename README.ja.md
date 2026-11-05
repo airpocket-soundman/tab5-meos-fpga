@@ -6,6 +6,8 @@ FPGAによる描画支援を組み込んだ、M5Stack Tab5向けMeOSのGUI環境
 
 **[開発目的・実装状況・ロードマップ — 日本語 / English](https://airpocket-soundman.github.io/tab5-meos-fpga/ja/)**
 
+2026-11-05に、検証済みの上流基盤とSDK互換性修正を先行統合しました。表示・OSK・サスペンドの統合は全体試験ブランチに残しています。[採用範囲と検証結果](docs/UPSTREAM_PARTIAL_INTEGRATION_2026-11-05.md)を参照。
+
 
 `image FILE.bmp` / `image --info FILE.bmp` によるBMP表示・情報取得を追加しました。[対応範囲と検証](docs/IMAGE_VIEWER.md)。FPGA通信のコーデック・mock診断も追加済みですが、[低速実通信の検証範囲](docs/FPGA_LINK.md)です。
 

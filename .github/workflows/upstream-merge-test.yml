@@ -1,7 +1,7 @@
 name: Upstream merge validation
 on:
   push:
-    branches: [codex/merge-upstream-20261105]
+    branches: [codex/merge-upstream-20261105, codex/tab5-local-validation-20261105]
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,6 +36,7 @@ jobs:
           - { board: tab5, target: esp32p4, profile: small, sdk: v5.5.2 }
           - { board: tab5, target: esp32p4, profile: large, sdk: v5.5.2 }
           - { board: tab5, target: esp32p4, profile: large_fpga, sdk: v5.5.2 }
+          - { board: tab5, target: esp32p4, profile: small, sdk: v5.5.2, backend: tinyusb, suffix: -sleep }
           - { board: cores3, target: esp32s3, profile: small, sdk: v5.5.2 }
           - { board: cores3, target: esp32s3, profile: small, sdk: v4.4.3 }
     steps:
@@ -49,13 +50,13 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           . "$IDF_PATH/export.sh"
           set -u
-          idf.py -B build -DSDKCONFIG=sdkconfig.${{ matrix.board }} -DIDF_TARGET=${{ matrix.target }} -DM5OS_PROFILE=${{ matrix.profile }} -DM5OS_FPGA_DOCK_VERIFIED=OFF build
+          idf.py -B build -DSDKCONFIG=sdkconfig.${{ matrix.board }} -DIDF_TARGET=${{ matrix.target }} -DM5OS_PROFILE=${{ matrix.profile }} -DM5OS_FPGA_DOCK_VERIFIED=OFF ${{ matrix.backend && format('-DM5OS_USB_BACKEND={0}', matrix.backend) || '' }} build
           cp sdkconfig.${{ matrix.board }} build/sdkconfig.used
           sha256sum build/m5os.bin build/bootloader/bootloader.bin build/partition_table/partition-table.bin > build/SHA256SUMS
           printf '%s\n' "$GITHUB_SHA" > build/source-commit.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: merge-${{ matrix.board }}-${{ matrix.profile }}-${{ matrix.sdk }}
+          name: merge-${{ matrix.board }}-${{ matrix.profile }}-${{ matrix.sdk }}${{ matrix.suffix }}
           path: |
             build/flash_args
             build/m5os.bin

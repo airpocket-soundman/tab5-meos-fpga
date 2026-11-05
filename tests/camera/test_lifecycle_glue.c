@@ -16,7 +16,11 @@ static bool s_inited, s_streaming, s_poisoned;
 static uint16_t s_chip_id, *s_fb[2];
 static void *s_fb_raw[2];
 static const uint16_t *s_ready_fb;
-static uint32_t s_frames, s_owner, s_dma_errors;
+static uint32_t s_frames, s_owner, s_dma_errors, s_short_frames;
+#define CAMERA_DMA_CH 0
+static struct { struct { struct { uintptr_t dar0; } dar0; } ch[1]; } fake_dma;
+#define DW_GDMA_LL_GET_HW(unit) (&fake_dma)
+static size_t dma_written = FB_BYTES;
 static int s_write_idx;
 static char s_error[80];
 static uint32_t s_exposure = SC202CS_EXP_DEFAULT, s_gain_idx = 8;
@@ -75,11 +79,12 @@ static bool native_camera_init(void) {
     hw_on = true;
     return true;
 }
-static bool native_camera_start(void *p) { return true; }
+static bool native_camera_start(void *p) { fake_dma.ch[0].dar0.dar0=(uintptr_t)p; return true; }
 static bool native_camera_stop(void) { return halt_ok; }
 static void native_camera_deinit(void) { hw_on = false; }
 static int native_camera_poll(void) {
     int n = poll_result;
+    if(n>0) fake_dma.ch[0].dar0.dar0=(uintptr_t)s_fb[s_write_idx]+dma_written;
     poll_result = 0;
     return n;
 }
@@ -110,7 +115,9 @@ int main(void) {
     CHECK(s_streaming && s_owner == 2 && live_allocs == 2);
     uint32_t seq = 777;
     CHECK(!camera_frame(&seq) && seq == 0);
-    poll_result = 1;
+    dma_written = FB_BYTES - 64; poll_result = 1;
+    CHECK(!camera_frame(&seq) && seq == 0 && s_short_frames == 1 && s_streaming);
+    dma_written = FB_BYTES; poll_result = 1;
     CHECK(camera_frame(&seq) && seq == 1);
     current.id = 3;
     CHECK(!camera_start());
