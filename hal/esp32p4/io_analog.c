@@ -115,6 +115,10 @@ static int adc_native_read(unsigned unit, unsigned channel, unsigned attenuation
     uint32_t lpclock = LPPERI.clk_en.val;
     adc_ll_enable_bus_clock(true);
     LPPERI.clk_en.ck_en_lp_adc = 1;
+    /* ROM regi2c accesses assert if the LP I2C master clock is gated on
+     * SDK5.5.2. Enable it before the first analog-register snapshot; the
+     * original complete LP clock word is restored below on every result. */
+    LPPERI.clk_en.ck_en_lp_i2cmst = 1;
     uint32_t ctrl = ADC.ctrl_reg.val, power = LP_ADC.force_wpd_sar.val;
     uint32_t reader = unit == 1 ? LP_ADC.reader1_ctrl.val : LP_ADC.reader2_ctrl.val;
     uint32_t mux = unit == 1 ? LP_ADC.meas1_mux.val : LP_ADC.meas2_mux.val;

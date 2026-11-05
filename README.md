@@ -6,6 +6,8 @@ An experimental MeOS fork for a graphical M5Stack Tab5 environment with FPGA-ass
 
 **[Development plan & feature status — English / 日本語](https://airpocket-soundman.github.io/tab5-meos-fpga/)**
 
+Selected upstream foundations and SDK compatibility fixes were integrated on 2026-11-05. Display/OSK/suspend integration remains on the full test branch. See the [scope and validation record](docs/UPSTREAM_PARTIAL_INTEGRATION_2026-11-05.md).
+
 
 BMP shell viewing is available with `image FILE.bmp` and `image --info FILE.bmp`; see [scope and validation](docs/IMAGE_VIEWER.md). FPGA protocol/mock diagnostics are implemented; [physical LINK validation scope](docs/FPGA_LINK.md).
 

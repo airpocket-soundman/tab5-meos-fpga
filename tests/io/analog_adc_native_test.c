@@ -5,7 +5,8 @@
 #include <string.h>
 /* Register-model fault tests: actual production native conversion function is inserted below. */
 typedef union {
-    uint32_t val, ck_en_lp_adc, meas1_start_sar, meas2_start_sar;
+    uint32_t val, meas1_start_sar, meas2_start_sar;
+    struct { uint32_t ck_en_lp_adc:1, ck_en_lp_i2cmst:1, other:30; };
 } reg_t;
 static struct {
     reg_t soc_clk_ctrl2, peri_clk_ctrl23;
@@ -20,18 +21,18 @@ static struct {
     reg_t force_wpd_sar, reader1_ctrl, reader2_ctrl, meas1_mux, meas2_mux, meas1_ctrl2, meas2_ctrl2,
         atten1, atten2;
 } LP_ADC;
-static uint32_t pmu;
+static uint32_t pmu_register;
 static uint8_t analog[6];
 static int GPIO;
 static uint32_t raw_result;
 static bool done;
 static uint64_t ticks;
-static unsigned pad_calls, starts;
+static unsigned pad_calls, starts, analog_reads, analog_writes;
 #define PMU_RF_PWC_REG 0
 #define PMU_XPD_PERIF_I2C 8
-#define REG_READ(r) pmu
-#define REG_WRITE(r, v) (pmu = (v))
-#define REG_SET_BIT(r, v) (pmu |= (v))
+#define REG_READ(r) pmu_register
+#define REG_WRITE(r, v) (pmu_register = (v))
+#define REG_SET_BIT(r, v) (pmu_register |= (v))
 #define PIN_FUNC_GPIO 0
 #define ADC_SAR1_INITIAL_CODE_LOW_ADDR 0
 #define ADC_SAR1_INITIAL_CODE_HIGH_ADDR 1
@@ -39,8 +40,16 @@ static unsigned pad_calls, starts;
 #define ADC_SAR2_INITIAL_CODE_LOW_ADDR 3
 #define ADC_SAR2_INITIAL_CODE_HIGH_ADDR 4
 #define ADC_SAR2_SAMPLE_CYCLE_ADDR 5
-#define ADC_READ_MASK(r) analog[r]
-#define ADC_WRITE_MASK(r, v) (analog[r] = (v))
+static uint8_t analog_read(unsigned reg) {
+    assert(LPPERI.clk_en.ck_en_lp_i2cmst && (pmu_register & PMU_XPD_PERIF_I2C));
+    analog_reads++; return analog[reg];
+}
+static void analog_write(unsigned reg,uint8_t value) {
+    assert(LPPERI.clk_en.ck_en_lp_i2cmst && (pmu_register & PMU_XPD_PERIF_I2C));
+    analog_writes++; analog[reg]=value;
+}
+#define ADC_READ_MASK(r) analog_read(r)
+#define ADC_WRITE_MASK(r, v) analog_write(r, v)
 typedef int adc_unit_t;
 typedef int adc_channel_t;
 typedef int adc_atten_t;
@@ -122,14 +131,17 @@ static uint64_t hal_time_now_us(void) {
 }
 /* NATIVE_ADC */
 int main(void) {
+    for (unsigned clock_on=0;clock_on<2;clock_on++)
     for (unsigned unit = 1; unit <= 2; unit++)
         for (unsigned mode = 0; mode < 3; mode++) {
             memset(&HP_SYS_CLKRST, 0x11, sizeof HP_SYS_CLKRST);
-            memset(&LPPERI, 0x22, sizeof LPPERI);
+            LPPERI.clk_en.val=0x22222220;
+            LPPERI.clk_en.ck_en_lp_i2cmst=clock_on;
+            uint32_t prior_lpclock=LPPERI.clk_en.val;
             memset(&ADC, 0x33, sizeof ADC);
             memset(&LP_ADC, 0x44, sizeof LP_ADC);
             memset(analog, 0x55, sizeof analog);
-            pmu = 0x66;
+            pmu_register = 0x66;
             uint8_t clocks[sizeof HP_SYS_CLKRST], lp[sizeof LP_ADC];
             memcpy(clocks, &HP_SYS_CLKRST, sizeof clocks);
             memcpy(lp, &LP_ADC, sizeof lp);
@@ -142,13 +154,13 @@ int main(void) {
             assert(output == (mode == 0 ? 2048 : 99));
             assert(!memcmp(clocks, &HP_SYS_CLKRST, sizeof clocks) &&
                    !memcmp(lp, &LP_ADC, sizeof lp));
-            assert(ADC.ctrl_reg.val == 0x33333333 && LPPERI.clk_en.val == 0x22222222 &&
-                   pmu == 0x66);
+            assert(ADC.ctrl_reg.val == 0x33333333 && LPPERI.clk_en.val == prior_lpclock &&
+                   pmu_register == 0x66);
             for (unsigned i = 0; i < 6; i++)
                 assert(analog[i] == 0x55);
             assert(ticks < 1500);
         }
-    assert(starts == 6 && pad_calls == 30);
+    assert(starts == 12 && pad_calls == 60 && analog_reads==36 && analog_writes==72);
     puts("PASS native ADC success/timeout/invalid result restore unit, power, clock and analog "
-         "register state");
+         "register state (LP I2C ROM clock initially gated or enabled)");
 }

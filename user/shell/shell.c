@@ -1,3 +1,4 @@
+#include "hardware.h"
 #if M5OS_USB_NATIVE_DMA
 #include <m5os/ethernet.h>
 #include "../uvc/uvc_app.h"
@@ -144,6 +145,12 @@ static bool resolve(const char *arg, char *out)       /* relative to cwd -> norm
     return vfs_normalize(tmp, out) == ERR_OK;
 }
 
+#if M5OS_BOARD_TAB5
+static int cmd_devices(int argc,char **argv){(void)argc;(void)argv;hardware_print_devices();return 0;}
+static int cmd_power(int argc,char **argv){(void)argc;(void)argv;hardware_print_power();return 0;}
+static int cmd_storage(int argc,char **argv){(void)argc;(void)argv;hardware_print_storage();return 0;}
+#endif
+
 /* --------------------------------------------------------------- commands */
 
 static int read_line_ex(char *line, bool echo);
@@ -163,10 +170,16 @@ static int cmd_ps(int argc, char **argv)
     (void)argc; (void)argv;
     task_info_t t[PS_MAX];
     int n = task_snapshot(t, PS_MAX);
-    sh_puts("PID  NAME             PRI  STATE       APP\n");
+    sh_puts("PID  NAME             PRI  STATE       APP  STACK used~/size  GUARD\n");
     for (int i = 0; i < n; i++) {
-        if (t[i].app_id) SH_PRINTF("%-4u %-16s %-4u %-11s %u\n", t[i].id, t[i].name, t[i].priority, task_state_name(t[i].state), t[i].app_id);
-        else             SH_PRINTF("%-4u %-16s %-4u %-11s -\n", t[i].id, t[i].name, t[i].priority, task_state_name(t[i].state));
+        SH_PRINTF("%-4u %-16s %-4u %-11s ", (unsigned)(t[i].id), t[i].name, t[i].priority, task_state_name(t[i].state));
+        if (t[i].app_id) SH_PRINTF("%u  ", (unsigned)(t[i].app_id));
+        else sh_puts("-  ");
+        task_stack_info_t stack;
+        int rc = task_stack_inspect(t[i].id, &stack);
+        if (rc == ERR_OK) SH_PRINTF("%u/%u  %s\n", (unsigned)stack.used, (unsigned)stack.size,
+                                   stack.guard_ok ? "OK" : "DAMAGED");
+        else sh_puts(rc == ERR_NOSYS ? "n/a (boot stack)\n" : "n/a (task exited)\n");
     }
     return 0;
 }
@@ -955,6 +968,7 @@ static int cmd_install(int argc, char **argv)
         return ok ? 0 : 1;
     }
 #endif
+#if M5OS_BOARD_TAB5
     if (argc == 2 && (argv[1][0] == 'h' || argv[1][0] == 'm') && (has_slash(argv[1]) || argv[1][1] == 'e')) {     /* an https:// link or a meos:// code */
         fbcon_pause(true);
         task_sleep(FILER_PAUSE_SETTLE_MS);
@@ -965,6 +979,7 @@ static int cmd_install(int argc, char **argv)
         if (ok) SH_PRINTF("installed %s\n", name);
         return ok ? 0 : 1;
     }
+#endif
     if (argc != 2 || !resolve(argv[1], path)) { sh_puts("usage: install [FILE.wasm | URL]   (no file: scan an app's QR code)\n"); return 1; }
     int rc = wasm_install_file(path, name);
     if (rc != ERR_OK) return fail("install", path, rc);
@@ -1088,7 +1103,9 @@ static const command_t s_commands[] = {
 #if M5OS_MODULE_GFXBENCH
     { "gfxbench", gfxbench_cmd_main, "gfxbench [scene|suite|list] [light|medium|heavy] [float|integer] [--bench|--frames N] [--headless]" },
 #endif
+#if M5OS_BOARD_TAB5
     { "image", cmd_image, "image [--info] FILE.bmp  display/inspect BMP on LCD" },
+#endif
 #if M5OS_SL
     { "sl", sl_cmd_main, "sl [-aFlc]  native steam locomotive animation" },
 #endif
@@ -1096,6 +1113,11 @@ static const command_t s_commands[] = {
     { "python", micropython_cmd_main, "python [PATH | -c SOURCE]  MicroPython REPL/script" },
 #endif
     { "help",    cmd_help,    "list commands" },
+#if M5OS_BOARD_TAB5
+    { "devices", cmd_devices, "read-only board device diagnostics" },
+    { "power", cmd_power, "read-only battery and charger diagnostics" },
+    { "storage", cmd_storage, "root persistence and cached storage mounts" },
+#endif
 #if M5OS_USB_NATIVE_DMA
     { "eth", cmd_eth, "show USB Ethernet link, IP and packet counters" },
     { "usbreset", cmd_usbreset, "restart USB enumeration" },
@@ -1131,14 +1153,30 @@ static const command_t s_commands[] = {
     { "osk",     cmd_osk,     "osk [on|off|map N|debug]  on-screen keyboard (touch); no argument: status" },
 #endif
 #endif
+#if M5OS_BOARD_TAB5
     { "io", cmd_io, "io: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "gpio", cmd_io, "gpio: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "adc", cmd_io, "adc: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "pwm", cmd_io, "pwm: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "i2c", cmd_io, "i2c: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "spi", cmd_io, "spi: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "uart", cmd_io, "uart: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "bt", cmd_bt, "BLE HID host: bt on | scan | devices | connect | status" },
+#endif
     { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
     { "sshd", cmd_sshd, "sshd start USER PASSWORD [PORT] | status | stop | storage ro|rw|off" },
     { "ssh",       cmd_ssh,       "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },

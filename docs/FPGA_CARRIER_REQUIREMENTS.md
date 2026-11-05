@@ -462,3 +462,13 @@ Full actual windows are in parlio-continuous-ready-parity-2026-11-04.json.
 No20MHz MeOS result is claimed. The standalone1MHz fractal app separately passed
 CPU/FPGA comparisons for both scenes; it does not establish DDR3 or high-rate
 qualification. No carrier/pin/RTL/voltage modification was made.
+
+## Verified partial integration: 2026-11-05
+
+Fetched and reviewed carrier remote `995b3ca4849ea8d529031384311b1b8a9680d2cd`
+before adopting the tested I2C/touch/ADC changes. Rechecked committed Dock
+wiring/constraints, `kicad/core_pin_assignment.csv`, generated hardware and DRC
+audit records. No pin/electrical change from the preceding reviewed revision.
+Unrelated dirty carrier work is preserved. This integration changes no FPGA
+RTL, wire protocol, pin allocation or power sequencing. Analog I2C clock access
+is IRQ-protected and restores the prior shared register state.
