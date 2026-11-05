@@ -1101,7 +1101,9 @@ static const command_t s_commands[] = {
 #if M5OS_MODULE_GFXBENCH
     { "gfxbench", gfxbench_cmd_main, "gfxbench [scene|suite|list] [light|medium|heavy] [float|integer] [--bench|--frames N] [--headless]" },
 #endif
+#if M5OS_BOARD_TAB5
     { "image", cmd_image, "image [--info] FILE.bmp  display/inspect BMP on LCD" },
+#endif
 #if M5OS_SL
     { "sl", sl_cmd_main, "sl [-aFlc]  native steam locomotive animation" },
 #endif
@@ -1149,14 +1151,30 @@ static const command_t s_commands[] = {
     { "osk",     cmd_osk,     "osk [on|off|map N|debug]  on-screen keyboard (touch); no argument: status" },
 #endif
 #endif
+#if M5OS_BOARD_TAB5
     { "io", cmd_io, "io: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "gpio", cmd_io, "gpio: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "adc", cmd_io, "adc: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "pwm", cmd_io, "pwm: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "i2c", cmd_io, "i2c: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "spi", cmd_io, "spi: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "uart", cmd_io, "uart: external I/O (use io help for commands)" },
+#endif
+#if M5OS_BOARD_TAB5
     { "bt", cmd_bt, "BLE HID host: bt on | scan | devices | connect | status" },
+#endif
     { "wifi",      cmd_wifi,      "wifi [gui|scan|connect|disconnect|status|auto|forget]" },
     { "sshd", cmd_sshd, "sshd start USER PASSWORD [PORT] | status | stop | storage ro|rw|off" },
     { "ssh",       cmd_ssh,       "ssh [user@]host [-p port] [-pw pass] [cmd...]   SSH-2 client" },
