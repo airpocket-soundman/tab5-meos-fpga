@@ -968,6 +968,7 @@ static int cmd_install(int argc, char **argv)
         return ok ? 0 : 1;
     }
 #endif
+#if M5OS_BOARD_TAB5
     if (argc == 2 && (argv[1][0] == 'h' || argv[1][0] == 'm') && (has_slash(argv[1]) || argv[1][1] == 'e')) {     /* an https:// link or a meos:// code */
         fbcon_pause(true);
         task_sleep(FILER_PAUSE_SETTLE_MS);
@@ -978,6 +979,7 @@ static int cmd_install(int argc, char **argv)
         if (ok) SH_PRINTF("installed %s\n", name);
         return ok ? 0 : 1;
     }
+#endif
     if (argc != 2 || !resolve(argv[1], path)) { sh_puts("usage: install [FILE.wasm | URL]   (no file: scan an app's QR code)\n"); return 1; }
     int rc = wasm_install_file(path, name);
     if (rc != ERR_OK) return fail("install", path, rc);
