@@ -3,9 +3,9 @@
  * kernel/lib/suspend_core.c (tested on the host); this file does the hardware.
  *
  * Suspend, in this order (the user sees the screen go dark first):
- *   backlight off -> panel off -> drawing frozen -> extension port 5 V off -> CPU clock down.
+ *   backlight off -> panel off -> drawing frozen -> extension port 5 V off; CPU clock unchanged.
  * Wake, the reverse (the CPU first, so the rest is quick):
- *   CPU clock up -> 5 V back -> panel on -> drawing allowed -> backlight back to what it was.
+ *   5 V back -> panel on -> drawing allowed -> backlight back to what it was.
  *
  * "Frozen" means display_set_suspended(): every drawing call is discarded, so the framebuffer keeps the last
  * picture and programs that keep drawing waste no time on it.  The console (fbcon) holds back its changes and
@@ -31,7 +31,6 @@
 
 #define AWAKE_POLL_MS       200u        /* how often the idle timer is looked at */
 #define SUSPENDED_POLL_MS   50u         /* 20 Hz: wake-up inputs */
-#define SUSPEND_CPU_MHZ     90u         /* a quarter of the 360 MHz clock; the PLL keeps running */
 #define IDLE_MIN_SECONDS    10u
 #define IDLE_MAX_SECONDS    86400u
 #define FULL_BRIGHTNESS     255u
@@ -41,7 +40,6 @@
 static suspend_core_t s_core;
 static uint8_t  s_saved_backlight;
 static bool     s_ext5v_was_on;
-static unsigned s_saved_mhz;
 static uint32_t s_last_resume_ms;
 static bool     s_started;
 static bool     s_entering;
@@ -170,9 +168,10 @@ static void do_enter(void)
     display_panel_power(false);
     display_set_suspended(true);
     board_ext5v_set(false, &s_ext5v_was_on);
-    s_saved_mhz = hal_cpu_mhz();
-    bool slowed = hal_cpu_set_mhz(SUSPEND_CPU_MHZ);
-    kprintf("suspend: screen off, ext 5 V %s, CPU %u MHz%s\n", s_ext5v_was_on ? "off" : "was already off", hal_cpu_mhz(), slowed ? "" : " (clock change refused)");
+    /* DISPOFF does not stop DPI scanout. IDF's CPU switch also changes
+     * memory-bus dividers, which underruns the live LCD DMA on this board.
+     * Keep clocks unchanged until scanout has a validated stop/restart path. */
+    kprintf("suspend: screen off, ext 5 V %s, CPU %u MHz (unchanged: LCD DMA active)\n", s_ext5v_was_on ? "off" : "was already off", hal_cpu_mhz());
     uint32_t irq = arch_irq_disable();
     suspend_core_entered(&s_core);
     arch_irq_restore(irq);
@@ -181,7 +180,6 @@ static void do_enter(void)
 static void do_wake(void)
 {
     uint64_t t0 = now_us();
-    if (s_saved_mhz) hal_cpu_set_mhz(s_saved_mhz);
     if (s_ext5v_was_on) board_ext5v_set(true, NULL);
     display_panel_power(true);
     display_set_suspended(false);

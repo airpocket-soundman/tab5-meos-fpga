@@ -7,7 +7,7 @@
 #include <m5os/io.h>
 #include <m5os/task.h>
 static bool display_busy,input_busy,io_busy;
-static unsigned hardware,clock_mhz=360,irq_depth;
+static unsigned hardware,clock_mhz=360,irq_depth,clock_changes;
 static uint64_t clock_us;
 uint32_t arch_irq_disable(void){return irq_depth++;}
 void arch_irq_restore(uint32_t previous){assert(irq_depth>previous);irq_depth=previous;}
@@ -21,7 +21,7 @@ bool board_ext5v_set(bool on,bool*was){(void)on;if(was)*was=true;hardware++;retu
 void display_panel_power(bool on){(void)on;hardware++;}
 void display_set_suspended(bool on){(void)on;hardware++;}
 unsigned hal_cpu_mhz(void){return clock_mhz;}
-bool hal_cpu_set_mhz(unsigned mhz){clock_mhz=mhz;hardware++;return true;}
+bool hal_cpu_set_mhz(unsigned mhz){clock_mhz=mhz;clock_changes++;hardware++;return true;}
 void kconsole_request_refresh(void){hardware++;}
 void kconsole_set_input_hook(void(*hook)(void)){assert(hook);}
 void kprintf(const char*format,...){(void)format;}
@@ -55,7 +55,7 @@ int main(void){
  }else{
   assert(suspend_try_request());display_busy=true;do_enter();
   assert(s_core.enter_requested&&!s_core.suspended&&!hardware);
-  clock_us+=200000;display_busy=false;do_enter();assert(s_core.suspended&&clock_mhz==90&&hardware);
+  clock_us+=200000;display_busy=false;do_enter();assert(s_core.suspended&&clock_mhz==360&&hardware&&!clock_changes);
   assert(!suspend_inhibit_acquire(SUSPEND_INHIBIT_OTHER));
   assert(suspend_filter_input());do_wake();assert(!s_core.suspended&&!s_entering&&clock_mhz==360);
   assert(suspend_inhibit_acquire(SUSPEND_INHIBIT_OTHER));assert(suspend_inhibit_release(SUSPEND_INHIBIT_OTHER));
@@ -65,5 +65,5 @@ int main(void){
   assert(suspend_try_request());io_busy=true;do_enter();
   assert(!s_core.enter_requested&&!s_core.suspended&&hardware==prior);io_busy=false;
  }
- assert(!irq_depth);puts("Suspend safety: static unsupported-resource masks, IO/display/input leases, refcounts, manual/auto BUSY and wake guard passed");return 0;
+ assert(!irq_depth&&!clock_changes);puts("Suspend safety: static unsupported-resource masks, IO/display/input leases, refcounts, manual/auto BUSY and wake guard passed");return 0;
 }
